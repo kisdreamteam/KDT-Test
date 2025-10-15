@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+  const [error, setError] = useState("");
 
   return (
     <div className="min-h-screen w-full bg-[#3B47E0] flex items-center justify-center p-6">
@@ -57,13 +57,14 @@ export default function LoginPage() {
 
         <form className="mt-8 grid gap-6" onSubmit={async (e) => {
           e.preventDefault();
-          setErrorMessage("");
+          setError("");
           const { error } = await supabase.auth.signInWithPassword({ email, password });
           if (error) {
             console.error("Login error:", error);
-            setErrorMessage(error.message ?? "Failed to sign in. Please try again.");
+            setError(error.message ?? "Failed to sign in. Please try again.");
             return;
           }
+          setError("");
           router.push("/dashboard");
         }}>
           <div className="grid gap-2">
@@ -111,11 +112,6 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
-
-          {errorMessage && (
-            <p className="text-sm text-red-600">{errorMessage}</p>
-          )}
-
           <div className="flex items-center justify-between">
             <label className="inline-flex items-center gap-2 text-sm text-black">
               <input type="checkbox" className="h-4 w-4 rounded border-black/30" />
@@ -134,6 +130,10 @@ export default function LoginPage() {
               Log in
             </button>
           </div>
+
+          {error && (
+            <p className="text-sm text-red-600">{error}</p>
+          )}
         </form>
       </div>
     </div>
