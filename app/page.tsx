@@ -1,4 +1,4 @@
-import Link from "next/link";
+ import Link from "next/link";
 import Image from "next/image";
 
 export default function Home() {
@@ -17,9 +17,12 @@ export default function Home() {
             >
               Log in
             </Link>
-            <button className="rounded-full bg-[#8E96C6] text-white/90 font-semibold h-12 px-8 flex items-center shadow-sm hover:brightness-110 transition">
+            <Link
+              href="/signup"
+              className="rounded-full bg-[#8E96C6] text-white/90 font-semibold h-12 px-8 flex items-center shadow-sm hover:brightness-110 transition"
+            >
               Sign up
-            </button>
+            </Link>
           </div>
         </header>
 

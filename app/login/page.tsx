@@ -4,14 +4,39 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 
+
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
     <div className="min-h-screen w-full bg-[#3B47E0] flex items-center justify-center p-6">
       <div className="w-full max-w-[720px] bg-white/95 rounded-[28px] shadow-xl border border-black/5 px-6 sm:px-10 py-10 relative">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-full flex items-center justify-center">
+        <div className="flex items-start justify-between gap-4 mb-6 sm:mb-8">
+          <Link
+            href="/"
+            className="text-pink-400 hover:text-pink-500 transition-colors"
+            aria-label="Go back"
+          >
+            {/* simple back arrow */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              className="h-7 w-7"
+            >
+              <path
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </Link>
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-black text-center flex-1">
+            Log in to KDT
+          </h1>
+          <div className="flex items-center gap-2 text-3xl" aria-hidden>
             <Image
               src="/images/2Login Page Image.png"
               alt="Playful characters welcoming users to log in"
@@ -21,9 +46,6 @@ export default function LoginPage() {
               className="h-auto w-[200px] sm:w-[260px] md:w-[300px]"
             />
           </div>
-          <h1 className="text-center text-3xl sm:text-4xl font-extrabold tracking-tight text-black">
-            Log in to KDT
-          </h1>
         </div>
 
         <form className="mt-8 grid gap-6">
@@ -86,12 +108,6 @@ export default function LoginPage() {
             >
               Log in
             </button>
-            <p className="text-center text-sm text-black/70">
-              Don’t have an account?{" "}
-              <Link href="#" className="font-semibold text-[#3B47E0] hover:underline">
-                Sign up
-              </Link>
-            </p>
           </div>
         </form>
       </div>
