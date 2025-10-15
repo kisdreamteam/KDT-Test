@@ -48,6 +48,7 @@ export default function SignupPage() {
   const router = useRouter();
   const supabase = createClient();
   const [title, setTitle] = useState<string>("Ms.");
+  const [name, setName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
@@ -58,6 +59,7 @@ export default function SignupPage() {
 
   const [emailError, setEmailError] = useState<string>("");
   const [roleError, setRoleError] = useState<string>("");
+  const [message, setMessage] = useState<string>("");
 
   async function handleSignUp(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -93,11 +95,14 @@ export default function SignupPage() {
 
     if (error) {
       console.error("Supabase signUp error:", error);
+      setMessage(error.message ?? "Failed to sign up. Please try again.");
       return;
     }
 
-    console.log("Sign up successful. Check your email for verification.");
-    router.refresh();
+    setMessage("Success! Redirecting you to the login page...");
+    setTimeout(() => {
+      router.push("/login");
+    }, 2000);
   }
 
   return (
@@ -155,6 +160,24 @@ export default function SignupPage() {
               <option>Mr.</option>
               <option>Ms.</option>
             </select>
+          </div>
+
+          {/* Name */}
+          <div>
+            <label
+              htmlFor="name"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Name
+            </label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your full name"
+              className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
           </div>
 
           {/* Email */}
@@ -261,6 +284,11 @@ export default function SignupPage() {
           >
             Sign Up
           </button>
+          {message && (
+            <p className={`text-sm mt-2 ${message.startsWith("Success") ? "text-green-600" : "text-red-600"}`}>
+              {message}
+            </p>
+          )}
         </form>
 
         <div className="mt-6 text-center text-sm text-gray-600">

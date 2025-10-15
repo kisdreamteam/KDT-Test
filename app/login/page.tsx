@@ -3,10 +3,17 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 
 export default function LoginPage() {
+  const router = useRouter();
+  const supabase = createClient();
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   return (
     <div className="min-h-screen w-full bg-[#3B47E0] flex items-center justify-center p-6">
@@ -48,7 +55,17 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <form className="mt-8 grid gap-6">
+        <form className="mt-8 grid gap-6" onSubmit={async (e) => {
+          e.preventDefault();
+          setErrorMessage("");
+          const { error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error) {
+            console.error("Login error:", error);
+            setErrorMessage(error.message ?? "Failed to sign in. Please try again.");
+            return;
+          }
+          router.push("/dashboard");
+        }}>
           <div className="grid gap-2">
             <label htmlFor="email" className="text-base font-semibold text-black">
               Email address
@@ -61,6 +78,8 @@ export default function LoginPage() {
               required
               className="h-12 rounded-[12px] border border-black/20 px-4 text-[16px] outline-none focus:border-black/40 focus:ring-2 focus:ring-[#3B47E0]/30"
               placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 
@@ -77,6 +96,8 @@ export default function LoginPage() {
                 required
                 className="h-12 w-full rounded-[12px] border border-black/20 px-4 pr-12 text-[16px] outline-none focus:border-black/40 focus:ring-2 focus:ring-[#3B47E0]/30"
                 placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
               <button
                 type="button"
@@ -90,6 +111,10 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
+
+          {errorMessage && (
+            <p className="text-sm text-red-600">{errorMessage}</p>
+          )}
 
           <div className="flex items-center justify-between">
             <label className="inline-flex items-center gap-2 text-sm text-black">
