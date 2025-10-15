@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { createClient } from "@/lib/supabase/client";
 
 function EyeIcon({ hidden = false }: { hidden?: boolean }) {
   if (hidden) {
@@ -43,6 +45,8 @@ function EyeIcon({ hidden = false }: { hidden?: boolean }) {
 }
 
 export default function SignupPage() {
+  const router = useRouter();
+  const supabase = createClient();
   const [title, setTitle] = useState<string>("Ms.");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
@@ -55,7 +59,7 @@ export default function SignupPage() {
   const [emailError, setEmailError] = useState<string>("");
   const [roleError, setRoleError] = useState<string>("");
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSignUp(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     let hasError = false;
 
@@ -74,10 +78,26 @@ export default function SignupPage() {
       hasError = true;
     }
 
-    if (!hasError) {
-      // Simulate successful submit for now
-      alert("Sign up submitted! (client-side validation passed)");
+    if (password !== confirmPassword) {
+      // Reuse emailError slot is not ideal; keeping UI minimal for now
+      setEmailError("Passwords do not match.");
+      hasError = true;
     }
+
+    if (hasError) return;
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) {
+      console.error("Supabase signUp error:", error);
+      return;
+    }
+
+    console.log("Sign up successful. Check your email for verification.");
+    router.refresh();
   }
 
   return (
@@ -120,7 +140,7 @@ export default function SignupPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSignUp} className="space-y-4">
           {/* Title */}
           <div>
             <label htmlFor="title" className="sr-only">
