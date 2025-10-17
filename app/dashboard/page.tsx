@@ -33,7 +33,7 @@ export default function DashboardPage() {
     <div className="max-w-6xl mx-auto">
       {/* Main Heading */}
       <h1 className="text-5xl font-extrabold text-gray-900 mb-8 text-center">
-        Mr. Brendan's Classes
+        Mr. Brendan&apos;s Classes
       </h1>
 
       {/* Class Cards Grid */}
