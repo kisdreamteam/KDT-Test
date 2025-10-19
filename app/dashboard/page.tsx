@@ -31,11 +31,6 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      {/* Main Heading */}
-      <h1 className="text-5xl font-extrabold text-gray-900 mb-8 text-center">
-        Mr. Brendan&apos;s Classes
-      </h1>
-
       {/* Class Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
         {/* Regular Class Cards */}

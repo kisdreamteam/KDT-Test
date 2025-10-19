@@ -75,13 +75,18 @@ export default function DashboardLayout({
           {/* Hamburger Menu */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-gray-600 text-2xl hover:text-gray-800"
+            className="text-gray-600 text-2xl hover:text-gray-800 w-8 flex justify-start"
           >
             ☰
           </button>
 
+          {/* Main Title */}
+          <h1 className="text-2xl font-bold text-gray-900 flex-1 text-center">
+            Mr. Brendan&apos;s Classes
+          </h1>
+
           {/* KIS Points Logo */}
-          <div className="flex items-center">
+          <div className="flex items-center w-32 justify-end">
             <Image
               src="/images/1Landing Page Image.png"
               alt="KIS Points"
