@@ -55,7 +55,7 @@ export default function Home() {
             {/* Right section - Text content */}
             <div className="text-[#4A3B8D]">
               <h1 className="text-5xl sm:text-6xl font-bold leading-tight mb-8">
-                Let's get<br />started.
+                Let&apos;s get<br />started.
               </h1>
               <ul className="space-y-4 text-[#D98B8B] text-xl sm:text-2xl font-semibold">
                 <li>Classroom Management</li>
