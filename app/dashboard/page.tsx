@@ -1,6 +1,12 @@
+'use client';
+
 import Image from 'next/image';
+import { useState } from 'react';
+import Modal from '../../components/ui/Modal';
+import CreateClassForm from '../../components/forms/CreateClassForm';
 
 export default function DashboardPage() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const classes = [
     {
       name: '4-5 Homeroom',
@@ -78,7 +84,10 @@ export default function DashboardPage() {
         ))}
 
         {/* Add New Class Card */}
-        <div className="bg-blue-100 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-blue-200">
+        <div 
+          className="bg-blue-100 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-blue-200"
+          onClick={() => setIsModalOpen(true)}
+        >
           <div className="text-center">
             {/* Add Icon */}
             <div className="text-center mb-4">
@@ -99,6 +108,11 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal */}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+        <CreateClassForm onClose={() => setIsModalOpen(false)} />
+      </Modal>
     </div>
   );
 }
