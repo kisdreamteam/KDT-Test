@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
 
 interface CreateClassFormProps {
   onClose: () => void;
@@ -10,12 +12,68 @@ interface CreateClassFormProps {
 export default function CreateClassForm({ onClose }: CreateClassFormProps) {
   const [className, setClassName] = useState('');
   const [grade, setGrade] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleCreateClass = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission logic here
-    console.log('Creating class:', { className, grade });
-    onClose();
+    setIsLoading(true);
+
+    try {
+      // Initialize Supabase client
+      const supabase = createClient();
+
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      console.log('Current User:', user); // Debug log for user object
+      
+      if (userError || !user) {
+        console.error('User not authenticated:', userError);
+        console.error('User error details:', userError?.message || userError);
+        alert('You must be logged in to create a class.');
+        return;
+      }
+
+      // Create the data object to be inserted
+      const newClassData = {
+        name: className,
+        grade: grade,
+        teacher_id: user?.id, // Use optional chaining just in case
+        school_year: '2025-2026',
+        is_archived: false
+      };
+      console.log('Data being inserted:', newClassData); // Debug log for insert data
+
+      // Insert new class into Supabase
+      const { data, error } = await supabase
+        .from('classes')
+        .insert([newClassData]) // Pass the object in an array
+        .select();
+
+      if (error) {
+        console.error('Supabase error:', error?.message || error);
+        console.error('Error code:', error?.code);
+        console.error('Error hint:', error?.hint);
+        alert('Failed to create class. Please try again.');
+        return;
+      }
+
+      console.log('Class created successfully:', data);
+      console.log('Inserted class data:', data?.[0]); // Log the first (and only) inserted record
+      
+      // Close modal and refresh page
+      onClose();
+      router.refresh();
+      
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      console.error('Error type:', typeof error);
+      console.error('Error message:', error instanceof Error ? error.message : 'Unknown error');
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      alert('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -39,7 +97,7 @@ export default function CreateClassForm({ onClose }: CreateClassFormProps) {
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleCreateClass} className="space-y-4">
         {/* School field (read-only) */}
         <div>
           <label htmlFor="school" className="block text-sm font-medium text-gray-700 mb-2">
@@ -83,13 +141,13 @@ export default function CreateClassForm({ onClose }: CreateClassFormProps) {
             required
           >
             <option value="">Select a grade</option>
-            <option value="GR1">GR1</option>
-            <option value="GR2">GR2</option>
-            <option value="GR3">GR3</option>
-            <option value="GR4">GR4</option>
-            <option value="GR5">GR5</option>
-            <option value="GR6">GR6</option>
-            <option value="GR7">GR7</option>
+            <option value="Grade1">Grade1</option>
+            <option value="Grade2">Grade2</option>
+            <option value="Grade3">Grade3</option>
+            <option value="Grade4">Grade4</option>
+            <option value="Grade5">Grade5</option>
+            <option value="Grade6">Grade6</option>
+            <option value="Grade7">Grade7</option>
           </select>
         </div>
 
@@ -98,15 +156,17 @@ export default function CreateClassForm({ onClose }: CreateClassFormProps) {
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+            disabled={isLoading}
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            disabled={isLoading}
+            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Create
+            {isLoading ? 'Creating...' : 'Create'}
           </button>
         </div>
       </form>
