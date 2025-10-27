@@ -34,36 +34,25 @@ export default function CreateClassForm({ onClose }: CreateClassFormProps) {
         return;
       }
 
-      // Create the data object to be inserted
-      const newClassData = {
-        name: className,
-        grade: grade,
-        teacher_id: user?.id, // Use optional chaining just in case
-        school_year: '2025-2026',
-        is_archived: false
-      };
-      console.log('Data being inserted:', newClassData); // Debug log for insert data
-
-      // Insert new class into Supabase
-      const { data, error } = await supabase
-        .from('classes')
-        .insert([newClassData]) // Pass the object in an array
-        .select();
+      // Call the database function to create a new class
+      const { error } = await supabase.rpc('create_new_class', {
+        class_name: className,
+        class_grade: grade,
+        class_school_year: "2025-2026"
+      });
 
       if (error) {
-        console.error('Supabase error:', error?.message || error);
+        console.error('Supabase RPC error:', error?.message || error);
         console.error('Error code:', error?.code);
         console.error('Error hint:', error?.hint);
         alert('Failed to create class. Please try again.');
         return;
       }
 
-      console.log('Class created successfully:', data);
-      console.log('Inserted class data:', data?.[0]); // Log the first (and only) inserted record
+      console.log('Class created successfully using RPC function');
       
-      // Close modal and refresh page
+      // Close modal - the parent component will handle refreshing the data
       onClose();
-      router.refresh();
       
     } catch (error) {
       console.error('Unexpected error:', error);
