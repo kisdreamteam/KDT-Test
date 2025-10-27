@@ -80,6 +80,9 @@ export default function DashboardPage() {
       console.log('Successfully fetched classes:', data);
       console.log('Number of classes:', data?.length || 0);
       setClasses(data || []);
+      
+      // Dispatch custom event to notify sidebar of class updates
+      window.dispatchEvent(new CustomEvent('classUpdated'));
     } catch (err) {
       console.error('Unexpected error in fetchClasses:', err);
       console.error('Error stack:', err instanceof Error ? err.stack : 'No stack');

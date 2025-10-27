@@ -36,6 +36,18 @@ export default function DashboardLayout({
   useEffect(() => {
     fetchTeacherProfile();
     fetchClasses();
+
+    // Listen for class updates from the main dashboard
+    const handleClassUpdate = () => {
+      console.log('Sidebar: Received class update event, refreshing classes...');
+      fetchClasses();
+    };
+
+    window.addEventListener('classUpdated', handleClassUpdate);
+    
+    return () => {
+      window.removeEventListener('classUpdated', handleClassUpdate);
+    };
   }, []);
 
   const fetchTeacherProfile = async () => {
@@ -124,7 +136,7 @@ export default function DashboardLayout({
           <div className="bg-white rounded-lg p-4 mb-6">
             <div className="text-center">
               <Image
-                src="/images/1Landing Page Image.png"
+                src="/images/shared/default-image.png"
                 alt="User Avatar"
                 width={200}
                 height={200}
@@ -135,9 +147,11 @@ export default function DashboardLayout({
           </div>
 
           {/* All Classes Section */}
-          <div className="bg-blue-900 text-white p-3 rounded-lg mb-4">
-            <h2 className="text-center font-semibold">All Classes</h2>
-          </div>
+          <Link href="/dashboard" className="block">
+            <div className="bg-blue-900 text-white p-3 rounded-lg mb-4 hover:bg-blue-800 transition-colors cursor-pointer">
+              <h2 className="text-center font-semibold">All Classes</h2>
+            </div>
+          </Link>
 
           {/* Classes List */}
           <div className="space-y-2 mb-6 max-h-64 overflow-y-auto">
@@ -186,16 +200,7 @@ export default function DashboardLayout({
           <div className="mt-auto">
             <div className="bg-pink-400 text-white p-3 rounded-lg mb-2">
               <div className="text-center font-semibold">
-                {isLoadingProfile ? (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Loading...
-                  </div>
-                ) : teacherProfile ? (
-                  `${teacherProfile.title} ${teacherProfile.name}`
-                ) : (
-                  "Teacher"
-                )}
+                KI-EUN
               </div>
             </div>
             <div className="text-center text-sm text-gray-600">
@@ -208,7 +213,7 @@ export default function DashboardLayout({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
         {/* Top Bar */}
-        <div className="bg-white h-20 py-4 flex items-center justify-between px-4">
+        <div className="bg-white h-30 py-4 flex items-center justify-between px-4">
           {/* Hamburger Menu */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -231,13 +236,19 @@ export default function DashboardLayout({
             )}
           </h1>
 
+          {/* <Link href="/dashboard" className="block">
+            <div className="bg-blue-900 text-white p-3 rounded-lg mb-4 hover:bg-blue-800 transition-colors cursor-pointer">
+              <h2 className="text-center font-semibold">All Classes</h2>
+            </div>
+          </Link> */}
+
           {/* KIS Points Logo */}
-          <div className="flex items-center w-32 justify-end">
+          <div className="flex items-center w-40 justify-end">
             <Image
-              src="/images/1Landing Page Image.png"
+              src="/images/shared/profile-avatar-dashboard.png"
               alt="KIS Points"
-              width={120}
-              height={40}
+              width={160}
+              height={80}
               className="object-contain"
             />
           </div>
