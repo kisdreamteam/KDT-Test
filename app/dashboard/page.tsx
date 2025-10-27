@@ -219,7 +219,7 @@ export default function DashboardPage() {
           {/* Empty State Text */}
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Welcome to your dashboard!</h2>
           <p className="text-gray-600 mb-8 max-w-md mx-auto">
-            You haven't created any classes yet. Create your first class to get started with managing your students.
+            You haven-t created any classes yet. Create your first class to get started with managing your students.
           </p>
           
           {/* Prominent Add Class Button */}
