@@ -35,21 +35,33 @@ export default function CreateClassForm({ onClose }: CreateClassFormProps) {
       }
 
       // Call the database function to create a new class
-      const { error } = await supabase.rpc('create_new_class', {
+      console.log('Calling create_new_class RPC with:', {
         class_name: className,
         class_grade: grade,
         class_school_year: "2025-2026"
       });
 
+      const { data: rpcData, error } = await supabase.rpc('create_new_class', {
+        class_name: className,
+        class_grade: grade,
+        class_school_year: "2025-2026"
+      });
+
+      console.log('RPC response - data:', rpcData);
+      console.log('RPC response - error:', error);
+
       if (error) {
         console.error('Supabase RPC error:', error?.message || error);
         console.error('Error code:', error?.code);
         console.error('Error hint:', error?.hint);
+        console.error('Full error object:', error);
         alert('Failed to create class. Please try again.');
         return;
       }
 
       console.log('Class created successfully using RPC function');
+      console.log('Class name:', className, 'Grade:', grade);
+      console.log('RPC returned data:', rpcData);
       
       // Close modal - the parent component will handle refreshing the data
       onClose();
