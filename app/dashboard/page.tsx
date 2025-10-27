@@ -136,7 +136,7 @@ export default function DashboardPage() {
 
   // Handle archive class
   const handleArchiveClass = async (classId: string, className: string) => {
-    if (confirm(`Are you sure you want to archive "${className}"?`)) {
+    if (confirm(`Are you sure you want to archive this class?`)) {
       try {
         const supabase = createClient();
         const { error } = await supabase
