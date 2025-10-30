@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { DashboardProvider } from '@/context/DashboardContext';
 
 interface TeacherProfile {
   id: string;
@@ -236,12 +237,6 @@ export default function DashboardLayout({
             )}
           </h1>
 
-          {/* <Link href="/dashboard" className="block">
-            <div className="bg-blue-900 text-white p-3 rounded-lg mb-4 hover:bg-blue-800 transition-colors cursor-pointer">
-              <h2 className="text-center font-semibold">All Classes</h2>
-            </div>
-          </Link> */}
-
           {/* KIS Points Logo */}
           <div className="flex items-center w-40 justify-end">
             <Image
@@ -255,9 +250,11 @@ export default function DashboardLayout({
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 bg-pink-50 p-6">
-          {children}
-        </div>
+        <DashboardProvider value={{ classes, isLoadingClasses, refreshClasses: fetchClasses }}>
+          <div className="flex-1 bg-pink-50 p-6">
+            {children}
+          </div>
+        </DashboardProvider>
       </div>
     </div>
   );

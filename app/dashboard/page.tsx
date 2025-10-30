@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import Modal from '../../components/ui/Modal';
 import CreateClassForm from '../../components/forms/CreateClassForm';
 import { createClient } from '@/lib/supabase/client';
+import { useDashboard } from '@/context/DashboardContext';
 
 interface Class {
   id: string;
@@ -18,15 +19,10 @@ interface Class {
 }
 
 export default function DashboardPage() {
+  const { classes, isLoadingClasses, refreshClasses } = useDashboard();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchClasses();
-  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -40,94 +36,11 @@ export default function DashboardPage() {
     }
   }, [openDropdownId]);
 
-  const fetchClasses = async () => {
-    try {
-      setIsLoading(true);
-      console.log('Starting fetchClasses...');
-      const supabase = createClient();
-      
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      console.log('Current user:', user);
-      console.log('User error:', userError);
-      
-      if (userError || !user) {
-        console.error('User not authenticated:', userError);
-        setError('You must be logged in to view classes.');
-        return;
-      }
-
-      console.log('Fetching classes for teacher_id:', user.id);
-
-      // Fetch classes for the current teacher
-      const { data, error } = await supabase
-        .from('classes')
-        .select('*')
-        .eq('teacher_id', user.id)
-        .eq('is_archived', false)
-        .order('created_at', { ascending: false });
-
-      console.log('Supabase query result - data:', data);
-      console.log('Supabase query result - error:', error);
-
-      if (error) {
-        console.error('Error fetching classes:', error?.message || error);
-        console.error('Error details:', error);
-        setError('Failed to load classes. Please try again.');
-        return;
-      }
-
-      console.log('Successfully fetched classes:', data);
-      console.log('Number of classes:', data?.length || 0);
-      setClasses(data || []);
-      
-      // Dispatch custom event to notify sidebar of class updates
-      window.dispatchEvent(new CustomEvent('classUpdated'));
-    } catch (err) {
-      console.error('Unexpected error in fetchClasses:', err);
-      console.error('Error stack:', err instanceof Error ? err.stack : 'No stack');
-      setError('An unexpected error occurred.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   // Handle modal close with refresh
   const handleModalClose = () => {
     console.log('Modal closing, refreshing classes...');
     setIsModalOpen(false);
-    fetchClasses(); // Refresh classes after modal closes
-  };
-
-  // Test function to debug database access
-  const testDatabaseAccess = async () => {
-    try {
-      const supabase = createClient();
-      console.log('Testing direct database access...');
-      
-      // Test 1: Get user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      console.log('Test - Current user:', user);
-      
-      if (user) {
-        // Test 2: Try to fetch ALL classes (no filters)
-        const { data: allClasses, error: allError } = await supabase
-          .from('classes')
-          .select('*');
-        console.log('Test - All classes:', allClasses);
-        console.log('Test - All classes error:', allError);
-        
-        // Test 3: Try to fetch classes for this user
-        const { data: userClasses, error: userError } = await supabase
-          .from('classes')
-          .select('*')
-          .eq('teacher_id', user.id);
-        console.log('Test - User classes:', userClasses);
-        console.log('Test - User classes error:', userError);
-      }
-    } catch (err) {
-      console.error('Test error:', err);
-    }
+    refreshClasses(); // Refresh classes after modal closes
   };
 
   // Handle dropdown toggle
@@ -155,7 +68,7 @@ export default function DashboardPage() {
 
         console.log('Class archived successfully');
         setOpenDropdownId(null);
-        fetchClasses(); // Refresh the list
+        refreshClasses(); // Refresh the list
       } catch (err) {
         console.error('Unexpected error archiving class:', err);
         alert('An unexpected error occurred. Please try again.');
@@ -171,7 +84,7 @@ export default function DashboardPage() {
     alert('Edit functionality will be implemented soon!');
   };
 
-  if (isLoading) {
+  if (isLoadingClasses) {
     return (
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-center items-center h-64">
@@ -191,12 +104,12 @@ export default function DashboardPage() {
           <div className="text-center">
             <div className="text-red-600 mb-4">
               <svg className="w-12 h-12 mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 зеры 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
             </div>
             <p className="text-red-600 mb-4">{error}</p>
             <button 
-              onClick={fetchClasses}
+              onClick={refreshClasses}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
             >
               Try Again
@@ -209,7 +122,7 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      {classes.length === 0 ? (
+      {!isLoadingClasses && classes.length === 0 ? (
         /* Empty State - Clean Dashboard */
         <div className="text-center py-16">
           {/* Empty State Icon */}
@@ -236,16 +149,6 @@ export default function DashboardPage() {
               </svg>
               <span>Create Your First Class</span>
             </div>
-          </div>
-          
-          {/* Debug Button - Remove this after debugging */}
-          <div className="mt-4">
-            <button 
-              onClick={testDatabaseAccess}
-              className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors text-sm"
-            >
-              Debug Database Access
-            </button>
           </div>
         </div>
       ) : (
