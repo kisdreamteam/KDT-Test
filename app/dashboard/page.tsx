@@ -163,7 +163,7 @@ export default function DashboardPage() {
             >
               <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer relative group">
                 {/* Settings Icon with Dropdown */}
-                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-4 right-4">
                   <div className="relative">
                     <button
                       onClick={(e) => toggleDropdown(cls.id, e)}

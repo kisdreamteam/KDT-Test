@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import AddStudentsModal from '@/components/modals/AddStudentsModal';
 
 interface Student {
   id: string;
@@ -18,16 +19,54 @@ export default function ClassRosterPage() {
   const params = useParams();
   const classId = params.classId as string;
   const [students, setStudents] = useState<Student[]>([]);
+  const [className, setClassName] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddStudentModalOpen, setAddStudentModalOpen] = useState(false);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   useEffect(() => {
     if (classId) {
+      fetchClass();
       fetchStudents();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classId]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setOpenDropdownId(null);
+    };
+
+    if (openDropdownId) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [openDropdownId]);
+
+  const fetchClass = async () => {
+    try {
+      const supabase = createClient();
+      
+      const { data: classData, error: fetchError } = await supabase
+        .from('classes')
+        .select('name')
+        .eq('id', classId)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching class:', fetchError?.message || fetchError);
+        return;
+      }
+
+      if (classData) {
+        setClassName(classData.name);
+      }
+    } catch (err) {
+      console.error('Unexpected error fetching class:', err instanceof Error ? err.message : err);
+    }
+  };
 
   const fetchStudents = async () => {
     try {
@@ -65,6 +104,47 @@ export default function ClassRosterPage() {
       setError('An unexpected error occurred.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Handle dropdown toggle
+  const toggleDropdown = (studentId: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setOpenDropdownId(openDropdownId === studentId ? null : studentId);
+  };
+
+  // Handle edit student
+  const handleEditStudent = (studentId: string) => {
+    console.log('Edit student:', studentId);
+    setOpenDropdownId(null);
+    // TODO: Implement edit functionality
+    alert('Edit functionality will be implemented soon!');
+  };
+
+  // Handle delete student
+  const handleDeleteStudent = async (studentId: string, studentName: string) => {
+    if (confirm(`Are you sure you want to delete ${studentName}?`)) {
+      try {
+        const supabase = createClient();
+        const { error } = await supabase
+          .from('students')
+          .delete()
+          .eq('id', studentId);
+
+        if (error) {
+          console.error('Error deleting student:', error);
+          alert('Failed to delete student. Please try again.');
+          return;
+        }
+
+        console.log('Student deleted successfully');
+        setOpenDropdownId(null);
+        fetchStudents(); // Refresh the list
+      } catch (err) {
+        console.error('Unexpected error deleting student:', err);
+        alert('An unexpected error occurred. Please try again.');
+      }
     }
   };
 
@@ -113,8 +193,12 @@ export default function ClassRosterPage() {
       <div className="max-w-6xl mx-auto">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Class Roster</h1>
-          <p className="text-gray-600">View and manage student information</p>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              {className || 'Class Roster'}
+            </h1>
+            <p className="text-gray-600">View and manage student information</p>
+          </div>
         </div>
 
         {/* Student Cards Grid */}
@@ -130,7 +214,7 @@ export default function ClassRosterPage() {
             {/* Add New Student Button for Empty State */}
             <div 
               className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer transform hover:scale-105"
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => setAddStudentModalOpen(true)}
             >
               <div className="flex items-center space-x-3">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -145,12 +229,68 @@ export default function ClassRosterPage() {
             {students.map((student) => (
               <div
                 key={student.id}
-                className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-200"
+                className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-200 relative group"
               >
+                {/* Settings Icon with Dropdown */}
+                <div className="absolute top-4 right-4">
+                  <div className="relative">
+                    <button
+                      onClick={(e) => toggleDropdown(student.id, e)}
+                      className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                    >
+                      <svg
+                        className="w-5 h-5"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {openDropdownId === student.id && (
+                      <div className="absolute right-0 top-8 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                        <div className="py-1">
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleEditStudent(student.id);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                          >
+                            <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Edit
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleDeleteStudent(student.id, `${student.first_name} ${student.last_name}`);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 flex items-center"
+                          >
+                            <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Student Avatar */}
                 <div className="flex justify-center mb-4">
                   <Image
-                    src="/images/students/avatars/student_avatar_1.png"
+                    src={student.avatar || "/images/students/avatars/student_avatar_1.png"}
                     alt={`${student.first_name} ${student.last_name} avatar`}
                     width={60}
                     height={60}
@@ -178,7 +318,7 @@ export default function ClassRosterPage() {
             {/* Add New Student Card */}
             <div 
               className="bg-blue-100 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-blue-200"
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => setAddStudentModalOpen(true)}
             >
               <div className="text-center">
                 {/* Add Icon */}
@@ -209,6 +349,14 @@ export default function ClassRosterPage() {
           </div>
         </footer>
       </div>
+
+      {/* Add Students Modal */}
+      <AddStudentsModal 
+        isOpen={isAddStudentModalOpen} 
+        onClose={() => setAddStudentModalOpen(false)}
+        classId={classId}
+        onStudentAdded={fetchStudents}
+      />
     </div>
   );
 }
