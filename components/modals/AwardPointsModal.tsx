@@ -6,6 +6,15 @@ import Modal from '@/components/ui/Modal';
 import { createClient } from '@/lib/supabase/client';
 import ManageSkillsModal from '@/components/modals/ManageSkillsModal';
 
+interface PointCategory {
+  id: string;
+  name: string;
+  default_points: number;
+  teacher_id: string;
+  class_id: string;
+  points?: number; // Optional fallback property
+}
+
 interface AwardPointsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -23,7 +32,7 @@ export default function AwardPointsModal({
 }: AwardPointsModalProps) {
   console.log('AWARD POINTS MODAL: classId received:', classId);
   
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<PointCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'positive' | 'negative' | 'custom'>('positive');
   const [customPoints, setCustomPoints] = useState<number>(0);
