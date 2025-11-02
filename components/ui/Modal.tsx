@@ -4,13 +4,14 @@ interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  className?: string;
 }
 
-export default function Modal({ isOpen, onClose, children }: ModalProps) {
+export default function Modal({ isOpen, onClose, children, className = '' }: ModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
       {/* Semi-transparent background overlay */}
       <div 
         className="absolute inset-0 bg-black/50"
@@ -18,7 +19,7 @@ export default function Modal({ isOpen, onClose, children }: ModalProps) {
       />
       
       {/* Modal content */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className={`relative bg-white rounded-lg shadow-xl w-full mx-4 max-h-[90vh] overflow-y-auto ${className || 'max-w-md'}`}>
         {/* Close button */}
         <button
           onClick={onClose}

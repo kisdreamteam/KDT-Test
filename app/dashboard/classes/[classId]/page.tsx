@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AddStudentsModal from '@/components/modals/AddStudentsModal';
+import AwardPointsModal from '@/components/modals/AwardPointsModal';
 
 interface Student {
   id: string;
@@ -24,6 +25,9 @@ export default function ClassRosterPage() {
   const [error, setError] = useState<string | null>(null);
   const [isAddStudentModalOpen, setAddStudentModalOpen] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [isPointsModalOpen, setPointsModalOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+
 
   useEffect(() => {
     if (classId) {
@@ -35,14 +39,26 @@ export default function ClassRosterPage() {
 
   // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = () => {
+    if (!openDropdownId) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      // Don't close if clicking on the dropdown button or menu
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-dropdown-container]')) {
+        return;
+      }
+      // Don't close if clicking on a student card (let that handler run first)
+      if (target.closest('[data-student-card]')) {
+        // Allow the card click to process first, then close dropdown
+        setTimeout(() => setOpenDropdownId(null), 0);
+        return;
+      }
       setOpenDropdownId(null);
     };
 
-    if (openDropdownId) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
+    // Use capture phase to check before other handlers
+    document.addEventListener('click', handleClickOutside, true);
+    return () => document.removeEventListener('click', handleClickOutside, true);
   }, [openDropdownId]);
 
   const fetchClass = async () => {
@@ -148,6 +164,12 @@ export default function ClassRosterPage() {
     }
   };
 
+  // Handle student card click to open Award Points modal
+  const handleStudentClick = (student: Student) => {
+    setSelectedStudent(student);
+    setPointsModalOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
@@ -189,6 +211,7 @@ export default function ClassRosterPage() {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto">
         {/* Page Header */}
@@ -229,14 +252,25 @@ export default function ClassRosterPage() {
             {students.map((student) => (
               <div
                 key={student.id}
-                className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-200 relative group"
+                data-student-card={`${student.id}`}
+                onClick={() => handleStudentClick(student)}
+                className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer"
+                style={{ position: 'relative', zIndex: 1 }}
               >
                 {/* Settings Icon with Dropdown */}
-                <div className="absolute top-4 right-4">
+                <div 
+                  className="absolute top-4 right-4 z-10"
+                  data-dropdown-container
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                >
                   <div className="relative">
                     <button
                       onClick={(e) => toggleDropdown(student.id, e)}
                       className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                      data-dropdown-button
                     >
                       <svg
                         className="w-5 h-5"
@@ -288,7 +322,7 @@ export default function ClassRosterPage() {
                 </div>
 
                 {/* Student Avatar */}
-                <div className="flex justify-center mb-4">
+                <div className="flex justify-center mb-4 pointer-events-none">
                   <Image
                     src={student.avatar || "/images/students/avatars/student_avatar_1.png"}
                     alt={`${student.first_name} ${student.last_name} avatar`}
@@ -299,14 +333,14 @@ export default function ClassRosterPage() {
                 </div>
 
                 {/* Student Name */}
-                <div className="text-center mb-3">
+                <div className="text-center mb-3 pointer-events-none">
                   <h3 className="text-lg font-semibold text-gray-900">
                     {student.first_name} {student.last_name}
                   </h3>
                 </div>
 
                 {/* Student Points */}
-                <div className="text-center">
+                <div className="text-center pointer-events-none">
                   <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-medium">
                     <span className="mr-1">⭐</span>
                     {student.points || 0} points
@@ -357,6 +391,18 @@ export default function ClassRosterPage() {
         classId={classId}
         onStudentAdded={fetchStudents}
       />
+
+      {/* Award Points Modal - Always render, visibility controlled by isOpen */}
+      <AwardPointsModal
+        isOpen={isPointsModalOpen && selectedStudent !== null}
+        onClose={() => {
+          setPointsModalOpen(false);
+          setSelectedStudent(null);
+        }}
+        studentName={selectedStudent ? `${selectedStudent.first_name} ${selectedStudent.last_name}` : ''}
+        studentAvatar={selectedStudent?.avatar || "/images/students/avatars/student_avatar_1.png"}
+      />
     </div>
+    </>
   );
 }
