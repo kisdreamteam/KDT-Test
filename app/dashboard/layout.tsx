@@ -10,7 +10,7 @@ interface TeacherProfile {
   id: string;
   title: string;
   name: string;
-  email?: string;
+  role: string;
 }
 
 interface Class {
@@ -69,7 +69,7 @@ export default function DashboardLayout({
       // Fetch teacher profile from profiles table
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, title, name')
+        .select('id, title, name, role')
         .eq('id', user.id)
         .single();
 
@@ -81,7 +81,13 @@ export default function DashboardLayout({
         return;
       }
 
-      setTeacherProfile(data);
+      // Ensure role is set (provide default if missing)
+      if (data) {
+        setTeacherProfile({
+          ...data,
+          role: data.role || 'teacher'
+        });
+      }
     } catch (err) {
       console.error('Unexpected error fetching teacher profile:', err);
     } finally {
@@ -250,7 +256,13 @@ export default function DashboardLayout({
         </div>
 
         {/* Main Content */}
-        <DashboardProvider value={{ classes, isLoadingClasses, refreshClasses: fetchClasses }}>
+        <DashboardProvider value={{ 
+          classes, 
+          isLoadingClasses, 
+          teacherProfile, 
+          isLoadingProfile,
+          refreshClasses: fetchClasses
+        }}>
           <div className="flex-1 bg-pink-50 p-6">
             {children}
           </div>

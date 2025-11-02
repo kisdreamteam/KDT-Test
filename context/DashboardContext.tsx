@@ -13,10 +13,20 @@ interface Class {
   created_at: string;
 }
 
+// Define the shape of the TeacherProfile object
+interface TeacherProfile {
+  id: string;
+  title: string;
+  name: string;
+  role: string;
+}
+
 // Define the shape of the data we're sharing
 interface DashboardContextType {
   classes: Class[];
   isLoadingClasses: boolean;
+  teacherProfile: TeacherProfile | null;
+  isLoadingProfile: boolean;
   refreshClasses: () => void; // A function to refetch classes
 }
 

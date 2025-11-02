@@ -401,6 +401,7 @@ export default function ClassRosterPage() {
         }}
         studentName={selectedStudent ? `${selectedStudent.first_name} ${selectedStudent.last_name}` : ''}
         studentAvatar={selectedStudent?.avatar || "/images/students/avatars/student_avatar_1.png"}
+        classId={classId}
       />
     </div>
     </>
