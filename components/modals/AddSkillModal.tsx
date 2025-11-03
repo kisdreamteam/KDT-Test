@@ -3,13 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Modal from '@/components/ui/Modal';
 import { createClient } from '@/lib/supabase/client';
-
-interface PointCategory {
-  id: string;
-  name: string;
-  default_points: number;
-  class_id: string;
-}
+import { PointCategory } from '@/lib/types';
 
 interface AddSkillModalProps {
   isOpen: boolean;

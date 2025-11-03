@@ -4,13 +4,7 @@ import { useState, useMemo } from 'react';
 import Modal from '@/components/ui/Modal';
 import { createClient } from '@/lib/supabase/client';
 import EditSkillModal from '@/components/modals/EditSkillModal';
-
-interface PointCategory {
-  id: string;
-  name: string;
-  default_points: number;
-  class_id: string;
-}
+import { PointCategory } from '@/lib/types';
 
 interface EditSkillsModalProps {
   isOpen: boolean;
@@ -37,21 +31,21 @@ export default function EditSkillsModal({
   // Filter categories into positive and negative skills
   const positiveSkills = useMemo(() => {
     return categories.filter((category) => {
-      const points = (category as any).points ?? category.default_points;
+      const points = category.points ?? category.default_points ?? 0;
       return points > 0;
     });
   }, [categories]);
 
   const negativeSkills = useMemo(() => {
     return categories.filter((category) => {
-      const points = (category as any).points ?? category.default_points;
+      const points = category.points ?? category.default_points ?? 0;
       return points < 0;
     });
   }, [categories]);
 
   // Get points value from category (support both points and default_points)
   const getPointsValue = (category: PointCategory): number => {
-    return (category as any).points ?? category.default_points;
+    return category.points ?? category.default_points ?? 0;
   };
 
   // Get skill icon

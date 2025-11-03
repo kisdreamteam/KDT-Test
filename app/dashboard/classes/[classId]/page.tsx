@@ -6,15 +6,7 @@ import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AddStudentsModal from '@/components/modals/AddStudentsModal';
 import AwardPointsModal from '@/components/modals/AwardPointsModal';
-
-interface Student {
-  id: string;
-  first_name: string;
-  last_name: string;
-  points: number;
-  avatar?: string;
-  student_number?: string;
-}
+import { Student } from '@/lib/types';
 
 export default function ClassRosterPage() {
   const params = useParams();
@@ -393,16 +385,17 @@ export default function ClassRosterPage() {
       />
 
       {/* Award Points Modal - Always render, visibility controlled by isOpen */}
-      <AwardPointsModal
-        isOpen={isPointsModalOpen && selectedStudent !== null}
-        onClose={() => {
-          setPointsModalOpen(false);
-          setSelectedStudent(null);
-        }}
-        studentName={selectedStudent ? `${selectedStudent.first_name} ${selectedStudent.last_name}` : ''}
-        studentAvatar={selectedStudent?.avatar || "/images/students/avatars/student_avatar_1.png"}
-        classId={classId}
-      />
+      {selectedStudent && (
+        <AwardPointsModal
+          isOpen={isPointsModalOpen}
+          onClose={() => {
+            setPointsModalOpen(false);
+            setSelectedStudent(null);
+          }}
+          student={selectedStudent}
+          classId={classId}
+        />
+      )}
     </div>
     </>
   );

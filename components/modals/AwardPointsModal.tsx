@@ -6,29 +6,19 @@ import Modal from '@/components/ui/Modal';
 import { createClient } from '@/lib/supabase/client';
 import AddSkillModal from '@/components/modals/AddSkillModal';
 import EditSkillsModal from '@/components/modals/EditSkillsModal';
-
-interface PointCategory {
-  id: string;
-  name: string;
-  default_points: number;
-  teacher_id: string;
-  class_id: string;
-  points?: number; // Optional fallback property
-}
+import { PointCategory, Student } from '@/lib/types';
 
 interface AwardPointsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  studentName: string;
-  studentAvatar: string;
+  student: Student;
   classId: string;
 }
 
 export default function AwardPointsModal({
   isOpen,
   onClose,
-  studentName,
-  studentAvatar,
+  student,
   classId,
 }: AwardPointsModalProps) {
   console.log('AWARD POINTS MODAL: classId received:', classId);
@@ -90,10 +80,10 @@ export default function AwardPointsModal({
   const positiveSkills = useMemo(() => {
     const filtered = categories.filter((category) => {
       // Check both possible property names
-      const points = category.default_points ?? category.points;
+      const points = category.points ?? category.default_points ?? 0;
       return points > 0;
     }).map((category) => {
-      const points = category.default_points ?? category.points;
+      const points = category.points ?? category.default_points ?? 0;
       return {
         id: category.id,
         name: category.name,
@@ -108,10 +98,10 @@ export default function AwardPointsModal({
   const negativeSkills = useMemo(() => {
     const filtered = categories.filter((category) => {
       // Check both possible property names
-      const points = category.default_points ?? category.points;
+      const points = category.points ?? category.default_points ?? 0;
       return points < 0;
     }).map((category) => {
-      const points = category.default_points ?? category.points;
+      const points = category.points ?? category.default_points ?? 0;
       return {
         id: category.id,
         name: category.name,
@@ -140,8 +130,8 @@ export default function AwardPointsModal({
           <div className="flex items-center gap-3">
             <div className="relative">
               <Image
-                src={studentAvatar}
-                alt={studentName}
+                src={student.avatar || "/images/students/avatars/student_avatar_1.png"}
+                alt={`${student.first_name} ${student.last_name}`}
                 width={48}
                 height={48}
                 className="rounded-full"
@@ -153,7 +143,7 @@ export default function AwardPointsModal({
                 </svg>
               </div>
             </div>
-            <span className="text-lg font-bold text-gray-900 lowercase">{studentName}</span>
+            <span className="text-lg font-bold text-gray-900 lowercase">{student.first_name} {student.last_name}</span>
             
             {/* Point Totals */}
             <div className="flex items-center gap-2 ml-4">

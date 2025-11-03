@@ -3,13 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Modal from '@/components/ui/Modal';
 import { createClient } from '@/lib/supabase/client';
-
-interface PointCategory {
-  id: string;
-  name: string;
-  default_points: number;
-  class_id: string;
-}
+import { PointCategory } from '@/lib/types';
 
 interface EditSkillModalProps {
   isOpen: boolean;
@@ -29,7 +23,7 @@ export default function EditSkillModal({ isOpen, onClose, skill, refreshCategori
   // Populate form when skill data is available
   useEffect(() => {
     if (skill) {
-      const pointsValue = (skill as any).points ?? skill.default_points;
+      const pointsValue = skill.points ?? skill.default_points ?? 0;
       setSkillName(skill.name);
       setPoints(pointsValue);
       previousValueRef.current = pointsValue;
@@ -40,7 +34,7 @@ export default function EditSkillModal({ isOpen, onClose, skill, refreshCategori
   // Reset form when modal closes
   useEffect(() => {
     if (!isOpen && skill) {
-      const pointsValue = (skill as any).points ?? skill.default_points;
+      const pointsValue = skill.points ?? skill.default_points ?? 0;
       setSkillName(skill.name);
       setPoints(pointsValue);
       previousValueRef.current = pointsValue;
@@ -51,7 +45,7 @@ export default function EditSkillModal({ isOpen, onClose, skill, refreshCategori
   useEffect(() => {
     // Only auto-reset points if we're changing tabs and the current skill doesn't match
     if (skill) {
-      const pointsValue = (skill as any).points ?? skill.default_points;
+      const pointsValue = skill.points ?? skill.default_points ?? 0;
       const currentType = pointsValue > 0 ? 'positive' : 'negative';
       if (activeTab !== currentType) {
         const newValue = activeTab === 'positive' ? 1 : -1;
@@ -154,7 +148,7 @@ export default function EditSkillModal({ isOpen, onClose, skill, refreshCategori
 
   const handleCancel = () => {
     if (skill) {
-      const pointsValue = (skill as any).points ?? skill.default_points;
+      const pointsValue = skill.points ?? skill.default_points ?? 0;
       setSkillName(skill.name);
       setPoints(pointsValue);
       previousValueRef.current = pointsValue;
