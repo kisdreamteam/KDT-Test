@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Modal from '@/components/ui/Modal';
 import { createClient } from '@/lib/supabase/client';
-import ManageSkillsModal from '@/components/modals/ManageSkillsModal';
+import AddSkillModal from '@/components/modals/AddSkillModal';
+import EditSkillsModal from '@/components/modals/EditSkillsModal';
 
 interface PointCategory {
   id: string;
@@ -38,6 +39,7 @@ export default function AwardPointsModal({
   const [customPoints, setCustomPoints] = useState<number>(0);
   const [customMemo, setCustomMemo] = useState<string>('');
   const [isManageSkillsModalOpen, setManageSkillsModalOpen] = useState(false);
+  const [isEditModalOpen, setEditModalOpen] = useState(false);
 
   // Fetch categories function
   const fetchCategories = async () => {
@@ -253,6 +255,19 @@ export default function AwardPointsModal({
                     </div>
                     <span className="text-sm font-medium text-purple-600">Add skills</span>
                   </button>
+                  {/* Edit Skills Card */}
+                  <button
+                    onClick={() => setEditModalOpen(true)}
+                    className="bg-white rounded-lg border-2 border-gray-300 border-dashed p-4 hover:border-gray-400 transition-colors cursor-pointer flex flex-col items-center justify-center min-h-[120px]"
+                  >
+                    <div className="text-gray-600 mb-2">
+                      <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+                    <span className="text-sm font-medium text-gray-600">Edit Skills</span>
+                  </button>
                 </div>
               )}
             </>
@@ -297,6 +312,19 @@ export default function AwardPointsModal({
                       </svg>
                     </div>
                     <span className="text-sm font-medium text-purple-600">Add skills</span>
+                  </button>
+                  {/* Edit Skills Card */}
+                  <button
+                    onClick={() => setEditModalOpen(true)}
+                    className="bg-white rounded-lg border-2 border-gray-300 border-dashed p-4 hover:border-gray-400 transition-colors cursor-pointer flex flex-col items-center justify-center min-h-[120px]"
+                  >
+                    <div className="text-gray-600 mb-2">
+                      <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+                    <span className="text-sm font-medium text-gray-600">Edit Skills</span>
                   </button>
                 </div>
               )}
@@ -346,10 +374,20 @@ export default function AwardPointsModal({
       </div>
       </Modal>
       
-      {/* Manage Skills Modal */}
-      <ManageSkillsModal 
+      {/* Add Skills Modal */}
+      <AddSkillModal 
         isOpen={isManageSkillsModalOpen} 
         onClose={() => setManageSkillsModalOpen(false)} 
+        classId={classId}
+        categories={categories}
+        isLoading={isLoading}
+        refreshCategories={fetchCategories}
+      />
+
+      {/* Edit Skills Modal */}
+      <EditSkillsModal
+        isOpen={isEditModalOpen}
+        onClose={() => setEditModalOpen(false)}
         classId={classId}
         categories={categories}
         isLoading={isLoading}

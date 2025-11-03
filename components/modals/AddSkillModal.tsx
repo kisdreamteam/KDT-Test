@@ -8,11 +8,10 @@ interface PointCategory {
   id: string;
   name: string;
   default_points: number;
-  teacher_id: string;
   class_id: string;
 }
 
-interface ManageSkillsModalProps {
+interface AddSkillModalProps {
   isOpen: boolean;
   onClose: () => void;
   classId: string;
@@ -21,59 +20,61 @@ interface ManageSkillsModalProps {
   refreshCategories: () => void;
 }
 
-interface Skill {
-  id: string;
-  name: string;
-  points: number;
-  type: 'positive' | 'negative';
-}
-
-export default function ManageSkillsModal({ isOpen, onClose, classId, categories, isLoading: isLoadingCategories, refreshCategories }: ManageSkillsModalProps) {
+export default function AddSkillModal({ isOpen, onClose, classId, categories, isLoading: isLoadingCategories, refreshCategories }: AddSkillModalProps) {
   const [activeTab, setActiveTab] = useState<'positive' | 'negative'>('positive');
-  const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
   const [skillName, setSkillName] = useState<string>('');
   const [points, setPoints] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const previousValueRef = useRef<number>(1);
-
-  // Convert categories to Skills format and filter by active tab
-  const skills: Skill[] = categories.map(category => ({
-    id: category.id,
-    name: category.name,
-    points: category.default_points,
-    type: category.default_points > 0 ? 'positive' : 'negative',
-  }));
-
-  const filteredSkills = skills.filter(skill => skill.type === activeTab);
 
   // Reset form when tab changes or modal closes
   useEffect(() => {
     if (!isOpen) {
       handleCancel();
+    } else {
+      // When modal opens, ensure positive tab is active
+      setActiveTab('positive');
+      setPoints(1);
+      previousValueRef.current = 1;
     }
   }, [isOpen]);
 
   useEffect(() => {
-    if (!editingSkill) {
-      // Reset points based on active tab when not editing
-      const newValue = activeTab === 'positive' ? 1 : -1;
-      setPoints(newValue);
-      previousValueRef.current = newValue;
-    }
-  }, [activeTab, editingSkill]);
+    // Reset points based on active tab
+    const newValue = activeTab === 'positive' ? 1 : -1;
+    setPoints(newValue);
+    previousValueRef.current = newValue;
+  }, [activeTab]);
 
-  const handleSave = async () => {
+  const handleAddSkill = async () => {
+    console.log('=== handleAddSkill called ===');
+    console.log('Form state - skillName:', skillName);
+    console.log('Form state - points:', points);
+    console.log('Form state - activeTab:', activeTab);
+    console.log('Form state - classId:', classId);
+
+    // Validation
     if (!skillName.trim()) {
+      console.log('Validation failed: skillName is empty');
       alert('Please enter a skill name.');
       return;
     }
 
+    // Get form values
+    const name = skillName.trim();
     const pointsValue = activeTab === 'positive' 
       ? Math.abs(points) 
       : -Math.abs(points);
+    const type = activeTab; // Type determined by active tab
+
+    console.log('Processed values - name:', name);
+    console.log('Processed values - pointsValue:', pointsValue);
+    console.log('Processed values - type:', type);
 
     if (pointsValue === 0) {
+      console.log('Validation failed: pointsValue is zero');
       alert('Points cannot be zero. Please enter a valid point value.');
       return;
     }
@@ -81,117 +82,73 @@ export default function ManageSkillsModal({ isOpen, onClose, classId, categories
     setIsLoading(true);
 
     try {
+      // Initialize Supabase client
       const supabase = createClient();
+      console.log('Supabase client initialized');
+
       const { data: { user }, error: userError } = await supabase.auth.getUser();
+      console.log('User fetch - user:', user ? { id: user.id, email: user.email } : null);
+      console.log('User fetch - error:', userError);
 
       if (userError || !user) {
-        alert('You must be logged in to save skills.');
+        console.error('Authentication failed:', userError);
+        alert('You must be logged in to add skills.');
+        setIsLoading(false);
         return;
       }
 
-      if (editingSkill) {
-        // Update existing skill
-        const { error } = await supabase
-          .from('point_categories')
-          .update({
-            name: skillName.trim(),
-            default_points: pointsValue,
-          })
-          .eq('id', editingSkill.id)
-          .eq('teacher_id', user.id);
+      // Create new skill object for debugging (matches what will be inserted)
+      const newSkill = {
+        name: name, // 'name' from your form state
+        points: points, // 'points' from your form state
+        type: type, // 'type' from your form state
+        class_id: classId // 'classId' from your props
+      };
 
-        if (error) {
-          console.error('Error updating skill:', error);
-          alert('Failed to update skill. Please try again.');
-          return;
-        }
-      } else {
-        // Create new skill
-        const { error } = await supabase
-          .from('point_categories')
-          .insert({
-            name: skillName.trim(),
-            default_points: pointsValue,
-            teacher_id: user.id,
-            class_id: classId,
-          });
+      console.log('Data to insert for new skill:', newSkill);
 
-        if (error) {
-          console.error('Error creating skill:', error);
-          alert('Failed to create skill. Please try again.');
-          return;
-        }
+      // Insert into Supabase
+      const { error } = await supabase.from('point_categories').insert(newSkill);
+
+      if (error) {
+        console.error('=== Error adding skill ===');
+        console.error('Error object:', error);
+        console.error('Error message:', error.message);
+        console.error('Error details:', error.details);
+        console.error('Error hint:', error.hint);
+        alert('Failed to add skill. Please try again.');
+        setIsLoading(false);
+        return;
       }
 
-      // Refresh categories and reset form
+      console.log('=== Skill added successfully ===');
+      console.log('Refreshing categories...');
+
+      // Refresh categories on success
       refreshCategories();
-      handleCancel();
+      
+      // Show success modal instead of immediately clearing form
+      setIsLoading(false);
+      setShowSuccessModal(true);
+      
+      console.log('=== handleAddSkill completed successfully ===');
     } catch (error) {
-      console.error('Unexpected error:', error);
+      console.error('=== Unexpected error in handleAddSkill ===');
+      console.error('Error:', error);
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       alert('An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
+      console.log('Loading state set to false');
     }
   };
 
   const handleCancel = () => {
     setSkillName('');
-    const defaultValue = activeTab === 'positive' ? 1 : -1;
-    setPoints(defaultValue);
-    previousValueRef.current = defaultValue;
-    setEditingSkill(null);
+    setActiveTab('positive'); // Reset to positive tab
+    setPoints(1);
+    previousValueRef.current = 1;
     onClose(); // Close the modal and return to the previous modal
-  };
-
-  const handleEdit = (skill: Skill) => {
-    setActiveTab(skill.type);
-    setEditingSkill(skill);
-    setSkillName(skill.name);
-    setPoints(skill.points); // Keep the actual value (positive or negative)
-    previousValueRef.current = skill.points;
-  };
-
-  const handleDelete = async (skillId: string) => {
-    if (!confirm('Are you sure you want to delete this skill?')) {
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const supabase = createClient();
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        alert('You must be logged in to delete skills.');
-        return;
-      }
-
-      const { error } = await supabase
-        .from('point_categories')
-        .delete()
-        .eq('id', skillId)
-        .eq('teacher_id', user.id);
-
-      if (error) {
-        console.error('Error deleting skill:', error);
-        alert('Failed to delete skill. Please try again.');
-        return;
-      }
-
-      // Refresh categories
-      refreshCategories();
-      
-      // If we were editing this skill, reset the form
-      if (editingSkill?.id === skillId) {
-        handleCancel();
-      }
-    } catch (error) {
-      console.error('Unexpected error:', error);
-      alert('An unexpected error occurred. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const handlePointsChange = (value: number) => {
@@ -216,28 +173,36 @@ export default function ManageSkillsModal({ isOpen, onClose, classId, categories
     previousValueRef.current = newValue;
   };
 
+  const handleAddAnotherSkill = () => {
+    // Clear form fields for another entry and reset to positive tab
+    setSkillName('');
+    setActiveTab('positive');
+    setPoints(1);
+    previousValueRef.current = 1;
+    setShowSuccessModal(false);
+  };
+
+  const handleReturn = () => {
+    // Close success modal and return to Award Points modal
+    setShowSuccessModal(false);
+    onClose();
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} className="max-w-2xl">
+    <>
+      <Modal isOpen={isOpen} onClose={onClose} className="max-w-2xl">
       <div className="relative">
         {/* Header */}
         <div className="mb-6 pb-4 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-900">Manage Skills</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Add New Skill</h2>
         </div>
 
         {/* Tab Navigation */}
         <div className="flex gap-6 mb-6 border-b border-gray-200">
           <button
             onClick={() => {
-              // If editing a skill from different type, cancel edit first
-              if (editingSkill && editingSkill.type !== 'positive') {
-                handleCancel();
-              }
               setActiveTab('positive');
-              if (!editingSkill) {
-                setPoints(1);
-              } else if (editingSkill.type === 'positive') {
-                setPoints(Math.abs(editingSkill.points));
-              }
+              setPoints(1);
             }}
             className={`pb-3 font-medium text-sm transition-colors relative ${
               activeTab === 'positive'
@@ -252,16 +217,8 @@ export default function ManageSkillsModal({ isOpen, onClose, classId, categories
           </button>
           <button
             onClick={() => {
-              // If editing a skill from different type, cancel edit first
-              if (editingSkill && editingSkill.type !== 'negative') {
-                handleCancel();
-              }
               setActiveTab('negative');
-              if (!editingSkill) {
-                setPoints(-1);
-              } else if (editingSkill.type === 'negative') {
-                setPoints(editingSkill.points); // Keep the actual negative value
-              }
+              setPoints(-1);
             }}
             className={`pb-3 font-medium text-sm transition-colors relative ${
               activeTab === 'negative'
@@ -276,10 +233,10 @@ export default function ManageSkillsModal({ isOpen, onClose, classId, categories
           </button>
         </div>
 
-        {/* Add/Edit Form */}
-        <div className="mb-8 pb-6 border-b border-gray-200">
+        {/* Add Skill Form */}
+        <div className="mb-8">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            {editingSkill ? 'Edit Skill' : 'Add New Skill'}
+            Add New Skill
           </h3>
 
           <div className="space-y-4">
@@ -416,7 +373,7 @@ export default function ManageSkillsModal({ isOpen, onClose, classId, categories
                 Cancel
               </button>
               <button
-                onClick={handleSave}
+                onClick={handleAddSkill}
                 disabled={isLoading}
                 className="px-4 py-2 bg-purple-500 text-white rounded-lg font-medium hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -425,65 +382,55 @@ export default function ManageSkillsModal({ isOpen, onClose, classId, categories
             </div>
           </div>
         </div>
+      </div>
+    </Modal>
 
-        {/* Existing Skills List */}
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Manage Existing Skills
-          </h3>
+    {/* Success Modal */}
+    <Modal isOpen={showSuccessModal} onClose={handleReturn} className="max-w-md">
+      <div className="text-center py-6">
+        {/* Success Icon */}
+        <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+          <svg
+            className="h-8 w-8 text-green-600"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+        </div>
 
-          <div className="space-y-3">
-            {isLoadingCategories ? (
-              <div className="text-center py-8 text-gray-500">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-2"></div>
-                <p>Loading skills...</p>
-              </div>
-            ) : filteredSkills.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <p>No skills to edit. Please add a skill.</p>
-              </div>
-            ) : (
-              filteredSkills.map((skill) => (
-                <div
-                  key={skill.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <span className="font-medium text-gray-900">{skill.name}</span>
-                      <span
-                        className={`text-sm font-medium ${
-                          skill.type === 'positive' ? 'text-green-600' : 'text-red-600'
-                        }`}
-                      >
-                        {skill.type === 'positive' ? '+' : ''}
-                        {skill.points}
-                      </span>
-                    </div>
-                  </div>
+        {/* Success Message */}
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          New skill added successfully!
+        </h3>
+        <p className="text-gray-600 mb-6">
+          Your skill has been saved and is now available for use.
+        </p>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleEdit(skill)}
-                      disabled={isLoading}
-                      className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(skill.id)}
-                      disabled={isLoading}
-                      className="px-3 py-1.5 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+        {/* Action Buttons */}
+        <div className="flex gap-3 justify-center">
+          <button
+            onClick={handleAddAnotherSkill}
+            className="px-6 py-2.5 bg-purple-500 text-white rounded-lg font-medium hover:bg-purple-600 transition-colors"
+          >
+            Add Another Skill
+          </button>
+          <button
+            onClick={handleReturn}
+            className="px-6 py-2.5 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Return
+          </button>
         </div>
       </div>
     </Modal>
+    </>
   );
 }
+

@@ -56,7 +56,7 @@ export default function Home() {
 
             {/* Right section - Text content */}
             <div className="text-[#4A3B8D]">
-              <h1 className="text-5xl sm:text-7xl font-bold leading-tight mb-8 font-spartan"> {/* <-- Fixed 'text-10xl' */}
+              <h1 className="text-5xl sm:text-7xl font-bold leading-tight mb-8 font-spartan">
                 Let&apos;s get
                 <br />
                 started.
