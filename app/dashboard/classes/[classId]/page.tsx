@@ -90,7 +90,8 @@ export default function ClassRosterPage() {
           last_name,
           points,
           avatar,
-          student_number
+          student_number,
+          class_id
         `)
         .eq('class_id', classId)
         .order('last_name', { ascending: true });
