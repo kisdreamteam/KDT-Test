@@ -42,18 +42,8 @@ export default function EditSkillModal({ isOpen, onClose, skill, refreshCategori
     }
   }, [isOpen, skill]);
 
-  useEffect(() => {
-    // Only auto-reset points if we're changing tabs and the current skill doesn't match
-    if (skill) {
-      const pointsValue = skill.points ?? skill.default_points ?? 0;
-      const currentType = pointsValue > 0 ? 'positive' : 'negative';
-      if (activeTab !== currentType) {
-        const newValue = activeTab === 'positive' ? 1 : -1;
-        setPoints(newValue);
-        previousValueRef.current = newValue;
-      }
-    }
-  }, [activeTab, skill]);
+  // No need to handle tab changes since tabs are removed
+  // The skill type is determined by the skill's points value
 
   const handleUpdateSkill = async () => {
     if (!skill) return;
@@ -188,41 +178,6 @@ export default function EditSkillModal({ isOpen, onClose, skill, refreshCategori
           <h2 className="text-2xl font-bold text-gray-900">Edit Skill</h2>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex gap-6 mb-6 border-b border-gray-200">
-          <button
-            onClick={() => {
-              setActiveTab('positive');
-              setPoints(1);
-            }}
-            className={`pb-3 font-medium text-sm transition-colors relative ${
-              activeTab === 'positive'
-                ? 'text-gray-900'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Positive
-            {activeTab === 'positive' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600"></span>
-            )}
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab('negative');
-              setPoints(-1);
-            }}
-            className={`pb-3 font-medium text-sm transition-colors relative ${
-              activeTab === 'negative'
-                ? 'text-gray-900'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Negative
-            {activeTab === 'negative' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600"></span>
-            )}
-          </button>
-        </div>
 
         {/* Edit Skill Form */}
         <div className="mb-8">

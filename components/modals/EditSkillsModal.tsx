@@ -13,6 +13,7 @@ interface EditSkillsModalProps {
   categories: PointCategory[];
   isLoading: boolean;
   refreshCategories: () => void;
+  skillType?: 'positive' | 'negative'; // Optional prop to filter skills by type
 }
 
 export default function EditSkillsModal({
@@ -22,11 +23,12 @@ export default function EditSkillsModal({
   categories,
   isLoading: isLoadingCategories,
   refreshCategories,
+  skillType,
 }: EditSkillsModalProps) {
-  const [activeTab, setActiveTab] = useState<'positive' | 'negative'>('positive');
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [editingSkill, setEditingSkill] = useState<PointCategory | null>(null);
   const [hoveredSkillId, setHoveredSkillId] = useState<string | null>(null);
+  const [skillToDelete, setSkillToDelete] = useState<PointCategory | null>(null);
 
   // Filter categories into positive and negative skills
   const positiveSkills = useMemo(() => {
@@ -67,13 +69,17 @@ export default function EditSkillsModal({
     return colors[Math.abs(hash) % colors.length];
   };
 
-  const handleDeleteSkill = async (skillId: string) => {
-    // Confirm deletion
-    if (!confirm('Are you sure you want to delete this skill?')) {
-      return;
-    }
+  const handleDeleteClick = (skill: PointCategory) => {
+    // Show confirmation modal
+    setSkillToDelete(skill);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!skillToDelete) return;
+
+    const skillId = skillToDelete.id;
     setIsDeleting(skillId);
+    // Keep confirmation modal open during deletion to show loading state
 
     try {
       const supabase = createClient();
@@ -84,37 +90,99 @@ export default function EditSkillsModal({
       if (userError || !user) {
         alert('You must be logged in to delete skills.');
         setIsDeleting(null);
+        setSkillToDelete(null); // Close confirmation modal
         return;
       }
 
-      // Delete the skill
+      // Verify the skill belongs to this class before deleting
+      // This ensures security and correct deletion
+      const { data: skillData, error: fetchError } = await supabase
+        .from('point_categories')
+        .select('class_id')
+        .eq('id', skillId)
+        .single();
+
+      if (fetchError || !skillData) {
+        console.error('Error verifying skill:', fetchError);
+        alert('Failed to verify skill. Please try again.');
+        setIsDeleting(null);
+        setSkillToDelete(null);
+        return;
+      }
+
+      // Verify the skill belongs to the current class
+      if (skillData.class_id !== classId) {
+        alert('This skill does not belong to the current class.');
+        setIsDeleting(null);
+        setSkillToDelete(null);
+        return;
+      }
+
+      // Delete the skill from database
+      // Since skills are linked to class_id, deleting removes it for all students in that class
       const { error } = await supabase
         .from('point_categories')
         .delete()
-        .eq('id', skillId);
+        .eq('id', skillId)
+        .eq('class_id', classId); // Extra safety check
 
       if (error) {
         console.error('Error deleting skill:', error);
-        alert('Failed to delete skill. Please try again.');
+        console.error('Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        
+        // Provide more specific error message
+        let errorMessage = 'Failed to delete skill. Please try again.';
+        if (error.code === '23503') {
+          errorMessage = 'Cannot delete skill because it is being used by students. Please remove all student awards for this skill first.';
+        } else if (error.message) {
+          errorMessage = `Failed to delete skill: ${error.message}`;
+        }
+        
+        alert(errorMessage);
         setIsDeleting(null);
+        setSkillToDelete(null); // Close confirmation modal
         return;
       }
 
-      // Refresh categories to update the list
+      console.log('Skill successfully deleted:', skillId);
+
+      // Successfully deleted - refresh categories to update the list
       refreshCategories();
+      
+      // Close confirmation modal and return user to EditSkills modal
+      setSkillToDelete(null);
     } catch (error) {
       console.error('Unexpected error:', error);
       alert('An unexpected error occurred. Please try again.');
+      setSkillToDelete(null); // Close confirmation modal
     } finally {
       setIsDeleting(null);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setSkillToDelete(null);
   };
 
   const handleEditSkill = (skill: PointCategory) => {
     setEditingSkill(skill);
   };
 
-  const filteredSkills = activeTab === 'positive' ? positiveSkills : negativeSkills;
+  // Filter skills based on skillType prop (if provided) or show all
+  const filteredSkills = useMemo(() => {
+    if (skillType === 'positive') {
+      return positiveSkills;
+    } else if (skillType === 'negative') {
+      return negativeSkills;
+    }
+    // If no skillType specified, show all skills (for backwards compatibility)
+    return [...positiveSkills, ...negativeSkills];
+  }, [skillType, positiveSkills, negativeSkills]);
 
   return (
     <>
@@ -122,37 +190,9 @@ export default function EditSkillsModal({
         <div className="relative">
           {/* Header */}
           <div className="mb-6 pb-4 border-b border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-900">Edit or Remove Skills</h2>
-          </div>
-
-          {/* Tab Navigation */}
-          <div className="flex gap-6 mb-6 border-b border-gray-200">
-            <button
-              onClick={() => setActiveTab('positive')}
-              className={`pb-3 font-medium text-sm transition-colors relative ${
-                activeTab === 'positive'
-                  ? 'text-gray-900'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Positive
-              {activeTab === 'positive' && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600"></span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('negative')}
-              className={`pb-3 font-medium text-sm transition-colors relative ${
-                activeTab === 'negative'
-                  ? 'text-gray-900'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Negative
-              {activeTab === 'negative' && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600"></span>
-              )}
-            </button>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Edit or Remove {skillType === 'positive' ? 'Positive' : skillType === 'negative' ? 'Negative' : ''} Skills
+            </h2>
           </div>
 
           {/* Skills Cards */}
@@ -166,7 +206,7 @@ export default function EditSkillsModal({
               </div>
             ) : filteredSkills.length === 0 ? (
               <div className="text-center py-16 text-gray-500">
-                <p>No {activeTab} skills found.</p>
+                <p>No {skillType === 'positive' ? 'positive' : skillType === 'negative' ? 'negative' : ''} skills found.</p>
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-4">
@@ -210,9 +250,11 @@ export default function EditSkillsModal({
                       
                       {/* Delete button - always visible in corner */}
                       <button
+                        type="button"
                         onClick={(e) => {
+                          e.preventDefault();
                           e.stopPropagation();
-                          handleDeleteSkill(category.id);
+                          handleDeleteClick(category);
                         }}
                         disabled={isDeletingThis || isLoadingCategories}
                         className="absolute top-2 left-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed z-10"
@@ -244,6 +286,105 @@ export default function EditSkillsModal({
         skill={editingSkill}
         refreshCategories={refreshCategories}
       />
+
+      {/* Delete Confirmation Modal - rendered outside EditSkills modal to ensure proper z-index */}
+      {skillToDelete && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center">
+          {/* Semi-transparent background overlay */}
+          <div 
+            className="absolute inset-0 bg-black/60"
+            onClick={handleCancelDelete}
+          />
+          
+          {/* Modal content */}
+          <div className="relative bg-white rounded-lg shadow-xl w-full mx-4 max-w-md">
+            {/* Close button */}
+            <button
+              type="button"
+              onClick={handleCancelDelete}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors z-10"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+            
+            {/* Modal content */}
+            <div className="p-6 text-center py-6">
+              {isDeleting && skillToDelete && isDeleting === skillToDelete.id ? (
+                // Show loading state during deletion
+                <div>
+                  <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 mb-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+                  </div>
+                  <p className="text-gray-600">Deleting skill...</p>
+                </div>
+              ) : (
+                // Show confirmation message
+                <>
+                  {/* Warning Icon */}
+                  <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+                    <svg
+                      className="h-8 w-8 text-red-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                      />
+                    </svg>
+                  </div>
+
+                  {/* Confirmation Message */}
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                    Delete Skill?
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    Are you sure you want to delete this skill?
+                    <span className="block mt-2 font-medium text-gray-900">
+                      "{skillToDelete.name}"
+                    </span>
+                  </p>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-3 justify-center">
+                    <button
+                      type="button"
+                      onClick={handleCancelDelete}
+                      disabled={isDeleting !== null}
+                      className="px-6 py-2.5 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      No
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmDelete}
+                      disabled={isDeleting !== null}
+                      className="px-6 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Yes
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
