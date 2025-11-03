@@ -356,7 +356,7 @@ export default function EditSkillsModal({
                   <p className="text-gray-600 mb-6">
                     Are you sure you want to delete this skill?
                     <span className="block mt-2 font-medium text-gray-900">
-                      "{skillToDelete.name}"
+                      &quot;{skillToDelete.name}&quot;
                     </span>
                   </p>
 
