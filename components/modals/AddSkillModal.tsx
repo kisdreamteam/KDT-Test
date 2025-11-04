@@ -12,10 +12,10 @@ interface AddSkillModalProps {
   categories: PointCategory[];
   isLoading: boolean;
   refreshCategories: () => void;
+  skillType?: 'positive' | 'negative'; // Determines which type of skill can be added
 }
 
-export default function AddSkillModal({ isOpen, onClose, classId, categories, isLoading: isLoadingCategories, refreshCategories }: AddSkillModalProps) {
-  const [activeTab, setActiveTab] = useState<'positive' | 'negative'>('positive');
+export default function AddSkillModal({ isOpen, onClose, classId, categories, isLoading: isLoadingCategories, refreshCategories, skillType = 'positive' }: AddSkillModalProps) {
   const [skillName, setSkillName] = useState<string>('');
   const [points, setPoints] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -24,30 +24,34 @@ export default function AddSkillModal({ isOpen, onClose, classId, categories, is
   const previousValueRef = useRef<number>(1);
   const isHandlingSpinnerRef = useRef<boolean>(false);
 
-  // Reset form when tab changes or modal closes
+  // Reset form when modal closes or skillType changes
   useEffect(() => {
     if (!isOpen) {
-      handleCancel();
+      // Reset form when modal closes
+      setSkillName('');
+      const newValue = skillType === 'positive' ? 1 : -1;
+      setPoints(newValue);
+      previousValueRef.current = newValue;
     } else {
-      // When modal opens, ensure positive tab is active
-      setActiveTab('positive');
-      setPoints(1);
-      previousValueRef.current = 1;
+      // When modal opens, set points based on skillType
+      const newValue = skillType === 'positive' ? 1 : -1;
+      setPoints(newValue);
+      previousValueRef.current = newValue;
     }
-  }, [isOpen]);
+  }, [isOpen, skillType]);
 
   useEffect(() => {
-    // Reset points based on active tab
-    const newValue = activeTab === 'positive' ? 1 : -1;
+    // Reset points based on skillType
+    const newValue = skillType === 'positive' ? 1 : -1;
     setPoints(newValue);
     previousValueRef.current = newValue;
-  }, [activeTab]);
+  }, [skillType]);
 
   const handleAddSkill = async () => {
     console.log('=== handleAddSkill called ===');
     console.log('Form state - skillName:', skillName);
     console.log('Form state - points:', points);
-    console.log('Form state - activeTab:', activeTab);
+    console.log('Form state - skillType:', skillType);
     console.log('Form state - classId:', classId);
 
     // Validation
@@ -59,10 +63,10 @@ export default function AddSkillModal({ isOpen, onClose, classId, categories, is
 
     // Get form values
     const name = skillName.trim();
-    const pointsValue = activeTab === 'positive' 
+    const pointsValue = skillType === 'positive' 
       ? Math.abs(points) 
       : -Math.abs(points);
-    const type = activeTab; // Type determined by active tab
+    const type = skillType; // Type determined by skillType prop
 
     console.log('Processed values - name:', name);
     console.log('Processed values - pointsValue:', pointsValue);
@@ -140,15 +144,16 @@ export default function AddSkillModal({ isOpen, onClose, classId, categories, is
 
   const handleCancel = () => {
     setSkillName('');
-    setActiveTab('positive'); // Reset to positive tab
-    setPoints(1);
-    previousValueRef.current = 1;
+    // Reset points based on skillType
+    const newValue = skillType === 'positive' ? 1 : -1;
+    setPoints(newValue);
+    previousValueRef.current = newValue;
     onClose(); // Close the modal and return to the previous modal
   };
 
   const handlePointsChange = (value: number) => {
     let newValue: number;
-    if (activeTab === 'positive') {
+    if (skillType === 'positive') {
       // Only allow positive values
       newValue = Math.abs(value) || 1;
       setPoints(newValue);
@@ -167,11 +172,11 @@ export default function AddSkillModal({ isOpen, onClose, classId, categories, is
   };
 
   const handleAddAnotherSkill = () => {
-    // Clear form fields for another entry and reset to positive tab
+    // Clear form fields for another entry
     setSkillName('');
-    setActiveTab('positive');
-    setPoints(1);
-    previousValueRef.current = 1;
+    const newValue = skillType === 'positive' ? 1 : -1;
+    setPoints(newValue);
+    previousValueRef.current = newValue;
     setShowSuccessModal(false);
   };
 
@@ -188,42 +193,6 @@ export default function AddSkillModal({ isOpen, onClose, classId, categories, is
         {/* Header */}
         <div className="mb-6 pb-4 border-b border-gray-200">
           <h2 className="text-2xl font-bold text-gray-900">Add New Skill</h2>
-        </div>
-
-        {/* Tab Navigation */}
-        <div className="flex gap-6 mb-6 border-b border-gray-200">
-          <button
-            onClick={() => {
-              setActiveTab('positive');
-              setPoints(1);
-            }}
-            className={`pb-3 font-medium text-sm transition-colors relative ${
-              activeTab === 'positive'
-                ? 'text-gray-900'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Positive
-            {activeTab === 'positive' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600"></span>
-            )}
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab('negative');
-              setPoints(-1);
-            }}
-            className={`pb-3 font-medium text-sm transition-colors relative ${
-              activeTab === 'negative'
-                ? 'text-gray-900'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Negative
-            {activeTab === 'negative' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600"></span>
-            )}
-          </button>
         </div>
 
         {/* Add Skill Form */}
@@ -253,7 +222,7 @@ export default function AddSkillModal({ isOpen, onClose, classId, categories, is
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Points
               </label>
-              {activeTab === 'negative' ? (
+              {skillType === 'negative' ? (
                 // Custom input with buttons for negative tab
                 <div className="relative flex items-center">
                   <input
@@ -366,7 +335,7 @@ export default function AddSkillModal({ isOpen, onClose, classId, categories, is
                 />
               )}
               <p className="text-xs text-gray-500 mt-1">
-                {activeTab === 'positive' 
+                {skillType === 'positive' 
                   ? 'Only positive values are allowed.' 
                   : 'Only negative values are allowed. Maximum value is -1. Up arrow decreases value, down arrow increases value.'}
               </p>

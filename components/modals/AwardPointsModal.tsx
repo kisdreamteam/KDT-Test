@@ -372,6 +372,7 @@ export default function AwardPointsModal({
         categories={categories}
         isLoading={isLoading}
         refreshCategories={fetchCategories}
+        skillType={activeTab === 'positive' ? 'positive' : activeTab === 'negative' ? 'negative' : 'positive'}
       />
 
       {/* Edit Skills Modal */}
