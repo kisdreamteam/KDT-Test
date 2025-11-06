@@ -222,7 +222,7 @@ export default function SignupPage() {
                   value={email}
                   onChange={(e) => {
                     // Remove @kshcm.net if user types it
-                    let value = e.target.value.replace(/@kshcm\.net/gi, '');
+                    const value = e.target.value.replace(/@kshcm\.net/gi, '');
                     setEmail(value);
                   }}
                   placeholder="Email address"
