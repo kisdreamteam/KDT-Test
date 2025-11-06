@@ -48,7 +48,8 @@ export default function SignupPage() {
   const router = useRouter();
   const supabase = createClient();
   const [title, setTitle] = useState<string>("Ms.");
-  const [name, setName] = useState<string>("");
+  const [firstName, setFirstName] = useState<string>("");
+  const [lastName, setLastName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
@@ -67,8 +68,15 @@ export default function SignupPage() {
 
     setEmailError("");
     setRoleError("");
+    setMessage("");
 
-    if (!email.toLowerCase().endsWith("@kshcm.net")) {
+    // Combine first and last name
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    // Append @kshcm.net if not already present
+    const fullEmail = email.includes("@") ? email : `${email}@kshcm.net`;
+
+    if (!fullEmail.toLowerCase().endsWith("@kshcm.net")) {
       setEmailError("Email must be a valid @kshcm.net address.");
       hasError = true;
     }
@@ -81,7 +89,6 @@ export default function SignupPage() {
     }
 
     if (password !== confirmPassword) {
-      // Reuse emailError slot is not ideal; keeping UI minimal for now
       setEmailError("Passwords do not match.");
       hasError = true;
     }
@@ -89,11 +96,11 @@ export default function SignupPage() {
     if (hasError) return;
 
     const { error } = await supabase.auth.signUp({
-      email,
+      email: fullEmail,
       password,
       options: {
         data: {
-          name: name,
+          name: fullName,
           title: title,
           role: role
         }
@@ -113,200 +120,221 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-dvh w-full bg-[#4951ff] flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl rounded-[28px] bg-white shadow-xl p-6 sm:p-10">
-        <div className="flex items-start justify-between gap-4 mb-6 sm:mb-8">
-          <Link
-            href="/"
-            className="text-pink-400 hover:text-pink-500 transition-colors"
-            aria-label="Go back"
-          >
-            {/* simple back arrow */}
+    <div className="min-h-screen w-full bg-[#4A3B8D] flex items-center justify-center p-6 relative">
+      {/* Back Arrow - Top Left */}
+      <Link
+        href="/"
+        className="absolute top-6 left-6 text-[#DE8680] hover:text-[#E89A94] transition-colors z-10"
+        aria-label="Go back"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          className="h-7 w-7"
+        >
+          <path
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M15 19l-7-7 7-7"
+          />
+        </svg>
+      </Link>
+
+      <div className="w-full max-w-7xl flex items-center gap-8">
+        {/* Avatar on Left */}
+        <div className="hidden lg:flex items-center justify-center flex-1 relative">
+          <div className="relative">
+            <Image
+              src="/images/signup/signup-avatar.png"
+              alt="Signup avatar character"
+              width={600}
+              height={600}
+              priority
+              className="h-auto w-full max-w-[600px]"
+            />
+          </div>
+        </div>
+
+        {/* Form Card on Right */}
+        <div className="w-full lg:w-[600px] bg-[#F5F5F5] rounded-[28px] shadow-xl p-8 sm:p-10 relative">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-black mb-2">
+              Create your account
+            </h1>
+            <p className="text-base text-black/70">
+              Enter your information to create a new account
+            </p>
+          </div>
+
+          <form onSubmit={handleSignUp} className="space-y-4">
+            {/* Title Dropdown */}
+            <div className="relative">
+              <select
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full h-12 rounded-[12px] border border-black/20 bg-white px-4 pr-10 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-[#3B47E0]/30 appearance-none cursor-pointer"
+              >
+                <option>Mr.</option>
+                <option>Ms.</option>
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                <svg className="w-5 h-5 text-black/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+
+            {/* First Name */}
+            <div>
+              <input
+                id="firstName"
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="First Name"
+                className="w-full h-12 rounded-[12px] border border-black/20 bg-white px-4 text-[16px] text-black placeholder:text-black/50 outline-none focus:border-black/40 focus:ring-2 focus:ring-[#3B47E0]/30"
+              />
+            </div>
+
+            {/* Last Name */}
+            <div>
+              <input
+                id="lastName"
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Last Name"
+                className="w-full h-12 rounded-[12px] border border-black/20 bg-white px-4 text-[16px] text-black placeholder:text-black/50 outline-none focus:border-black/40 focus:ring-2 focus:ring-[#3B47E0]/30"
+              />
+            </div>
+
+            {/* Email with @kshcm.net */}
+            <div>
+              <div className="relative">
+                <input
+                  id="email"
+                  type="text"
+                  value={email}
+                  onChange={(e) => {
+                    // Remove @kshcm.net if user types it
+                    let value = e.target.value.replace(/@kshcm\.net/gi, '');
+                    setEmail(value);
+                  }}
+                  placeholder="Email address"
+                  className="w-full h-12 rounded-[12px] border border-black/20 bg-white px-4 pr-24 text-[16px] text-black placeholder:text-black/50 outline-none focus:border-black/40 focus:ring-2 focus:ring-[#3B47E0]/30"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[16px] text-black/70 pointer-events-none">
+                  @kshcm.net
+                </span>
+              </div>
+              {emailError && (
+                <p className="mt-2 text-sm text-red-600">{emailError}</p>
+              )}
+            </div>
+
+            {/* Password */}
+            <div>
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  className="w-full h-12 rounded-[12px] border border-black/20 bg-white px-4 pr-12 text-[16px] text-black placeholder:text-black/50 outline-none focus:border-black/40 focus:ring-2 focus:ring-[#3B47E0]/30"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-black/50 hover:text-black/80"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  <EyeIcon hidden={showPassword} />
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  type={showConfirm ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm Password"
+                  className="w-full h-12 rounded-[12px] border border-black/20 bg-white px-4 pr-12 text-[16px] text-black placeholder:text-black/50 outline-none focus:border-black/40 focus:ring-2 focus:ring-[#3B47E0]/30"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-black/50 hover:text-black/80"
+                  aria-label={showConfirm ? "Hide confirm password" : "Show confirm password"}
+                >
+                  <EyeIcon hidden={showConfirm} />
+                </button>
+              </div>
+            </div>
+
+            {/* Role Dropdown */}
+            <div className="relative">
+              <select
+                id="role"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full h-12 rounded-[12px] border border-black/20 bg-white px-4 pr-10 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-[#3B47E0]/30 appearance-none cursor-pointer"
+              >
+                <option>Teacher</option>
+                <option>Parent</option>
+                <option>Student</option>
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                <svg className="w-5 h-5 text-black/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+              {roleError && <p className="mt-2 text-sm text-red-600">{roleError}</p>}
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              className="w-full h-12 rounded-[24px] bg-[#DE8680] text-white font-bold text-lg tracking-tight hover:brightness-95 transition focus:outline-none focus:ring-4 focus:ring-[#DE8680]/30 mt-6"
+            >
+              Create Account
+            </button>
+
+            {message && (
+              <p className={`text-sm text-center ${message.startsWith("Success") ? "text-green-600" : "text-red-600"}`}>
+                {message}
+              </p>
+            )}
+          </form>
+
+          {/* Language Selector */}
+          <div className="mt-6 text-center text-sm text-black/70 flex items-center justify-center gap-2">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              className="h-7 w-7"
+              className="h-5 w-5"
             >
+              <circle cx="12" cy="12" r="10" strokeWidth="2" />
               <path
-                strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M15 19l-7-7 7-7"
+                strokeWidth="2"
+                d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"
               />
             </svg>
-          </Link>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900 text-center flex-1">
-            Create Your Account
-          </h1>
-          <div className="flex items-center gap-2 text-3xl" aria-hidden>
-            <Image
-              src="/images/2Login Page Image.png"
-              alt="Playful characters welcoming users to sign up"
-              width={400}
-              height={400}
-              priority
-              className="h-auto w-[200px] sm:w-[260px] md:w-[300px]"
-            />
+            <span>English (US)</span>
           </div>
-        </div>
-
-        <form onSubmit={handleSignUp} className="space-y-4">
-          {/* Title */}
-          <div>
-            <label htmlFor="title" className="sr-only">
-              Title
-            </label>
-            <select
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option>Mr.</option>
-              <option>Ms.</option>
-            </select>
-          </div>
-
-          {/* Name */}
-          <div>
-            <label
-              htmlFor="name"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Name
-            </label>
-            <input
-              id="name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Your full name"
-              className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-
-          {/* Email */}
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Email address
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@kshcm.net"
-              className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            {emailError && (
-              <p className="mt-2 text-sm text-red-600">{emailError}</p>
-            )}
-          </div>
-
-          {/* Password */}
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Password
-            </label>
-            <div className="relative">
-              <input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 pr-12 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 hover:text-gray-700"
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-                <EyeIcon hidden={showPassword} />
-              </button>
-            </div>
-          </div>
-
-          {/* Confirm Password */}
-          <div>
-            <label
-              htmlFor="confirmPassword"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Confirm Password
-            </label>
-            <div className="relative">
-              <input
-                id="confirmPassword"
-                type={showConfirm ? "text" : "password"}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 pr-12 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirm((v) => !v)}
-                className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 hover:text-gray-700"
-                aria-label={showConfirm ? "Hide confirm password" : "Show confirm password"}
-              >
-                <EyeIcon hidden={showConfirm} />
-              </button>
-            </div>
-          </div>
-
-          {/* Role */}
-          <div>
-            <label
-              htmlFor="role"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Role
-            </label>
-            <select
-              id="role"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              disabled
-              className="w-full rounded-xl border border-gray-200 bg-gray-100 text-gray-500 px-4 py-3 cursor-not-allowed rounded-xl"
-            >
-              <option>Teacher</option>
-              <option>Parent</option>
-              <option>Student</option>
-            </select>
-            {roleError && <p className="mt-2 text-sm text-red-600">{roleError}</p>}
-          </div>
-
-          {/* Submit */}
-          <button
-            type="submit"
-            className="mt-2 w-full rounded-2xl bg-rose-400 hover:bg-rose-500 text-white font-semibold text-lg py-3 transition-colors"
-          >
-            Sign Up
-          </button>
-          {message && (
-            <p className={`text-sm mt-2 ${message.startsWith("Success") ? "text-green-600" : "text-red-600"}`}>
-              {message}
-            </p>
-          )}
-        </form>
-
-        <div className="mt-6 text-center text-sm text-gray-600">
-          <span>Already have an account? </span>
-          <Link href="/login" className="text-indigo-600 hover:text-indigo-700 font-medium">
-            Log In
-          </Link>
-        </div>
-
-        <div className="mt-6 text-center text-sm text-indigo-700">
-          <span className="mr-2">🌐</span> English (US)
         </div>
       </div>
     </div>

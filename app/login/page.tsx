@@ -6,6 +6,43 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+function EyeIcon({ hidden = false }: { hidden?: boolean }) {
+  if (hidden) {
+    return (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        className="h-5 w-5"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M3 3l18 18M10.584 10.587A3 3 0 0012 15a3 3 0 002.414-4.413M9.88 4.603A9.758 9.758 0 0112 4.5c5.523 0 9.75 4.5 9.75 7.5-.28.61-.86 1.55-1.78 2.54m-3.17 2.37C15.312 18.52 13.733 19.5 12 19.5c-5.523 0-9.75-4.5-9.75-7.5 0-.61.248-1.31.694-2.08M7.5 7.5c1.22-1.22 2.79-2.04 4.5-2.25"
+        />
+      </svg>
+    );
+  }
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      className="h-5 w-5"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M2.25 12s3.75-7.5 9.75-7.5 9.75 7.5 9.75 7.5-3.75 7.5-9.75 7.5S2.25 12 2.25 12z"
+      />
+      <circle cx="12" cy="12" r="3" strokeWidth="2" />
+    </svg>
+  );
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,46 +53,48 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   return (
-    <div className="min-h-screen w-full bg-[#3B47E0] flex items-center justify-center p-6">
-      <div className="w-full max-w-[720px] bg-white/95 rounded-[28px] shadow-xl border border-black/5 px-6 sm:px-10 py-10 relative">
-        <div className="flex items-start justify-between gap-4 mb-6 sm:mb-8">
-          <Link
-            href="/"
-            className="text-pink-400 hover:text-pink-500 transition-colors"
-            aria-label="Go back"
+    <div className="min-h-screen w-full bg-[#4A3B8D] flex items-center justify-center p-6">
+      <div className="w-full max-w-[600px] bg-[#F5F5F5] rounded-[28px] shadow-xl px-8 py-10 relative">
+        {/* Back Arrow - Top Left */}
+        <Link
+          href="/"
+          className="absolute top-6 left-6 text-[#D96B7B] hover:text-[#E89A94] transition-colors"
+          aria-label="Go back"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            className="h-7 w-7"
           >
-            {/* simple back arrow */}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              className="h-7 w-7"
-            >
-              <path
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-          </Link>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-black text-center flex-1">
-            Log in to KDT
-          </h1>
-          <div className="flex items-center gap-2 text-3xl" aria-hidden>
-            <Image
-              src="/images/2Login Page Image.png"
-              alt="Playful characters welcoming users to log in"
-              width={400}
-              height={400}
-              priority
-              className="h-auto w-[200px] sm:w-[260px] md:w-[300px]"
+            <path
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15 19l-7-7 7-7"
             />
-          </div>
+          </svg>
+        </Link>
+
+        {/* Logo - Top Right */}
+        <div className="absolute top-6 right-6">
+          <Image
+            src="/images/login/login-logo.png"
+            alt="Kis points logo"
+            width={120}
+            height={60}
+            priority
+            className="h-auto w-auto max-w-[120px]"
+          />
         </div>
 
-        <form className="mt-8 grid gap-6" onSubmit={async (e) => {
+        {/* Login Title - Below Back Arrow */}
+        <h1 className="text-4xl font-extrabold text-[#4A3B8D] mb-8 mt-4">
+          Login
+        </h1>
+
+        <form className="grid gap-6" onSubmit={async (e) => {
           e.preventDefault();
           setError("");
           const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -67,6 +106,7 @@ export default function LoginPage() {
           setError("");
           router.push("/dashboard");
         }}>
+          {/* Email Field */}
           <div className="grid gap-2">
             <label htmlFor="email" className="text-base font-semibold text-black">
               Email address
@@ -77,13 +117,14 @@ export default function LoginPage() {
               type="email"
               autoComplete="email"
               required
-              className="h-12 rounded-[12px] border border-black/20 px-4 text-[16px] outline-none focus:border-black/40 focus:ring-2 focus:ring-[#3B47E0]/30"
-              placeholder="you@example.com"
+              className="h-12 rounded-[12px] border border-black/20 bg-white px-4 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-[#4A3B8D]/30"
+              placeholder=""
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 
+          {/* Password Field */}
           <div className="grid gap-2">
             <label htmlFor="password" className="text-base font-semibold text-black">
               Password
@@ -95,8 +136,8 @@ export default function LoginPage() {
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 required
-                className="h-12 w-full rounded-[12px] border border-black/20 px-4 pr-12 text-[16px] outline-none focus:border-black/40 focus:ring-2 focus:ring-[#3B47E0]/30"
-                placeholder="••••••••"
+                className="h-12 w-full rounded-[12px] border border-black/20 bg-white px-4 pr-12 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-[#4A3B8D]/30"
+                placeholder=""
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -106,38 +147,41 @@ export default function LoginPage() {
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-black/50 hover:text-black/80"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
-                <span className="text-lg" aria-hidden>
-                  {showPassword ? "🙈" : "👁️"}
-                </span>
+                <EyeIcon hidden={showPassword} />
               </button>
             </div>
           </div>
-          <div className="flex items-center justify-between">
-            <label className="inline-flex items-center gap-2 text-sm text-black">
-              <input type="checkbox" className="h-4 w-4 rounded border-black/30" />
-              Remember me
-            </label>
-            <Link href="#" className="text-sm font-semibold text-[#3B47E0] hover:underline">
+
+          {/* Forgot Password Link - Left Aligned */}
+          <div className="text-left">
+            <Link href="#" className="text-sm text-gray-600 hover:underline">
               Forgot your password?
             </Link>
           </div>
 
+          {/* Login Button */}
           <div className="grid gap-3">
             <button
               type="submit"
-              className="h-12 rounded-[24px] bg-[#DE8680] text-white font-bold text-lg tracking-tight hover:brightness-95 transition focus:outline-none focus:ring-4 focus:ring-[#DE8680]/30"
+              className="h-12 rounded-[12px] bg-[#D96B7B] text-white font-bold text-lg tracking-tight hover:brightness-95 transition focus:outline-none focus:ring-4 focus:ring-[#D96B7B]/30"
             >
-              Log in
+              Login
             </button>
           </div>
 
           {error && (
-            <p className="text-sm text-red-600">{error}</p>
+            <p className="text-sm text-red-600 text-center">{error}</p>
           )}
         </form>
+
+        {/* Sign Up Link - Centered Below Button */}
+        <div className="mt-6 text-center text-sm">
+          <span className="text-gray-600">Don't have an account? </span>
+          <Link href="/signup" className="text-[#D96B7B] font-semibold hover:underline">
+            Sign up
+          </Link>
+        </div>
       </div>
     </div>
   );
 }
-
-

@@ -395,6 +395,7 @@ export default function ClassRosterPage() {
           }}
           student={selectedStudent}
           classId={classId}
+          onRefresh={fetchStudents}
         />
       )}
     </div>

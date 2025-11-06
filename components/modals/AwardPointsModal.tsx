@@ -13,6 +13,7 @@ interface AwardPointsModalProps {
   onClose: () => void;
   student: Student;
   classId: string;
+  onRefresh?: () => void;
 }
 
 export default function AwardPointsModal({
@@ -20,6 +21,7 @@ export default function AwardPointsModal({
   onClose,
   student,
   classId,
+  onRefresh,
 }: AwardPointsModalProps) {
   console.log('AWARD POINTS MODAL: classId received:', classId);
   
@@ -114,10 +116,72 @@ export default function AwardPointsModal({
   }, [categories]);
 
 
-  const handleCustomSubmit = () => {
-    // Handle custom points submission
-    console.log('Custom points:', customPoints, 'Memo:', customMemo);
-    // Add your submission logic here
+  // Handle awarding points for a skill/category
+  const handleAwardSkill = async (category: PointCategory) => {
+    try {
+      const supabase = createClient();
+      const points = category.points ?? category.default_points ?? 0;
+      
+      const { error } = await supabase.rpc('award_points_to_student', {
+        student_id_in: student.id,
+        category_id_in: category.id,
+        points_in: points,
+        memo_in: '' // Empty memo for a standard skill click
+      });
+
+      if (error) {
+        console.error('Error awarding skill points:', error);
+        alert('Failed to award points. Please try again.');
+      } else {
+        // Refresh the student list if onRefresh is provided
+        if (onRefresh) {
+          onRefresh();
+        }
+        // Close the modal
+        onClose();
+      }
+    } catch (err) {
+      console.error('Unexpected error awarding points:', err);
+      alert('An unexpected error occurred. Please try again.');
+    }
+  };
+
+  // Handle custom points submission
+  const handleCustomAward = async () => {
+    // Validate custom points
+    if (!customPoints || customPoints === 0) {
+      alert('Please enter a valid point value.');
+      return;
+    }
+
+    try {
+      const supabase = createClient();
+      
+      const { error } = await supabase.rpc('award_points_to_student', {
+        student_id_in: student.id,
+        category_id_in: null,
+        points_in: customPoints,
+        memo_in: customMemo || ''
+      });
+
+      if (error) {
+        console.error('Error awarding custom points:', error);
+        alert('Failed to award points. Please try again.');
+      } else {
+        // Reset custom form
+        setCustomPoints(0);
+        setCustomMemo('');
+        // Refresh the student list if onRefresh is provided
+        if (onRefresh) {
+          onRefresh();
+        }
+        // Close the modal
+        onClose();
+      }
+    } catch (err) {
+      console.error('Unexpected error awarding custom points:', err);
+      alert('An unexpected error occurred. Please try again.');
+    }
   };
 
   return (
@@ -217,22 +281,29 @@ export default function AwardPointsModal({
                 </div>
               ) : (
                 <div className="grid grid-cols-3 gap-4">
-                  {positiveSkills.map((skill) => (
-                    <div
-                      key={skill.id}
-                      className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer relative"
-                    >
-                      <div className="flex flex-col items-center text-center">
-                        <div className="mb-3" style={{ color: getSkillColor(skill.name) }}>
-                          {skill.icon}
+                  {positiveSkills.map((skill) => {
+                    // Find the full category object
+                    const category = categories.find(cat => cat.id === skill.id);
+                    if (!category) return null;
+                    
+                    return (
+                      <div
+                        key={skill.id}
+                        onClick={() => handleAwardSkill(category)}
+                        className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer relative"
+                      >
+                        <div className="flex flex-col items-center text-center">
+                          <div className="mb-3" style={{ color: getSkillColor(skill.name) }}>
+                            {skill.icon}
+                          </div>
+                          <h3 className="text-sm font-medium text-gray-900">{skill.name}</h3>
+                          <span className="text-xs font-medium text-gray-700 absolute top-2 right-3">
+                            +{skill.points}
+                          </span>
                         </div>
-                        <h3 className="text-sm font-medium text-gray-900">{skill.name}</h3>
-                        <span className="text-xs font-medium text-gray-700 absolute top-2 right-3">
-                          +{skill.points}
-                        </span>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {/* Add Skills Card */}
                   <button
                     onClick={() => setManageSkillsModalOpen(true)}
@@ -275,22 +346,29 @@ export default function AwardPointsModal({
                 </div>
               ) : (
                 <div className="grid grid-cols-3 gap-4">
-                  {negativeSkills.map((skill) => (
-                    <div
-                      key={skill.id}
-                      className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer relative"
-                    >
-                      <div className="flex flex-col items-center text-center">
-                        <div className="mb-3 text-red-500">
-                          {skill.icon}
+                  {negativeSkills.map((skill) => {
+                    // Find the full category object
+                    const category = categories.find(cat => cat.id === skill.id);
+                    if (!category) return null;
+                    
+                    return (
+                      <div
+                        key={skill.id}
+                        onClick={() => handleAwardSkill(category)}
+                        className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer relative"
+                      >
+                        <div className="flex flex-col items-center text-center">
+                          <div className="mb-3 text-red-500">
+                            {skill.icon}
+                          </div>
+                          <h3 className="text-sm font-medium text-gray-900">{skill.name}</h3>
+                          <span className="text-xs font-medium text-gray-700 absolute top-2 right-3">
+                            {skill.points}
+                          </span>
                         </div>
-                        <h3 className="text-sm font-medium text-gray-900">{skill.name}</h3>
-                        <span className="text-xs font-medium text-gray-700 absolute top-2 right-3">
-                          {skill.points}
-                        </span>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {/* Add Skills Card */}
                   <button
                     onClick={() => setManageSkillsModalOpen(true)}
@@ -352,7 +430,7 @@ export default function AwardPointsModal({
 
               <div className="flex justify-end">
                 <button
-                  onClick={handleCustomSubmit}
+                  onClick={handleCustomAward}
                   className="px-6 py-2 bg-purple-500 text-white rounded-lg font-medium hover:bg-purple-600 transition-colors"
                 >
                   Submit Points
