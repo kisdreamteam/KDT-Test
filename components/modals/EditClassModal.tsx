@@ -26,7 +26,7 @@ interface TeacherDataItem {
     id: string;
     email: string;
     name?: string;
-  } | null;
+  }[] | null;
 }
 
 interface StudentWithPhoto extends Student {
@@ -88,7 +88,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
   const fetchStudents = async () => {
     try {
       const supabase = createClient();
-      const { data, error } = await supabase
+      const { data: studentsData, error } = await supabase
         .from('students')
         .select('id, first_name, last_name, avatar, photo, student_number, class_id, points')
         .eq('class_id', classId)
@@ -100,7 +100,11 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
         return;
       }
 
-      setStudents((data as StudentWithPhoto[]) || []);
+      if (studentsData) {
+        setStudents(studentsData as StudentWithPhoto[]);
+      } else {
+        setStudents([]);
+      }
     } catch (err) {
       console.error('Unexpected error fetching students:', err);
       setStudents([]);
@@ -113,7 +117,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       // For now, we'll fetch teachers from a class_teachers junction table if it exists
       // If not, we'll use a placeholder structure
       // Assuming there's a class_teachers table with class_id and teacher_id/email
-      const { data, error } = await supabase
+      const { data: teachersData, error } = await supabase
         .from('class_teachers')
         .select(`
           teacher_email,
@@ -133,14 +137,20 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       }
 
       // Transform the data to match our Teacher interface
-      const typedData = (data as TeacherDataItem[]) || [];
-      const teachersList: Teacher[] = typedData.map((item: TeacherDataItem) => ({
-        id: item.teachers?.id || item.teacher_email,
-        email: item.teachers?.email || item.teacher_email,
-        name: item.teachers?.name
-      }));
-
-      setTeachers(teachersList);
+      if (teachersData) {
+        const typedData = teachersData as unknown as TeacherDataItem[];
+        const teachersList: Teacher[] = typedData.map((item: TeacherDataItem) => {
+          const teacher = Array.isArray(item.teachers) ? item.teachers[0] : item.teachers;
+          return {
+            id: teacher?.id || item.teacher_email,
+            email: teacher?.email || item.teacher_email,
+            name: teacher?.name
+          };
+        });
+        setTeachers(teachersList);
+      } else {
+        setTeachers([]);
+      }
     } catch (err) {
       console.error('Unexpected error fetching teachers:', err);
       setTeachers([]);
