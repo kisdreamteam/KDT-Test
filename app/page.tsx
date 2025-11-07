@@ -8,16 +8,16 @@ export default function Home() {
         {/* Header bar with dark purple background */}
         <header className="w-full bg-[#4A3B8D] px-6 sm:px-12 py-18 relative">
           {/* <div className="flex items-center justify-end gap-6 mr-90 mt-10"> */}
-          <div className="absolute bottom-4 right-6 sm:right-8 flex items-center gap-6 mr-90">
+          <div className="absolute bottom-4 right-6 sm:right-8 flex items-center gap-6 mr-90 font-spartan">
             <Link
               href="/login"
-              className="text-white font-semibold text-5xl hover:opacity-80 transition"
+              className="text-white font-semibold text-5xl hover:opacity-80 transition font-spartan"
             >
               Log in
             </Link>
             <Link
               href="/signup"
-              className="text-white font-semibold text-5xl hover:opacity-80 transition"
+              className="text-white font-semibold text-5xl hover:opacity-80 transition font-spartan"
             >
               Sign up
             </Link>

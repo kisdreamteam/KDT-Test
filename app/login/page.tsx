@@ -83,7 +83,7 @@ export default function LoginPage() {
             src="/images/login/login-logo.png"
             alt="Kis points logo"
             width={120}
-            height={60}
+            height={120}
             priority
             className="h-auto w-auto max-w-[120px]"
           />

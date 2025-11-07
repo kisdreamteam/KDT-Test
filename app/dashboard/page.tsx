@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import Modal from '../../components/ui/Modal';
 import CreateClassForm from '../../components/forms/CreateClassForm';
+import EditClassModal from '../../components/modals/EditClassModal';
 import { createClient } from '@/lib/supabase/client';
 import { useDashboard } from '@/context/DashboardContext';
 
@@ -21,6 +22,8 @@ interface Class {
 export default function DashboardPage() {
   const { classes, isLoadingClasses, refreshClasses } = useDashboard();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
@@ -78,10 +81,16 @@ export default function DashboardPage() {
 
   // Handle edit class
   const handleEditClass = (classId: string) => {
-    console.log('Edit class:', classId);
     setOpenDropdownId(null);
-    // TODO: Implement edit functionality
-    alert('Edit functionality will be implemented soon!');
+    setSelectedClassId(classId);
+    setIsEditModalOpen(true);
+  };
+
+  // Handle edit modal close
+  const handleEditModalClose = () => {
+    setIsEditModalOpen(false);
+    setSelectedClassId(null);
+    refreshClasses(); // Refresh classes after modal closes
   };
 
   if (isLoadingClasses) {
@@ -275,10 +284,20 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Create Class Modal */}
       <Modal isOpen={isModalOpen} onClose={handleModalClose}>
         <CreateClassForm onClose={handleModalClose} />
       </Modal>
+
+      {/* Edit Class Modal */}
+      {selectedClassId && (
+        <EditClassModal
+          isOpen={isEditModalOpen}
+          onClose={handleEditModalClose}
+          classId={selectedClassId}
+          onRefresh={refreshClasses}
+        />
+      )}
     </div>
   );
 }

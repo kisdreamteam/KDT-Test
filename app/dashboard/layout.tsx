@@ -230,7 +230,7 @@ export default function DashboardLayout({
           </button>
 
           {/* Main Title */}
-          <h1 className="text-2xl font-bold text-gray-900 flex-1 text-center">
+          <h1 className="text-5xl font-bold text-gray-900 flex-1 text-left pl-10 pt-15 font-spartan">
             {isLoadingProfile ? (
               <div className="flex items-center justify-center">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-600 mr-2"></div>
@@ -263,7 +263,7 @@ export default function DashboardLayout({
           isLoadingProfile,
           refreshClasses: fetchClasses
         }}>
-          <div className="flex-1 bg-pink-50 p-6">
+          <div className="flex-1 bg-[#fcf1f0] p-6"> 
             {children}
           </div>
         </DashboardProvider>
