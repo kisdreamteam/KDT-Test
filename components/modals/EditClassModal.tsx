@@ -100,7 +100,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
         return;
       }
 
-      setStudents(data || []);
+      setStudents((data as StudentWithPhoto[]) || []);
     } catch (err) {
       console.error('Unexpected error fetching students:', err);
       setStudents([]);
@@ -133,7 +133,8 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       }
 
       // Transform the data to match our Teacher interface
-      const teachersList: Teacher[] = (data || []).map((item: TeacherDataItem) => ({
+      const typedData = (data as TeacherDataItem[]) || [];
+      const teachersList: Teacher[] = typedData.map((item: TeacherDataItem) => ({
         id: item.teachers?.id || item.teacher_email,
         email: item.teachers?.email || item.teacher_email,
         name: item.teachers?.name
