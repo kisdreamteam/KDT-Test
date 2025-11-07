@@ -20,6 +20,19 @@ interface Teacher {
   name?: string;
 }
 
+interface TeacherDataItem {
+  teacher_email: string;
+  teachers?: {
+    id: string;
+    email: string;
+    name?: string;
+  } | null;
+}
+
+interface StudentWithPhoto extends Student {
+  photo?: string;
+}
+
 interface EditClassModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -31,7 +44,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
   const [activeTab, setActiveTab] = useState<'info' | 'students' | 'teachers' | 'settings'>('info');
   const [className, setClassName] = useState('');
   const [grade, setGrade] = useState('');
-  const [students, setStudents] = useState<Student[]>([]);
+  const [students, setStudents] = useState<StudentWithPhoto[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [newTeacherEmail, setNewTeacherEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -120,7 +133,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       }
 
       // Transform the data to match our Teacher interface
-      const teachersList: Teacher[] = (data || []).map((item: any) => ({
+      const teachersList: Teacher[] = (data || []).map((item: TeacherDataItem) => ({
         id: item.teachers?.id || item.teacher_email,
         email: item.teachers?.email || item.teacher_email,
         name: item.teachers?.name
@@ -387,7 +400,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {students.map((student) => {
                     // Use photo if available, otherwise use avatar
-                    const imageSrc = (student as any).photo || student.avatar || "/images/students/avatars/student_avatar_1.png";
+                    const imageSrc = student.photo || student.avatar || "/images/students/avatars/student_avatar_1.png";
                     return (
                       <div
                         key={student.id}
