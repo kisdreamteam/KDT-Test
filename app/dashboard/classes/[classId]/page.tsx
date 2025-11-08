@@ -205,8 +205,8 @@ export default function ClassRosterPage() {
 
   return (
     <>
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-[#fcf1f0] p-5">
+      <div className="max-w-10xl mx-auto">
         {/* Page Header */}
         <div className="mb-8">
           <div>
@@ -241,13 +241,13 @@ export default function ClassRosterPage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <div className="grid sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-8 gap-6 mb-8">
             {students.map((student) => (
               <div
                 key={student.id}
                 data-student-card={`${student.id}`}
                 onClick={() => handleStudentClick(student)}
-                className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer"
+                className="bg-white rounded-lg max-h-50 shadow-md p-6 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer"
                 style={{ position: 'relative', zIndex: 1 }}
               >
                 {/* Settings Icon with Dropdown */}

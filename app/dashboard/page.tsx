@@ -130,7 +130,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl">
       {!isLoadingClasses && classes.length === 0 ? (
         /* Empty State - Clean Dashboard */
         <div className="text-center py-16">
@@ -162,7 +162,7 @@ export default function DashboardPage() {
         </div>
       ) : (
         /* Class Cards Grid - When classes exist */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {/* Regular Class Cards */}
           {classes.map((cls) => (
             <Link

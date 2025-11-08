@@ -135,9 +135,9 @@ export default function DashboardLayout({
   };
 
   return (
-    <div className="flex h-screen bg-pink-50">
+    <div className="flex h-screen border-l-7 border-[#4A3B8D] bg-[#4A3B8D]">
       {/* Left Sidebar */}
-      <div className={`${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 overflow-hidden bg-white border-r-2 border-purple-800 flex flex-col`}>
+      <div className={`${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 overflow-hidden bg-white border-l-2 border-[#4A3B8D] flex flex-col`}>
         <div className="p-4 flex flex-col h-full">
           {/* Character Illustration */}
           <div className="bg-white rounded-lg p-4 mb-6">
@@ -155,7 +155,7 @@ export default function DashboardLayout({
 
           {/* All Classes Section */}
           <Link href="/dashboard" className="block">
-            <div className="bg-blue-900 text-white p-3 rounded-lg mb-4 hover:bg-blue-800 transition-colors cursor-pointer">
+            <div className="bg-[#4A3B8D] text-white p-3 rounded-lg mb-4 hover:bg-blue-800 transition-colors cursor-pointer">
               <h2 className="text-center font-semibold">All Classes</h2>
             </div>
           </Link>
@@ -218,13 +218,13 @@ export default function DashboardLayout({
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col relative">
         {/* Top Bar */}
-        <div className="bg-white h-30 py-4 flex items-center justify-between px-4">
+        <div className="bg-white h-30 py-6 flex items-center justify-between px-4 absolute top-0 left-0 right-0 z-10 border-l-5 border-[#4A3B8D] border-t-15">
           {/* Hamburger Menu */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-gray-600 text-2xl hover:text-gray-800 w-8 flex justify-start"
+            className="text-gray-600 text-2xl hover:text-gray-800 w-8 pt-12 flex justify-start"
           >
             ☰
           </button>
@@ -263,7 +263,7 @@ export default function DashboardLayout({
           isLoadingProfile,
           refreshClasses: fetchClasses
         }}>
-          <div className="flex-1 bg-[#fcf1f0] p-6"> 
+          <div className="flex-1 bg-[#fcf1f0] p-6 border-r-10 border-b-5 border-l-5 border-[#4A3B8D] mt-[120px]"> 
             {children}
           </div>
         </DashboardProvider>
