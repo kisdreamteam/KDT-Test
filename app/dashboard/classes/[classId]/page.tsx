@@ -205,7 +205,7 @@ export default function ClassRosterPage() {
 
   return (
     <>
-    <div className="min-h-screen bg-[#fcf1f0] p-5">
+    <div className="min-h-screen bg-[#4A3B8D] p-5">
       <div className="max-w-10xl mx-auto">
         {/* Page Header */}
         <div className="mb-8">
@@ -241,7 +241,7 @@ export default function ClassRosterPage() {
             </div>
           </div>
         ) : (
-          <div className="grid sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-8 gap-6 mb-8">
+          <div className="grid sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 mb-8">
             {students.map((student) => (
               <div
                 key={student.id}
@@ -319,24 +319,23 @@ export default function ClassRosterPage() {
                   <Image
                     src={student.avatar || "/images/students/avatars/student_avatar_1.png"}
                     alt={`${student.first_name} ${student.last_name} avatar`}
-                    width={60}
-                    height={60}
-                    className="rounded-full"
+                    width={80}
+                    height={80}
+                    className="rounded-xl bg-[#FDF2F0]"
                   />
                 </div>
 
                 {/* Student Name */}
                 <div className="text-center mb-3 pointer-events-none">
                   <h3 className="text-lg font-semibold text-gray-900">
-                    {student.first_name} {student.last_name}
+                    {student.first_name}
                   </h3>
                 </div>
 
                 {/* Student Points */}
                 <div className="text-center pointer-events-none">
-                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-medium">
-                    <span className="mr-1">⭐</span>
-                    {student.points || 0} points
+                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#FDF2F0] text-red-400 text-xl font-large font-bold">
+                    {student.points || 0}
                   </div>
                 </div>
               </div>
