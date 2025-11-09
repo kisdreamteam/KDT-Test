@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Modal from '@/components/ui/Modal';
 import { createClient } from '@/lib/supabase/client';
 import { Student } from '@/lib/types';
+import AddStudentsModal from '@/components/modals/AddStudentsModal';
 
 interface Class {
   id: string;
@@ -50,6 +51,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
   const [newTeacherEmail, setNewTeacherEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
 
   // Fetch class data
   useEffect(() => {
@@ -91,7 +93,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       const supabase = createClient();
       const { data: studentsData, error } = await supabase
         .from('students')
-        .select('id, first_name, last_name, avatar, photo, student_number, class_id, points')
+        .select('id, first_name, last_name, avatar, student_number, class_id, points')
         .eq('class_id', classId)
         .order('last_name', { ascending: true });
 
@@ -404,35 +406,60 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                     <p className="text-gray-600">Loading students...</p>
                   </div>
                 </div>
-              ) : students.length === 0 ? (
-                <div className="text-center py-16">
-                  <p className="text-gray-600">No students in this class yet.</p>
-                </div>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {students.map((student) => {
-                    // Use photo if available, otherwise use avatar
-                    const imageSrc = student.photo || student.avatar || "/images/students/avatars/student_avatar_1.png";
-                    return (
-                      <div
-                        key={student.id}
-                        className="bg-white rounded-lg p-4 border border-gray-200 flex flex-col items-center"
+                <div className="space-y-2">
+                  {/* Add New Student Option - Always First */}
+                  <button
+                    onClick={() => setIsAddStudentModalOpen(true)}
+                    className="w-full flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-blue-300 transition-colors text-left"
+                  >
+                    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                      <svg
+                        className="w-6 h-6 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
                       >
-                        <div className="mb-3">
-                          <Image
-                            src={imageSrc}
-                            alt={`${student.first_name} ${student.last_name}`}
-                            width={60}
-                            height={60}
-                            className="rounded-full object-cover"
-                          />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                        />
+                      </svg>
+                    </div>
+                    <span className="text-sm font-medium text-gray-800">Add New Student</span>
+                  </button>
+
+                  {/* Students List */}
+                  {students.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500 text-sm">No students in this class yet.</p>
+                    </div>
+                  ) : (
+                    students.map((student) => {
+                      const imageSrc = student.avatar || "/images/students/avatars/student_avatar_1.png";
+                      return (
+                        <div
+                          key={student.id}
+                          className="w-full flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                        >
+                          <div className="w-10 h-10 flex-shrink-0">
+                            <Image
+                              src={imageSrc}
+                              alt={`${student.first_name} ${student.last_name}`}
+                              width={40}
+                              height={40}
+                              className="rounded-full object-cover w-10 h-10"
+                            />
+                          </div>
+                          <span className="text-sm font-medium text-gray-800 flex-1">
+                            {student.first_name} {student.last_name}
+                          </span>
                         </div>
-                        <p className="text-sm font-medium text-black text-center">
-                          {student.first_name} {student.last_name}
-                        </p>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               )}
             </div>
@@ -510,6 +537,17 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
           )}
         </div>
       </div>
+
+      {/* Add Students Modal */}
+      <AddStudentsModal
+        isOpen={isAddStudentModalOpen}
+        onClose={() => setIsAddStudentModalOpen(false)}
+        classId={classId}
+        onStudentAdded={() => {
+          fetchStudents(); // Refresh the students list
+          setIsAddStudentModalOpen(false);
+        }}
+      />
     </Modal>
   );
 }
