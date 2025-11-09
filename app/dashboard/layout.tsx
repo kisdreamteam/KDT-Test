@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { DashboardProvider } from '@/context/DashboardContext';
 
@@ -34,6 +35,8 @@ export default function DashboardLayout({
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [classes, setClasses] = useState<Class[]>([]);
   const [isLoadingClasses, setIsLoadingClasses] = useState(true);
+  const [currentClassName, setCurrentClassName] = useState<string | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     fetchTeacherProfile();
@@ -135,6 +138,51 @@ export default function DashboardLayout({
     }
   };
 
+  const fetchClassName = useCallback(async (classId: string) => {
+    try {
+      console.log('Fetching class name for classId:', classId);
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('classes')
+        .select('name')
+        .eq('id', classId)
+        .single();
+      
+      console.log('Class name data:', data);
+      console.log('Class name error:', error);
+      
+      if (data) {
+        console.log('Setting class name to:', data.name);
+        setCurrentClassName(data.name);
+      } else if (error) {
+        console.error('Error fetching class name:', error);
+        setCurrentClassName(null);
+      }
+    } catch (err) {
+      console.error('Unexpected error fetching class name:', err);
+      setCurrentClassName(null);
+    }
+  }, []);
+
+  // Detect route changes and update header
+  useEffect(() => {
+    console.log('Pathname changed to:', pathname);
+    // Check if we're on a class detail page
+    const classDetailMatch = pathname?.match(/\/dashboard\/classes\/([^/]+)/);
+    
+    console.log('Class detail match:', classDetailMatch);
+    
+    if (classDetailMatch) {
+      const classId = classDetailMatch[1];
+      console.log('Extracted classId:', classId);
+      fetchClassName(classId);
+    } else {
+      // On main dashboard, clear class name
+      console.log('On main dashboard, clearing class name');
+      setCurrentClassName(null);
+    }
+  }, [pathname, fetchClassName]);
+
   return (
     <div className="flex h-screen border-l-7 border-[#4A3B8D] bg-[#4A3B8D]">
       {/* Left Sidebar */}
@@ -154,7 +202,7 @@ export default function DashboardLayout({
             </div>
           </div>
 
-          {/* All Classes Section */}
+          {/* All Classes Button */}
           <Link href="/dashboard" className="block">
             <div className="bg-[#4A3B8D] text-white p-3 rounded-lg mb-4 hover:bg-blue-800 transition-colors cursor-pointer">
               <h2 className="text-center font-semibold">All Classes</h2>
@@ -162,7 +210,7 @@ export default function DashboardLayout({
           </Link>
 
           {/* Classes List */}
-          <div className="space-y-2 mb-6 max-h-64 overflow-y-auto">
+          <div className="space-y-2 mb-6 max-h-90 overflow-y-auto">
             {isLoadingClasses ? (
               <div className="flex items-center justify-center py-4">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
@@ -237,6 +285,8 @@ export default function DashboardLayout({
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-600 mr-2"></div>
                 Loading...
               </div>
+            ) : currentClassName ? (
+              currentClassName  // Show class name when on class detail page
             ) : teacherProfile ? (
               `${teacherProfile.title} ${teacherProfile.name}'s Classes`
             ) : (
@@ -264,7 +314,9 @@ export default function DashboardLayout({
           isLoadingProfile,
           refreshClasses: fetchClasses
         }}>
-          <div className="flex-1 bg-[#fcf1f0] p-6 border-r-10 border-b-5 border-l-5 border-[#4A3B8D] mt-[120px]"> 
+          <div className={`flex-1 p-6 border-r-10 border-b-5 border-l-5 border-[#4A3B8D] mt-[120px] ${
+            currentClassName ? 'bg-[#4A3B8D]' : 'bg-[#fcf1f0]'
+          }`}> 
             {children}
           </div>
         </DashboardProvider>

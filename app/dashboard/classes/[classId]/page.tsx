@@ -202,20 +202,19 @@ export default function ClassRosterPage() {
       </div>
     );
   }
-
   return (
     <>
     <div className="min-h-screen bg-[#4A3B8D] p-5">
       <div className="max-w-10xl mx-auto">
         {/* Page Header */}
-        <div className="mb-8">
+        {/* <div className="mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
               {className || 'Class Roster'}
             </h1>
             <p className="text-gray-600">View and manage student information</p>
           </div>
-        </div>
+        </div> */}
 
         {/* Student Cards Grid */}
         {students.length === 0 ? (
