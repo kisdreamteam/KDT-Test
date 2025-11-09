@@ -21,6 +21,7 @@ interface Class {
   teacher_id: string;
   is_archived: boolean;
   created_at: string;
+  icon?: string;
 }
 
 export default function DashboardLayout({
@@ -137,19 +138,19 @@ export default function DashboardLayout({
   return (
     <div className="flex h-screen border-l-7 border-[#4A3B8D] bg-[#4A3B8D]">
       {/* Left Sidebar */}
-      <div className={`${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 overflow-hidden bg-white border-l-2 border-[#4A3B8D] flex flex-col`}>
+      <div className={`${sidebarOpen ? 'w-76' : 'w-0'} transition-all duration-300 overflow-hidden bg-white border-l-8 border-[#4A3B8D] flex flex-col`}>
         <div className="p-4 flex flex-col h-full">
           {/* Character Illustration */}
-          <div className="bg-white rounded-lg p-4 mb-6">
+          <div className="bg-[#fcf1f0] rounded-4xl p-0 mb-4">
             <div className="text-center">
               <Image
                 src="/images/shared/default-image.png"
                 alt="User Avatar"
-                width={200}
-                height={200}
+                width={250}
+                height={250}
                 className="mx-auto mb-2"
               />
-              <div className="text-sm text-gray-600 font-bold text-center">Korean International School</div>
+              {/* <div className="text-sm text-gray-600 font-bold text-center">Korean International School</div> */}
             </div>
           </div>
 
@@ -182,7 +183,7 @@ export default function DashboardLayout({
                     {/* Class Image - Same as class cards */}
                     <div className="w-8 h-8 flex-shrink-0">
                       <Image
-                        src="/images/1Landing Page Image.png"
+                        src={cls.icon || "/images/1Landing Page Image.png"}
                         alt={`${cls.name} icon`}
                         width={32}
                         height={32}
@@ -190,12 +191,12 @@ export default function DashboardLayout({
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="text-sm font-medium text-gray-800 block truncate">
+                      <span className="text-xl font-medium text-gray-800 block truncate">
                         {cls.name}
                       </span>
-                      <span className="text-xs text-gray-500">
+                      {/* <span className="text-xs text-gray-500">
                         {cls.grade}
-                      </span>
+                      </span> */}
                     </div>
                   </div>
                 </Link>

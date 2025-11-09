@@ -23,7 +23,7 @@ export default function Modal({ isOpen, onClose, children, className = '' }: Mod
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors z-10"
+          className="absolute top-8 right-9 text-gray-400 hover:text-gray-600 transition-colors z-10"
         >
           <svg
             className="w-6 h-6"

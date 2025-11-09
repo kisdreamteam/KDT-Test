@@ -12,6 +12,7 @@ interface Class {
   grade: string;
   school_year: string;
   teacher_id: string;
+  icon?: string;
 }
 
 interface Teacher {

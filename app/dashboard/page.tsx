@@ -17,6 +17,7 @@ interface Class {
   teacher_id: string;
   is_archived: boolean;
   created_at: string;
+  icon?: string;
 }
 
 export default function DashboardPage() {
@@ -162,7 +163,7 @@ export default function DashboardPage() {
         </div>
       ) : (
         /* Class Cards Grid - When classes exist */
-        <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 px-5 py-5">
           {/* Regular Class Cards */}
           {classes.map((cls) => (
             <Link
@@ -172,14 +173,14 @@ export default function DashboardPage() {
             >
               <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer relative group">
                 {/* Settings Icon with Dropdown */}
-                <div className="absolute top-4 right-4">
+                <div className="absolute top-2 right-2">
                   <div className="relative">
                     <button
                       onClick={(e) => toggleDropdown(cls.id, e)}
                       className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
                     >
                       <svg
-                        className="w-5 h-5"
+                        className="w-10 h-10"
                         fill="currentColor"
                         viewBox="0 0 20 20"
                       >
@@ -230,7 +231,7 @@ export default function DashboardPage() {
                 {/* Class Icon */}
                 <div className="text-center mb-4">
                   <Image
-                    src="/images/1Landing Page Image.png"
+                    src={cls.icon || "/images/1Landing Page Image.png"}
                     alt={`${cls.name} icon`}
                     width={80}
                     height={80}
@@ -239,18 +240,18 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Class Name */}
-                <h3 className="text-lg font-semibold text-gray-800 text-center mb-2">
+                <h3 className="text-2xl font-semibold text-gray-800 text-center mb-2">
                   {cls.name}
                 </h3>
 
-                {/* Grade and School Year */}
+                {/* Grade and School Year
                 <div className="text-center mb-2">
                   <p className="text-sm text-gray-600">{cls.grade}</p>
                   <p className="text-xs text-gray-500">{cls.school_year}</p>
-                </div>
+                </div> */}
 
                 {/* Placeholder Student Count - TODO: Fetch actual student count */}
-                <p className="text-sm text-gray-600 text-center">
+                <p className="text-xs text-gray-400 text-center font-bold">
                   0 Students
                 </p>
               </div>

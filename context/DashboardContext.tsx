@@ -11,6 +11,7 @@ interface Class {
   teacher_id: string;
   is_archived: boolean;
   created_at: string;
+  icon?: string;
 }
 
 // Define the shape of the TeacherProfile object

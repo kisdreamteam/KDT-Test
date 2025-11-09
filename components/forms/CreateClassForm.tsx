@@ -15,6 +15,11 @@ export default function CreateClassForm({ onClose }: CreateClassFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
+  const getRandomIcon = () => {
+    const iconNumber = Math.floor(Math.random() * 15) + 1; // Random number 1-15
+    return `/images/dashboard/icons/icon-${iconNumber}.png`;
+  };
+
   const handleCreateClass = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -33,6 +38,9 @@ export default function CreateClassForm({ onClose }: CreateClassFormProps) {
         alert('You must be logged in to create a class.');
         return;
       }
+
+      // Generate random icon
+      const randomIcon = getRandomIcon();
 
       // Call the database function to create a new class
       console.log('Calling create_new_class RPC with:', {
@@ -59,9 +67,64 @@ export default function CreateClassForm({ onClose }: CreateClassFormProps) {
         return;
       }
 
+      // Update the class with the random icon
+      // The RPC function returns the created class, so we need to extract the ID
+      let classId: string | null = null;
+      
+      if (rpcData) {
+        // Handle different possible return formats from RPC
+        if (typeof rpcData === 'string') {
+          classId = rpcData;
+        } else if (Array.isArray(rpcData) && rpcData.length > 0) {
+          classId = rpcData[0]?.id || rpcData[0];
+        } else if (rpcData.id) {
+          classId = rpcData.id;
+        }
+      }
+
+      // If we have a class ID, update it with the icon
+      if (classId) {
+        const { error: updateError } = await supabase
+          .from('classes')
+          .update({ icon: randomIcon })
+          .eq('id', classId);
+
+        if (updateError) {
+          console.error('Error updating class icon:', updateError);
+          // Don't fail the whole operation, just log the error
+        } else {
+          console.log('Class icon updated successfully:', randomIcon);
+        }
+      } else {
+        // If RPC doesn't return ID, try to find the class by name and teacher
+        const { data: classData, error: findError } = await supabase
+          .from('classes')
+          .select('id')
+          .eq('name', className)
+          .eq('teacher_id', user.id)
+          .eq('is_archived', false)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (!findError && classData) {
+          const { error: updateError } = await supabase
+            .from('classes')
+            .update({ icon: randomIcon })
+            .eq('id', classData.id);
+
+          if (updateError) {
+            console.error('Error updating class icon:', updateError);
+          } else {
+            console.log('Class icon updated successfully:', randomIcon);
+          }
+        }
+      }
+
       console.log('Class created successfully using RPC function');
       console.log('Class name:', className, 'Grade:', grade);
       console.log('RPC returned data:', rpcData);
+      console.log('Assigned icon:', randomIcon);
       
       // Close modal - the parent component will handle refreshing the data
       onClose();
