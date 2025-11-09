@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -15,10 +15,34 @@ export default function CreateClassForm({ onClose }: CreateClassFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
+  // Initialize with random icon
   const getRandomIcon = () => {
     const iconNumber = Math.floor(Math.random() * 15) + 1; // Random number 1-15
     return `/images/dashboard/icons/icon-${iconNumber}.png`;
   };
+
+  const [selectedIcon, setSelectedIcon] = useState<string>(() => getRandomIcon());
+  const [isIconDropdownOpen, setIsIconDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Generate array of all available icons
+  const availableIcons = Array.from({ length: 15 }, (_, i) => 
+    `/images/dashboard/icons/icon-${i + 1}.png`
+  );
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsIconDropdownOpen(false);
+      }
+    };
+
+    if (isIconDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isIconDropdownOpen]);
 
   const handleCreateClass = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,9 +62,6 @@ export default function CreateClassForm({ onClose }: CreateClassFormProps) {
         alert('You must be logged in to create a class.');
         return;
       }
-
-      // Generate random icon
-      const randomIcon = getRandomIcon();
 
       // Call the database function to create a new class
       console.log('Calling create_new_class RPC with:', {
@@ -82,18 +103,18 @@ export default function CreateClassForm({ onClose }: CreateClassFormProps) {
         }
       }
 
-      // If we have a class ID, update it with the icon
+      // If we have a class ID, update it with the selected icon
       if (classId) {
         const { error: updateError } = await supabase
           .from('classes')
-          .update({ icon: randomIcon })
+          .update({ icon: selectedIcon })
           .eq('id', classId);
 
         if (updateError) {
           console.error('Error updating class icon:', updateError);
           // Don't fail the whole operation, just log the error
         } else {
-          console.log('Class icon updated successfully:', randomIcon);
+          console.log('Class icon updated successfully:', selectedIcon);
         }
       } else {
         // If RPC doesn't return ID, try to find the class by name and teacher
@@ -110,13 +131,13 @@ export default function CreateClassForm({ onClose }: CreateClassFormProps) {
         if (!findError && classData) {
           const { error: updateError } = await supabase
             .from('classes')
-            .update({ icon: randomIcon })
+            .update({ icon: selectedIcon })
             .eq('id', classData.id);
 
           if (updateError) {
             console.error('Error updating class icon:', updateError);
           } else {
-            console.log('Class icon updated successfully:', randomIcon);
+            console.log('Class icon updated successfully:', selectedIcon);
           }
         }
       }
@@ -124,7 +145,7 @@ export default function CreateClassForm({ onClose }: CreateClassFormProps) {
       console.log('Class created successfully using RPC function');
       console.log('Class name:', className, 'Grade:', grade);
       console.log('RPC returned data:', rpcData);
-      console.log('Assigned icon:', randomIcon);
+      console.log('Assigned icon:', selectedIcon);
       
       // Close modal - the parent component will handle refreshing the data
       onClose();
@@ -146,16 +167,84 @@ export default function CreateClassForm({ onClose }: CreateClassFormProps) {
       <div className="text-center">
         <h2 className="text-2xl font-bold text-gray-800 mb-4">Create new class</h2>
         
-        {/* Icon/Image placeholder */}
+        {/* Icon Picker */}
         <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-            <Image
-              src="/images/shared/default-image.png"
-              alt="Class icon"
-              width={40}
-              height={40}
-              className="w-10 h-10"
-            />
+          <div className="relative" ref={dropdownRef}>
+            {/* Selected Icon Display (Clickable) */}
+            <button
+              type="button"
+              onClick={() => setIsIconDropdownOpen(!isIconDropdownOpen)}
+              className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors border-2 border-gray-300 hover:border-blue-500 relative"
+            >
+              <Image
+                src={selectedIcon}
+                alt="Class icon"
+                width={60}
+                height={60}
+                className="w-14 h-14 object-contain"
+              />
+              {/* Down Arrow Indicator */}
+              <div className="absolute bottom-0 right-0 bg-blue-500 rounded-full p-1 border-2 border-white">
+                <svg
+                  className="w-3 h-3 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </div>
+            </button>
+
+            {/* Icon Dropdown */}
+            {isIconDropdownOpen && (
+              <>
+                {/* Backdrop to close dropdown */}
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setIsIconDropdownOpen(false)}
+                />
+                
+                {/* Dropdown Menu */}
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-20 w-80 max-h-96 overflow-y-auto">
+                  <div className="text-sm font-semibold text-gray-700 mb-3 text-center">
+                    Choose Class Icon
+                  </div>
+                  
+                  {/* Icons Grid */}
+                  <div className="grid grid-cols-5 gap-3">
+                    {availableIcons.map((icon, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => {
+                          setSelectedIcon(icon);
+                          setIsIconDropdownOpen(false);
+                        }}
+                        className={`w-12 h-12 rounded-lg flex items-center justify-center border-2 transition-all hover:scale-110 ${
+                          selectedIcon === icon
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <Image
+                          src={icon}
+                          alt={`Icon ${index + 1}`}
+                          width={40}
+                          height={40}
+                          className="w-10 h-10 object-contain"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -205,13 +294,13 @@ export default function CreateClassForm({ onClose }: CreateClassFormProps) {
             required
           >
             <option value="">Select a grade</option>
-            <option value="Grade1">Grade1</option>
-            <option value="Grade2">Grade2</option>
-            <option value="Grade3">Grade3</option>
-            <option value="Grade4">Grade4</option>
-            <option value="Grade5">Grade5</option>
-            <option value="Grade6">Grade6</option>
-            <option value="Grade7">Grade7</option>
+            <option value="Grade1">Grade 1</option>
+            <option value="Grade2">Grade 2</option>
+            <option value="Grade3">Grade 3</option>
+            <option value="Grade4">Grade 4</option>
+            <option value="Grade5">Grade 5</option>
+            <option value="Grade6">Grade 6</option>
+            <option value="Grade7">Grade 7</option>
           </select>
         </div>
 
