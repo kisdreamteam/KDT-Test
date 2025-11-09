@@ -27,6 +27,7 @@ export default function DashboardPage() {
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [studentCounts, setStudentCounts] = useState<Record<string, number>>({});
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -39,6 +40,54 @@ export default function DashboardPage() {
       return () => document.removeEventListener('click', handleClickOutside);
     }
   }, [openDropdownId]);
+
+  // Fetch student counts for all classes
+  useEffect(() => {
+    if (classes.length > 0) {
+      fetchStudentCounts();
+    } else {
+      setStudentCounts({});
+    }
+  }, [classes]);
+
+  const fetchStudentCounts = async () => {
+    try {
+      const supabase = createClient();
+      const classIds = classes.map(cls => cls.id);
+      
+      if (classIds.length === 0) {
+        setStudentCounts({});
+        return;
+      }
+      
+      // Fetch all students for these classes in a single query
+      const { data: students, error } = await supabase
+        .from('students')
+        .select('class_id')
+        .in('class_id', classIds);
+      
+      if (error) {
+        console.error('Error fetching student counts:', error);
+        return;
+      }
+      
+      // Count students per class
+      const countsMap: Record<string, number> = {};
+      classIds.forEach(classId => {
+        countsMap[classId] = 0;
+      });
+      
+      students?.forEach(student => {
+        if (student.class_id && countsMap[student.class_id] !== undefined) {
+          countsMap[student.class_id]++;
+        }
+      });
+      
+      setStudentCounts(countsMap);
+    } catch (err) {
+      console.error('Error fetching student counts:', err);
+    }
+  };
 
   // Handle modal close with refresh
   const handleModalClose = () => {
@@ -250,9 +299,12 @@ export default function DashboardPage() {
                   <p className="text-xs text-gray-500">{cls.school_year}</p>
                 </div> */}
 
-                {/* Placeholder Student Count - TODO: Fetch actual student count */}
+                {/* Student Count */}
                 <p className="text-xs text-gray-400 text-center font-bold">
-                  0 Students
+                  {studentCounts[cls.id] !== undefined 
+                    ? `${studentCounts[cls.id]} ${studentCounts[cls.id] === 1 ? 'Student' : 'Students'}`
+                    : 'Loading...'
+                  }
                 </p>
               </div>
             </Link>
