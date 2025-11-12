@@ -81,7 +81,6 @@ export default function AwardPointsModal({
   // Filter categories into positive and negative skills
   const positiveSkills = useMemo(() => {
     const filtered = categories.filter((category) => {
-      // Check both possible property names
       const points = category.points ?? category.default_points ?? 0;
       return points > 0;
     }).map((category) => {
@@ -90,7 +89,7 @@ export default function AwardPointsModal({
         id: category.id,
         name: category.name,
         points: points,
-        icon: getSkillIcon(category.name),
+        icon: category.icon, // Use icon from database
       };
     });
     console.log('Filtered positive skills:', filtered.length, filtered);
@@ -99,7 +98,6 @@ export default function AwardPointsModal({
 
   const negativeSkills = useMemo(() => {
     const filtered = categories.filter((category) => {
-      // Check both possible property names
       const points = category.points ?? category.default_points ?? 0;
       return points < 0;
     }).map((category) => {
@@ -108,7 +106,7 @@ export default function AwardPointsModal({
         id: category.id,
         name: category.name,
         points: points,
-        icon: getSkillIcon(category.name),
+        icon: category.icon, // Use icon from database
       };
     });
     console.log('Filtered negative skills:', filtered.length, filtered);
@@ -294,7 +292,17 @@ export default function AwardPointsModal({
                       >
                         <div className="flex flex-col items-center text-center">
                           <div className="mb-3" style={{ color: getSkillColor(skill.name) }}>
-                            {skill.icon}
+                            {skill.icon ? (
+                              <Image
+                                src={skill.icon}
+                                alt={skill.name}
+                                width={40}
+                                height={40}
+                                className="w-10 h-10 object-contain"
+                              />
+                            ) : (
+                              getSkillIcon(skill.name)
+                            )}
                           </div>
                           <h3 className="text-sm font-medium text-gray-900">{skill.name}</h3>
                           <span className="text-xs font-medium text-gray-700 absolute top-2 right-3">
@@ -359,7 +367,17 @@ export default function AwardPointsModal({
                       >
                         <div className="flex flex-col items-center text-center">
                           <div className="mb-3 text-red-500">
-                            {skill.icon}
+                            {skill.icon ? (
+                              <Image
+                                src={skill.icon}
+                                alt={skill.name}
+                                width={40}
+                                height={40}
+                                className="w-10 h-10 object-contain"
+                              />
+                            ) : (
+                              skill.icon
+                            )}
                           </div>
                           <h3 className="text-sm font-medium text-gray-900">{skill.name}</h3>
                           <span className="text-xs font-medium text-gray-700 absolute top-2 right-3">

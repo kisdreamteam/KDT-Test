@@ -6,6 +6,7 @@ export interface PointCategory {
   type?: 'positive' | 'negative'; // Optional, can be derived from points
   class_id: string;
   teacher_id?: string; // Optional, may not always be needed
+  icon?: string; // Icon path from database
 }
 
 export interface Student {

@@ -180,7 +180,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="max-w-6xl">
+    <div className="max-w-full">
       {!isLoadingClasses && classes.length === 0 ? (
         /* Empty State - Clean Dashboard */
         <div className="text-center py-16">

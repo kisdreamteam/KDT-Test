@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import Modal from '@/components/ui/Modal';
 import { createClient } from '@/lib/supabase/client';
 import { PointCategory } from '@/lib/types';
@@ -23,6 +24,28 @@ export default function AddSkillModal({ isOpen, onClose, classId, categories, is
   const inputRef = useRef<HTMLInputElement>(null);
   const previousValueRef = useRef<number>(1);
   const isHandlingSpinnerRef = useRef<boolean>(false);
+  const [selectedIcon, setSelectedIcon] = useState<string>('/images/classes/icons/icon-pos-6.png');
+  const [isIconDropdownOpen, setIsIconDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Generate array of available icons based on skillType
+  const availableIcons = Array.from({ length: 7 }, (_, i) => 
+    `/images/classes/icons/icon-${skillType === 'positive' ? 'pos' : 'neg'}-${i + 1}.png`
+  );
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsIconDropdownOpen(false);
+      }
+    };
+
+    if (isIconDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isIconDropdownOpen]);
 
   // Reset form when modal closes or skillType changes
   useEffect(() => {
@@ -32,11 +55,15 @@ export default function AddSkillModal({ isOpen, onClose, classId, categories, is
       const newValue = skillType === 'positive' ? 1 : -1;
       setPoints(newValue);
       previousValueRef.current = newValue;
+      // Reset icon to icon-6 of the type
+      setSelectedIcon(`/images/classes/icons/icon-${skillType === 'positive' ? 'pos' : 'neg'}-6.png`);
     } else {
       // When modal opens, set points based on skillType
       const newValue = skillType === 'positive' ? 1 : -1;
       setPoints(newValue);
       previousValueRef.current = newValue;
+      // Set icon to icon-6 of the type
+      setSelectedIcon(`/images/classes/icons/icon-${skillType === 'positive' ? 'pos' : 'neg'}-6.png`);
     }
   }, [isOpen, skillType]);
 
@@ -45,6 +72,8 @@ export default function AddSkillModal({ isOpen, onClose, classId, categories, is
     const newValue = skillType === 'positive' ? 1 : -1;
     setPoints(newValue);
     previousValueRef.current = newValue;
+    // Update icon when skillType changes to icon-6
+    setSelectedIcon(`/images/classes/icons/icon-${skillType === 'positive' ? 'pos' : 'neg'}-6.png`);
   }, [skillType]);
 
   const handleAddSkill = async () => {
@@ -101,7 +130,8 @@ export default function AddSkillModal({ isOpen, onClose, classId, categories, is
         name: name, // 'name' from your form state
         points: points, // 'points' from your form state
         type: type, // 'type' from your form state
-        class_id: classId // 'classId' from your props
+        class_id: classId, // 'classId' from your props
+        icon: selectedIcon // Add icon to the skill
       };
 
       console.log('Data to insert for new skill:', newSkill);
@@ -177,6 +207,8 @@ export default function AddSkillModal({ isOpen, onClose, classId, categories, is
     const newValue = skillType === 'positive' ? 1 : -1;
     setPoints(newValue);
     previousValueRef.current = newValue;
+    // Reset icon to icon-6
+    setSelectedIcon(`/images/classes/icons/icon-${skillType === 'positive' ? 'pos' : 'neg'}-6.png`);
     setShowSuccessModal(false);
   };
 
@@ -202,6 +234,87 @@ export default function AddSkillModal({ isOpen, onClose, classId, categories, is
           </h3>
 
           <div className="space-y-4">
+            {/* Icon Picker */}
+            <div className="flex justify-center mb-6">
+              <div className="relative" ref={dropdownRef}>
+                {/* Selected Icon Display (Clickable) */}
+                <button
+                  type="button"
+                  onClick={() => setIsIconDropdownOpen(!isIconDropdownOpen)}
+                  className="w-20 h-20 bg-white rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors border-2 border-gray-300 hover:border-purple-500 relative shadow-sm"
+                >
+                  <Image
+                    src={selectedIcon}
+                    alt="Skill icon"
+                    width={60}
+                    height={60}
+                    className="w-14 h-14 object-contain"
+                  />
+                  {/* Down Arrow Indicator */}
+                  <div className="absolute bottom-0 right-0 bg-purple-500 rounded-full p-1 border-2 border-white">
+                    <svg
+                      className="w-3 h-3 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </div>
+                </button>
+
+                {/* Icon Dropdown */}
+                {isIconDropdownOpen && (
+                  <>
+                    {/* Backdrop to close dropdown */}
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setIsIconDropdownOpen(false)}
+                    />
+                    
+                    {/* Dropdown Menu */}
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-20 w-80 max-h-96 overflow-y-auto">
+                      <div className="text-sm font-semibold text-gray-700 mb-3 text-center">
+                        Choose Skill Icon
+                      </div>
+                      
+                      {/* Icons Grid */}
+                      <div className="grid grid-cols-5 gap-3">
+                        {availableIcons.map((icon, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => {
+                              setSelectedIcon(icon);
+                              setIsIconDropdownOpen(false);
+                            }}
+                            className={`w-12 h-12 rounded-lg flex items-center justify-center border-2 transition-all hover:scale-110 ${
+                              selectedIcon === icon
+                                ? 'border-purple-500 bg-purple-50'
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <Image
+                              src={icon}
+                              alt={`Icon ${index + 1}`}
+                              width={40}
+                              height={40}
+                              className="w-10 h-10 object-contain"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
             {/* Skill Name Field */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">

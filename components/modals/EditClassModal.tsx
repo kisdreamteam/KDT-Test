@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Modal from '@/components/ui/Modal';
 import { createClient } from '@/lib/supabase/client';
@@ -46,12 +46,34 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
   const [activeTab, setActiveTab] = useState<'info' | 'students' | 'teachers' | 'settings'>('info');
   const [className, setClassName] = useState('');
   const [grade, setGrade] = useState('');
+  const [selectedIcon, setSelectedIcon] = useState<string>('/images/dashboard/icons/icon-1.png');
+  const [isIconDropdownOpen, setIsIconDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const [students, setStudents] = useState<StudentWithPhoto[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [newTeacherEmail, setNewTeacherEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
+
+  // Generate array of all available icons
+  const availableIcons = Array.from({ length: 15 }, (_, i) => 
+    `/images/dashboard/icons/icon-${i + 1}.png`
+  );
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsIconDropdownOpen(false);
+      }
+    };
+
+    if (isIconDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isIconDropdownOpen]);
 
   // Fetch class data
   useEffect(() => {
@@ -80,6 +102,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       if (data) {
         setClassName(data.name || '');
         setGrade(data.grade || '');
+        setSelectedIcon(data.icon || '/images/dashboard/icons/icon-1.png');
       }
     } catch (err) {
       console.error('Unexpected error fetching class:', err);
@@ -173,7 +196,8 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
         .from('classes')
         .update({
           name: className.trim(),
-          grade: grade.trim()
+          grade: grade.trim(),
+          icon: selectedIcon
         })
         .eq('id', classId);
 
@@ -184,7 +208,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       }
 
       onRefresh();
-      alert('Class updated successfully!');
+      onClose();
     } catch (err) {
       console.error('Unexpected error updating class:', err);
       alert('An unexpected error occurred. Please try again.');
@@ -349,6 +373,87 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                 </div>
               ) : (
                 <>
+                  {/* Icon Picker */}
+                  <div className="flex justify-center mb-6">
+                    <div className="relative" ref={dropdownRef}>
+                      {/* Selected Icon Display (Clickable) */}
+                      <button
+                        type="button"
+                        onClick={() => setIsIconDropdownOpen(!isIconDropdownOpen)}
+                        className="w-20 h-20 bg-white rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors border-2 border-gray-300 hover:border-[#4A3B8D] relative shadow-sm"
+                      >
+                        <Image
+                          src={selectedIcon}
+                          alt="Class icon"
+                          width={60}
+                          height={60}
+                          className="w-14 h-14 object-contain"
+                        />
+                        {/* Down Arrow Indicator */}
+                        <div className="absolute bottom-0 right-0 bg-[#D96B7B] rounded-full p-1 border-2 border-white">
+                          <svg
+                            className="w-3 h-3 text-white"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </div>
+                      </button>
+
+                      {/* Icon Dropdown */}
+                      {isIconDropdownOpen && (
+                        <>
+                          {/* Backdrop to close dropdown */}
+                          <div
+                            className="fixed inset-0 z-10"
+                            onClick={() => setIsIconDropdownOpen(false)}
+                          />
+                          
+                          {/* Dropdown Menu */}
+                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-20 w-80 max-h-96 overflow-y-auto">
+                            <div className="text-sm font-semibold text-gray-700 mb-3 text-center">
+                              Choose Class Icon
+                            </div>
+                            
+                            {/* Icons Grid */}
+                            <div className="grid grid-cols-5 gap-3">
+                              {availableIcons.map((icon, index) => (
+                                <button
+                                  key={index}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedIcon(icon);
+                                    setIsIconDropdownOpen(false);
+                                  }}
+                                  className={`w-12 h-12 rounded-lg flex items-center justify-center border-2 transition-all hover:scale-110 ${
+                                    selectedIcon === icon
+                                      ? 'border-[#4A3B8D] bg-[#4A3B8D]/10'
+                                      : 'border-gray-200 hover:border-gray-300'
+                                  }`}
+                                >
+                                  <Image
+                                    src={icon}
+                                    alt={`Icon ${index + 1}`}
+                                    width={40}
+                                    height={40}
+                                    className="w-10 h-10 object-contain"
+                                  />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-semibold text-black mb-2">
                       Class Name

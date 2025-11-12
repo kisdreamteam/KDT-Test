@@ -5,6 +5,7 @@ import Modal from '@/components/ui/Modal';
 import { createClient } from '@/lib/supabase/client';
 import EditSkillModal from '@/components/modals/EditSkillModal';
 import { PointCategory } from '@/lib/types';
+import Image from 'next/image';
 
 interface EditSkillsModalProps {
   isOpen: boolean;
@@ -238,7 +239,17 @@ export default function EditSkillsModal({
                         // Show skill info normally
                         <div className="flex flex-col items-center text-center w-full">
                           <div className="mb-3" style={{ color: isPositive ? getSkillColor(category.name) : '#EF4444' }}>
-                            {getSkillIcon(category.name)}
+                            {category.icon ? (
+                              <Image
+                                src={category.icon}
+                                alt={category.name}
+                                width={40}
+                                height={40}
+                                className="w-10 h-10 object-contain"
+                              />
+                            ) : (
+                              getSkillIcon(category.name)
+                            )}
                           </div>
                           <h3 className="text-sm font-medium text-gray-900">{category.name}</h3>
                           <span className={`text-xs font-medium absolute top-2 right-3 ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
