@@ -36,11 +36,13 @@ export default function DashboardLayout({
   const [classes, setClasses] = useState<Class[]>([]);
   const [isLoadingClasses, setIsLoadingClasses] = useState(true);
   const [currentClassName, setCurrentClassName] = useState<string | null>(null);
+  const [teacherCount, setTeacherCount] = useState<number | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
     fetchTeacherProfile();
     fetchClasses();
+    fetchTeacherCount();
 
     // Listen for class updates from the main dashboard
     const handleClassUpdate = () => {
@@ -138,6 +140,25 @@ export default function DashboardLayout({
     }
   };
 
+  const fetchTeacherCount = async () => {
+    try {
+      const supabase = createClient();
+      const { count, error } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'Teacher');
+      
+      if (error) {
+        console.error('Error fetching teacher count:', error);
+        return;
+      }
+      
+      setTeacherCount(count || 0);
+    } catch (err) {
+      console.error('Unexpected error fetching teacher count:', err);
+    }
+  };
+
   const fetchClassName = useCallback(async (classId: string) => {
     try {
       console.log('Fetching class name for classId:', classId);
@@ -184,7 +205,7 @@ export default function DashboardLayout({
   }, [pathname, fetchClassName]);
 
   return (
-    <div className="flex h-screen border-l-7 border-[#4A3B8D] bg-[#4A3B8D]">
+    <div className="flex h-screen border-[#4A3B8D] bg-[#4A3B8D]">
       {/* Left Sidebar */}
       <div className={`${sidebarOpen ? 'w-76' : 'w-0'} transition-all duration-300 overflow-hidden bg-white border-l-8 border-[#4A3B8D] flex flex-col`}>
         <div className="p-4 flex flex-col h-full">
@@ -254,13 +275,16 @@ export default function DashboardLayout({
 
           {/* User Section */}
           <div className="mt-auto">
-            <div className="bg-pink-400 text-white p-3 rounded-lg mb-2">
+            <div className="bg-[#dd7f81] text-white p-3 rounded-lg mb-2">
               <div className="text-center font-semibold">
                 KI-EUN
               </div>
             </div>
             <div className="text-center text-sm text-gray-600">
-              21 teachers
+              {teacherCount !== null 
+                ? `${teacherCount} ${teacherCount === 1 ? 'teacher' : 'teachers'}`
+                : 'Loading...'
+              }
             </div>
           </div>
         </div>
@@ -269,7 +293,7 @@ export default function DashboardLayout({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col relative">
         {/* Top Bar */}
-        <div className="bg-white h-30 py-6 flex items-center justify-between px-4 absolute top-0 left-0 right-0 z-10 border-l-5 border-[#4A3B8D] border-t-15">
+        <div className="bg-white h-30 py-6 flex items-center justify-between px-4 absolute top-0 left-0 right-0 z-10 border-l-8 border-[#4A3B8D] border-t-8 border-r-8">
           {/* Hamburger Menu */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -314,7 +338,7 @@ export default function DashboardLayout({
           isLoadingProfile,
           refreshClasses: fetchClasses
         }}>
-          <div className={`flex-1 p-6 border-r-10 border-b-5 border-l-5 border-[#4A3B8D] mt-[120px] ${
+          <div className={`flex-1 p-6 border-r-8 border-l-8 border-[#4A3B8D] mt-[120px] ${
             currentClassName ? 'bg-[#4A3B8D]' : 'bg-[#fcf1f0]'
           }`}> 
             {children}
