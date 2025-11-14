@@ -61,7 +61,7 @@ export default function Home() {
                 <br />
                 started.
               </h1>
-              <ul className="space-y-4 text-[#D98B8B] text-3xl sm:text-4xl font-semibold">
+              <ul className="space-y-4 text-[#D98B8B] text-3xl sm:text-4xl font-intrepid">
                 <li>Classroom Management</li>
                 <li>AI Teacher Assistance</li>
                 <li>Teacher Resources</li>

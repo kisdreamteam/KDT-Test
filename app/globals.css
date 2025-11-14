@@ -7,6 +7,13 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: 'intrepid';
+  src: url('/fonts/intrepid.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
