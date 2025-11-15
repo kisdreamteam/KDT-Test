@@ -1,0 +1,219 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import AddStudentsModal from '@/components/modals/AddStudentsModal';
+import AwardPointsModal from '@/components/modals/AwardPointsModal';
+import { Student } from '@/lib/types';
+import LoadingState from './LoadingState';
+import ErrorState from './ErrorState';
+import EmptyState from './EmptyState';
+import StudentCardsGrid from './StudentCardsGrid';
+
+export default function ClassRosterApp() {
+  const params = useParams();
+  const classId = params.classId as string;
+  const [students, setStudents] = useState<Student[]>([]);
+  const [className, setClassName] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isAddStudentModalOpen, setAddStudentModalOpen] = useState(false);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [isPointsModalOpen, setPointsModalOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+
+  useEffect(() => {
+    if (classId) {
+      fetchClass();
+      fetchStudents();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classId]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!openDropdownId) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-dropdown-container]')) {
+        return;
+      }
+      if (target.closest('[data-student-card]')) {
+        setTimeout(() => setOpenDropdownId(null), 0);
+        return;
+      }
+      setOpenDropdownId(null);
+    };
+
+    document.addEventListener('click', handleClickOutside, true);
+    return () => document.removeEventListener('click', handleClickOutside, true);
+  }, [openDropdownId]);
+
+  const fetchClass = async () => {
+    try {
+      const supabase = createClient();
+      
+      const { data: classData, error: fetchError } = await supabase
+        .from('classes')
+        .select('name')
+        .eq('id', classId)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching class:', fetchError?.message || fetchError);
+        return;
+      }
+
+      if (classData) {
+        setClassName(classData.name);
+      }
+    } catch (err) {
+      console.error('Unexpected error fetching class:', err instanceof Error ? err.message : err);
+    }
+  };
+
+  const fetchStudents = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const supabase = createClient();
+      
+      const { data: students, error: fetchError } = await supabase
+        .from('students')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          points,
+          avatar,
+          student_number,
+          class_id
+        `)
+        .eq('class_id', classId)
+        .order('last_name', { ascending: true });
+
+      if (fetchError) {
+        console.error('Error fetching students:', fetchError?.message || fetchError);
+        setError('Failed to load students. Please try again.');
+        return;
+      }
+
+      if (students) {
+        setStudents(students);
+      } else {
+        setStudents([]);
+      }
+    } catch (err) {
+      console.error('Unexpected error fetching students:', err instanceof Error ? err.message : err);
+      setError('An unexpected error occurred.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle dropdown toggle
+  const toggleDropdown = (studentId: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setOpenDropdownId(openDropdownId === studentId ? null : studentId);
+  };
+
+  // Handle edit student
+  const handleEditStudent = (studentId: string) => {
+    console.log('Edit student:', studentId);
+    setOpenDropdownId(null);
+    alert('Edit functionality will be implemented soon!');
+  };
+
+  // Handle delete student
+  const handleDeleteStudent = async (studentId: string, studentName: string) => {
+    if (confirm(`Are you sure you want to delete ${studentName}?`)) {
+      try {
+        const supabase = createClient();
+        const { error } = await supabase
+          .from('students')
+          .delete()
+          .eq('id', studentId);
+
+        if (error) {
+          console.error('Error deleting student:', error);
+          alert('Failed to delete student. Please try again.');
+          return;
+        }
+
+        console.log('Student deleted successfully');
+        setOpenDropdownId(null);
+        fetchStudents();
+      } catch (err) {
+        console.error('Unexpected error deleting student:', err);
+        alert('An unexpected error occurred. Please try again.');
+      }
+    }
+  };
+
+  // Handle student card click to open Award Points modal
+  const handleStudentClick = (student: Student) => {
+    setSelectedStudent(student);
+    setPointsModalOpen(true);
+  };
+
+  if (isLoading) {
+    return <LoadingState message="Loading students..." />;
+  }
+
+  if (error) {
+    return <ErrorState error={error} onRetry={fetchStudents} />;
+  }
+
+  return (
+    <>
+      <div className="min-h-screen bg-[#4A3B8D] p-5">
+        <div className="max-w-10xl mx-auto">
+          {students.length === 0 ? (
+            <EmptyState
+              title="No students yet"
+              message="Students will appear here once they are added to this class."
+              buttonText="Add Your First Student"
+              onAddClick={() => setAddStudentModalOpen(true)}
+            />
+          ) : (
+            <StudentCardsGrid
+              students={students}
+              openDropdownId={openDropdownId}
+              onToggleDropdown={toggleDropdown}
+              onEdit={handleEditStudent}
+              onDelete={handleDeleteStudent}
+              onStudentClick={handleStudentClick}
+              onAddStudent={() => setAddStudentModalOpen(true)}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Add Students Modal */}
+      <AddStudentsModal 
+        isOpen={isAddStudentModalOpen} 
+        onClose={() => setAddStudentModalOpen(false)}
+        classId={classId}
+        onStudentAdded={fetchStudents}
+      />
+
+      {/* Award Points Modal */}
+      {selectedStudent && (
+        <AwardPointsModal
+          isOpen={isPointsModalOpen}
+          onClose={() => {
+            setPointsModalOpen(false);
+            setSelectedStudent(null);
+          }}
+          student={selectedStudent}
+          classId={classId}
+          onRefresh={fetchStudents}
+        />
+      )}
+    </>
+  );
+}
+
