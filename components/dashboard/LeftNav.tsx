@@ -17,7 +17,7 @@ interface LeftNavProps {
 
 export default function LeftNav({ classes, isLoadingClasses, teacherCount }: LeftNavProps) {
   return (
-    <div className="p-4 flex flex-col h-full">
+    <div className="p-4 flex flex-col h-full max-h-screen overflow-y-auto">
       {/* Character Illustration */}
       <div className="bg-[#fcf1f0] rounded-4xl p-0 mb-4">
         <div className="text-center">

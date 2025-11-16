@@ -3,7 +3,7 @@ import Image from "next/image";
 
 export default function LandingHeader() {
   return (
-    <header className="w-full bg-[#4A3B8D] px-6 sm:px-12 py-18 relative">
+    <header className="w-full bg-[#4A3B8D] sm:h-[100px] md:h-[150px] lg:h-[200px] relative">
       <div className="absolute bottom-3 right-6 sm:right-0 flex items-center gap-7 mr-90 font-spartan">
         <Link
           href="/login"
@@ -19,7 +19,13 @@ export default function LandingHeader() {
         </Link>
       </div>
 
-      <div className="absolute bottom-8 translate-y-1/2 right-6 sm:right-12 w-70 h-70 flex items-center justify-center overflow-hidden">
+      <div className="absolute 
+                      sm:bottom-4 md:bottom-6 lg:bottom-8 
+                      sm:translate-y-1/2 md:translate-y-1/2 lg:translate-y-1/2 
+                      sm:right-6 md:right-12 lg:right-12 
+                      sm:w-40 sm:h-40 md:w-50 md:h-50 lg:w-70 lg:h-70 
+                      flex items-center 
+                      justify-center overflow-hidden">
         <Image
           src="/images/shared/profile-avatar.png"
           alt="kis-points-avatar"

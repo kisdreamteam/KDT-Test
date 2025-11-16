@@ -148,8 +148,10 @@ export default function App() {
     return <ErrorState error={error} onRetry={refreshClasses} />;
   }
 
+
   return (
-    <div className="max-w-full">
+    // Main Content Container for the class cards grid
+    <div className="max-w-full bg-[#FDFDFD]">
       {!isLoadingClasses && classes.length === 0 ? (
         <EmptyState onAddClick={() => setIsModalOpen(true)} />
       ) : (

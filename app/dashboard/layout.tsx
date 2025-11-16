@@ -206,9 +206,10 @@ export default function DashboardLayout({
   }, [pathname, fetchClassName]);
 
   return (
-    <div className="flex h-screen border-[#4A3B8D] bg-[#4A3B8D]">
+    // Outer Container of the left-nav and main content container
+    <div className="flex w-sceen h-screen bg-[#4A3B8D] pl-2 pb-0 pt-0">
       {/* Left Sidebar */}
-      <div className={`${sidebarOpen ? 'w-76' : 'w-0'} transition-all duration-300 overflow-hidden bg-white border-l-8 border-[#4A3B8D] flex flex-col`}>
+      <div className={`${sidebarOpen ? 'w-76' : 'w-0'} transition-all duration-300 overflow-hidden bg-white flex flex-col`}>
         <LeftNav 
           classes={classes}
           isLoadingClasses={isLoadingClasses}
@@ -217,27 +218,29 @@ export default function DashboardLayout({
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col relative">
-        {/* Top Bar */}
-        <TopNav
-          isLoadingProfile={isLoadingProfile}
-          currentClassName={currentClassName}
-          teacherProfile={teacherProfile}
-          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-        />
+      <div className="flex-1 flex flex-col relative pl-2 pr-2 pt-2">
+        <div className="flex-1 flex flex-col relative">
+          {/* Top Bar */}
+          <TopNav
+            isLoadingProfile={isLoadingProfile}
+            currentClassName={currentClassName}
+            teacherProfile={teacherProfile}
+            onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          />
 
-        {/* Main Content */}
-        <DashboardProvider value={{ 
-          classes, 
-          isLoadingClasses, 
-          teacherProfile, 
-          isLoadingProfile,
-          refreshClasses: fetchClasses
-        }}>
-          <MainContent currentClassName={currentClassName}>
-            {children}
-          </MainContent>
-        </DashboardProvider>
+          {/* Main Content */}
+          <DashboardProvider value={{ 
+            classes, 
+            isLoadingClasses, 
+            teacherProfile, 
+            isLoadingProfile,
+            refreshClasses: fetchClasses
+          }}>
+            <MainContent currentClassName={currentClassName}>
+              {children}
+            </MainContent>
+          </DashboardProvider>
+        </div>
       </div>
     </div>
   );
