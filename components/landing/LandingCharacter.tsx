@@ -5,7 +5,7 @@ export default function LandingCharacter() {
     <div className="flex items-center justify-center">
       <div className="bg-[#F9EFF0] rounded-2xl p-8 
                       lg:w-[650px] lg:h-[650px] 
-                      md:w-[250px] md:h-[250px]
+                      md:w-[400px] md:h-[400px]
                       sm:w-[200px] sm:h-[200px]
                       relative">
         <Image
