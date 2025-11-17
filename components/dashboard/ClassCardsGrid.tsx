@@ -15,6 +15,8 @@ interface ClassCardsGridProps {
   onEdit: (classId: string) => void;
   onArchive: (classId: string, className: string) => void;
   onAddClass: () => void;
+  archiveButtonText?: string;
+  showAddCard?: boolean;
 }
 
 export default function ClassCardsGrid({
@@ -25,6 +27,8 @@ export default function ClassCardsGrid({
   onEdit,
   onArchive,
   onAddClass,
+  archiveButtonText,
+  showAddCard = true,
 }: ClassCardsGridProps) {
   return (
     <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 bg-[#fcf1f0]">
@@ -37,9 +41,10 @@ export default function ClassCardsGrid({
           onToggleDropdown={onToggleDropdown}
           onEdit={onEdit}
           onArchive={onArchive}
+          archiveButtonText={archiveButtonText}
         />
       ))}
-      <AddClassCard onClick={onAddClass} />
+      {showAddCard && <AddClassCard onClick={onAddClass} />}
     </div>
   );
 }

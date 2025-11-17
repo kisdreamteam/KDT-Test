@@ -14,6 +14,7 @@ interface ClassCardProps {
   onToggleDropdown: (classId: string, event: React.MouseEvent) => void;
   onEdit: (classId: string) => void;
   onArchive: (classId: string, className: string) => void;
+  archiveButtonText?: string;
 }
 
 export default function ClassCard({
@@ -23,22 +24,25 @@ export default function ClassCard({
   onToggleDropdown,
   onEdit,
   onArchive,
+  archiveButtonText = 'Archive Class',
 }: ClassCardProps) {
   return (
     <Link
       href={`/dashboard/classes/${classItem.id}`}
       className="block"
     >
-      <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer relative group">
+      <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-xl hover:rounded-3xl hover:bg-blue-100 transition-shadow cursor-pointer relative group">
         {/* Settings Icon with Dropdown */}
         <div className="absolute top-2 right-2">
           <div className="relative">
             <button
               onClick={(e) => onToggleDropdown(classItem.id, e)}
-              className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+              className={`w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all duration-200 ${
+                openDropdownId === classItem.id ? 'text-gray-700 bg-gray-100' : ''
+              }`}
             >
               <svg
-                className="w-10 h-10"
+                className="w-5 h-5"
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >
@@ -52,33 +56,37 @@ export default function ClassCard({
 
             {/* Dropdown Menu */}
             {openDropdownId === classItem.id && (
-              <div className="absolute right-0 top-8 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
-                <div className="py-1">
+              <div className="absolute right-0 top-12 w-56 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 transform transition-all duration-200 ease-out opacity-100 translate-y-0">
+                {/* Arrow pointer */}
+                <div className="absolute -top-2 right-4 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
+                
+                <div className="py-2">
                   <button
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       onEdit(classItem.id);
                     }}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                    className="w-full px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center transition-colors duration-150 group"
                   >
-                    <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
-                    Edit
+                    <span>Edit Class</span>
                   </button>
+                  <div className="my-1 border-t border-gray-100"></div>
                   <button
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       onArchive(classItem.id, classItem.name);
                     }}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                    className="w-full px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-purple-50 hover:text-purple-700 flex items-center transition-colors duration-150 group"
                   >
-                    <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 mr-3 text-gray-400 group-hover:text-purple-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l6 6m0 0l6-6m-6 6V3" />
                     </svg>
-                    Archive Class
+                    <span>{archiveButtonText}</span>
                   </button>
                 </div>
               </div>

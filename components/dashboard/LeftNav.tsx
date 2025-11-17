@@ -78,18 +78,19 @@ export default function LeftNav({ classes, isLoadingClasses, teacherCount }: Lef
         )}
       </div>
 
+      {/* Archived Classes Button */}
+      <Link href="/dashboard/archived" className="block">
+        <div className="bg-[#4A3B8D] text-white p-3 rounded-lg mb-4 hover:bg-blue-800 transition-colors cursor-pointer">
+          <h2 className="text-center font-semibold">Archived Classes</h2>
+        </div>
+      </Link>
+
       {/* User Section */}
       <div className="mt-auto">
         <div className="bg-[#dd7f81] text-white p-3 rounded-lg mb-2">
           <div className="text-center font-semibold">
             KI-EUN
           </div>
-        </div>
-        <div className="text-center text-sm text-gray-600">
-          {teacherCount !== null 
-            ? `${teacherCount} ${teacherCount === 1 ? 'teacher' : 'teachers'}`
-            : 'Loading...'
-          }
         </div>
       </div>
     </div>

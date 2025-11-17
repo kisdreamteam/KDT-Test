@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Modal from '@/components/ui/Modal';
+import ConfirmationModal from '@/components/ui/ConfirmationModal';
 import CreateClassForm from '@/components/forms/CreateClassForm';
 import EditClassModal from '@/components/modals/EditClassModal';
 import { useDashboard } from '@/context/DashboardContext';
@@ -25,6 +26,9 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [studentCounts, setStudentCounts] = useState<Record<string, number>>({});
+  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
+  const [archiveClassId, setArchiveClassId] = useState<string | null>(null);
+  const [archiveClassName, setArchiveClassName] = useState<string>('');
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -100,29 +104,42 @@ export default function App() {
     setOpenDropdownId(openDropdownId === classId ? null : classId);
   };
 
-  // Handle archive class
-  const handleArchiveClass = async (classId: string, className: string) => {
-    if (confirm(`Are you sure you want to archive this class?`)) {
-      try {
-        const supabase = createClient();
-        const { error } = await supabase
-          .from('classes')
-          .update({ is_archived: true })
-          .eq('id', classId);
+  // Handle archive class - open confirmation modal
+  const handleArchiveClass = (classId: string, className: string) => {
+    setArchiveClassId(classId);
+    setArchiveClassName(className);
+    setIsArchiveModalOpen(true);
+    setOpenDropdownId(null);
+  };
 
-        if (error) {
-          console.error('Error archiving class:', error);
-          alert('Failed to archive class. Please try again.');
-          return;
-        }
+  // Confirm archive class
+  const handleConfirmArchive = async () => {
+    if (!archiveClassId) return;
 
-        console.log('Class archived successfully');
-        setOpenDropdownId(null);
-        refreshClasses(); // Refresh the list
-      } catch (err) {
-        console.error('Unexpected error archiving class:', err);
-        alert('An unexpected error occurred. Please try again.');
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('classes')
+        .update({ is_archived: true })
+        .eq('id', archiveClassId);
+
+      if (error) {
+        console.error('Error archiving class:', error);
+        alert('Failed to archive class. Please try again.');
+        return;
       }
+
+      console.log('Class archived successfully');
+      refreshClasses(); // Refresh the list
+      // Dispatch event to refresh sidebar classes
+      window.dispatchEvent(new CustomEvent('classUpdated'));
+    } catch (err) {
+      console.error('Unexpected error archiving class:', err);
+      alert('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsArchiveModalOpen(false);
+      setArchiveClassId(null);
+      setArchiveClassName('');
     }
   };
 
@@ -180,6 +197,27 @@ export default function App() {
           onRefresh={refreshClasses}
         />
       )}
+
+      {/* Archive Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isArchiveModalOpen}
+        onClose={() => {
+          setIsArchiveModalOpen(false);
+          setArchiveClassId(null);
+          setArchiveClassName('');
+        }}
+        onConfirm={handleConfirmArchive}
+        title="Archive Class"
+        message={`Are you sure you want to archive "${archiveClassName}"? This class will be moved to your archived classes and removed from the main dashboard.`}
+        confirmText="Archive"
+        cancelText="Cancel"
+        confirmButtonColor="purple"
+        icon={
+          <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l6 6m0 0l6-6m-6 6V3" />
+          </svg>
+        }
+      />
     </div>
   );
 }

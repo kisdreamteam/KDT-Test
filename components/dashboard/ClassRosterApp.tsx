@@ -170,7 +170,7 @@ export default function ClassRosterApp() {
   return (
     <>
       <div className="min-h-full bg-[#4A3B8D]">
-        <div className="max-w-10xl mx-auto">
+        <div className="max-w-10xl mx-auto text-white-500">
           {students.length === 0 ? (
             <EmptyState
               title="No students yet"
