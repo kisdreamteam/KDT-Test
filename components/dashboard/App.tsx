@@ -168,7 +168,7 @@ export default function App() {
 
   return (
     // Main Content Container for the class cards grid
-    <div className="max-w-full bg-[#FDFDFD]">
+    <div className="max-w-full">
       {!isLoadingClasses && classes.length === 0 ? (
         <EmptyState onAddClick={() => setIsModalOpen(true)} />
       ) : (

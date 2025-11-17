@@ -6,7 +6,9 @@ import { createClient } from '@/lib/supabase/client';
 import { DashboardProvider } from '@/context/DashboardContext';
 import LeftNav from '@/components/dashboard/LeftNav';
 import TopNav from '@/components/dashboard/TopNav';
+import BottomNav from '@/components/dashboard/BottomNav';
 import MainContent from '@/components/dashboard/MainContent';
+import Timer from '@/components/dashboard/Timer';
 
 interface TeacherProfile {
   id: string;
@@ -38,6 +40,7 @@ export default function DashboardLayout({
   const [isLoadingClasses, setIsLoadingClasses] = useState(true);
   const [currentClassName, setCurrentClassName] = useState<string | null>(null);
   const [teacherCount, setTeacherCount] = useState<number | null>(null);
+  const [isTimerOpen, setIsTimerOpen] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -218,7 +221,7 @@ export default function DashboardLayout({
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col relative pl-2 pr-2 pt-2">
+      <div className="flex-1 flex flex-col relative pl-2 pr-2 pt-2 bg-[#4A3B8D]">
         <div className="flex-1 flex flex-col relative">
           {/* Top Bar */}
           <TopNav
@@ -236,10 +239,26 @@ export default function DashboardLayout({
             isLoadingProfile,
             refreshClasses: fetchClasses
           }}>
-            <MainContent currentClassName={currentClassName}>
-              {children}
-            </MainContent>
+            {isTimerOpen ? (
+              <Timer onClose={() => setIsTimerOpen(false)} />
+            ) : (
+              <MainContent currentClassName={currentClassName}>
+                {children}
+              </MainContent>
+            )}
           </DashboardProvider>
+
+          {/* Bottom Bar - Only visible when on a class page */}
+          {currentClassName && (
+            <BottomNav
+              isLoadingProfile={isLoadingProfile}
+              currentClassName={currentClassName}
+              teacherProfile={teacherProfile}
+              onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+              sidebarOpen={sidebarOpen}
+              onTimerClick={() => setIsTimerOpen(true)}
+            />
+          )}
         </div>
       </div>
     </div>
