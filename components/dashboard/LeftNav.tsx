@@ -56,7 +56,7 @@ export default function LeftNav({ classes, isLoadingClasses, teacherCount }: Lef
               href={`/dashboard/classes/${cls.id}`}
               className="block"
             >
-              <div className="flex items-center space-x-3 p-2 hover:bg-purple-300 rounded cursor-pointer transition-colors">
+              <div className="flex items-center space-x-3 p-2 hover:bg-blue-200 rounded cursor-pointer transition-colors">
                 {/* Class Image */}
                 <div className="w-8 h-8 flex-shrink-0">
                   <Image

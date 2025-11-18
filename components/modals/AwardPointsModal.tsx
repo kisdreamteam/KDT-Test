@@ -205,20 +205,14 @@ export default function AwardPointsModal({
                 </svg>
               </div>
             </div>
-            <span className="text-lg font-bold text-gray-900 lowercase">{student.first_name} {student.last_name}</span>
+            <span className="text-5xl font-bold text-gray-900 lowercase">{student.first_name} {student.last_name}</span>
             
             {/* Point Totals */}
-            <div className="flex items-center gap-2 ml-4">
-              <span className="px-3 py-1 bg-gray-100 border border-gray-300 rounded-full text-sm text-gray-700">
-                (0) Points
+            <div className="flex items-left gap-2 ml-4">
+              <span className="px-3 py-1 bg-gray-100 border border-gray-300 rounded-full text-5xl font-bold text-red-600">
+                0 Points
               </span>
-              <span className="px-3 py-1 bg-green-500 text-white rounded-full text-sm font-medium">
-                (89) CLASS
-              </span>
-              <span className="px-3 py-1 bg-yellow-400 text-white rounded-full text-sm font-medium">
-                (100) Grade
-              </span>
-            </div>
+             </div>
           </div>
         </div>
 
