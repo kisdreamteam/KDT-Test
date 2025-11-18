@@ -14,6 +14,13 @@ interface AwardPointsModalProps {
   student: Student;
   classId: string;
   onRefresh?: () => void;
+  onPointsAwarded?: (awardInfo: {
+    studentAvatar: string;
+    studentFirstName: string;
+    points: number;
+    categoryName: string;
+    categoryIcon?: string;
+  }) => void;
 }
 
 export default function AwardPointsModal({
@@ -22,6 +29,7 @@ export default function AwardPointsModal({
   student,
   classId,
   onRefresh,
+  onPointsAwarded,
 }: AwardPointsModalProps) {
   console.log('AWARD POINTS MODAL: classId received:', classId);
   
@@ -135,6 +143,18 @@ export default function AwardPointsModal({
         if (onRefresh) {
           onRefresh();
         }
+        
+        // Notify parent about the award
+        if (onPointsAwarded) {
+          onPointsAwarded({
+            studentAvatar: student.avatar || "/images/classes/avatars/avatar-01.png",
+            studentFirstName: student.first_name,
+            points: points,
+            categoryName: category.name,
+            categoryIcon: category.icon,
+          });
+        }
+        
         // Close the modal
         onClose();
       }
@@ -173,6 +193,18 @@ export default function AwardPointsModal({
         if (onRefresh) {
           onRefresh();
         }
+        
+        // Notify parent about the award (custom points)
+        if (onPointsAwarded) {
+          onPointsAwarded({
+            studentAvatar: student.avatar || "/images/classes/avatars/avatar-01.png",
+            studentFirstName: student.first_name,
+            points: customPoints,
+            categoryName: customMemo || 'Custom Points',
+            categoryIcon: undefined, // No icon for custom points
+          });
+        }
+        
         // Close the modal
         onClose();
       }
@@ -192,7 +224,7 @@ export default function AwardPointsModal({
           <div className="flex items-center gap-3">
             <div className="relative">
               <Image
-                src={student.avatar || "/images/students/avatars/student_avatar_1.png"}
+                src={student.avatar || "/images/classes/avatars/avatar-01.png"}
                 alt={`${student.first_name} ${student.last_name}`}
                 width={48}
                 height={48}
@@ -210,7 +242,7 @@ export default function AwardPointsModal({
             {/* Point Totals */}
             <div className="flex items-left gap-2 ml-4">
               <span className="px-3 py-1 bg-gray-100 border border-gray-300 rounded-full text-5xl font-bold text-red-600">
-                0 Points
+                {student.points || 0} Points
               </span>
              </div>
           </div>

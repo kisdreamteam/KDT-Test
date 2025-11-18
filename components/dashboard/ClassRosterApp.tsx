@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AddStudentsModal from '@/components/modals/AddStudentsModal';
 import AwardPointsModal from '@/components/modals/AwardPointsModal';
+import EditStudentModal from '@/components/modals/EditStudentModal';
+import PointsAwardedConfirmationModal from '@/components/modals/PointsAwardedConfirmationModal';
 import { Student } from '@/lib/types';
 import LoadingState from './LoadingState';
 import ErrorState from './ErrorState';
@@ -22,6 +24,16 @@ export default function ClassRosterApp() {
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [isPointsModalOpen, setPointsModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [isEditStudentModalOpen, setIsEditStudentModalOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
+  const [awardInfo, setAwardInfo] = useState<{
+    studentAvatar: string;
+    studentFirstName: string;
+    points: number;
+    categoryName: string;
+    categoryIcon?: string;
+  } | null>(null);
 
   useEffect(() => {
     if (classId) {
@@ -122,9 +134,12 @@ export default function ClassRosterApp() {
 
   // Handle edit student
   const handleEditStudent = (studentId: string) => {
-    console.log('Edit student:', studentId);
+    const studentToEdit = students.find(s => s.id === studentId);
+    if (studentToEdit) {
+      setEditingStudent(studentToEdit);
+      setIsEditStudentModalOpen(true);
+    }
     setOpenDropdownId(null);
-    alert('Edit functionality will be implemented soon!');
   };
 
   // Handle delete student
@@ -157,6 +172,18 @@ export default function ClassRosterApp() {
   const handleStudentClick = (student: Student) => {
     setSelectedStudent(student);
     setPointsModalOpen(true);
+  };
+
+  // Handle points awarded callback
+  const handlePointsAwarded = (info: {
+    studentAvatar: string;
+    studentFirstName: string;
+    points: number;
+    categoryName: string;
+    categoryIcon?: string;
+  }) => {
+    setAwardInfo(info);
+    setIsConfirmationModalOpen(true);
   };
 
   if (isLoading) {
@@ -211,6 +238,34 @@ export default function ClassRosterApp() {
           student={selectedStudent}
           classId={classId}
           onRefresh={fetchStudents}
+          onPointsAwarded={handlePointsAwarded}
+        />
+      )}
+
+      {/* Edit Student Modal */}
+      <EditStudentModal
+        isOpen={isEditStudentModalOpen}
+        onClose={() => {
+          setIsEditStudentModalOpen(false);
+          setEditingStudent(null);
+        }}
+        student={editingStudent}
+        onRefresh={fetchStudents}
+      />
+
+      {/* Points Awarded Confirmation Modal */}
+      {awardInfo && (
+        <PointsAwardedConfirmationModal
+          isOpen={isConfirmationModalOpen}
+          onClose={() => {
+            setIsConfirmationModalOpen(false);
+            setAwardInfo(null);
+          }}
+          studentAvatar={awardInfo.studentAvatar}
+          studentFirstName={awardInfo.studentFirstName}
+          points={awardInfo.points}
+          categoryName={awardInfo.categoryName}
+          categoryIcon={awardInfo.categoryIcon}
         />
       )}
     </>

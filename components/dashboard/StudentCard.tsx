@@ -23,7 +23,7 @@ export default function StudentCard({
       key={student.id}
       data-student-card={`${student.id}`}
       onClick={() => onClick(student)}
-      className="bg-white rounded-lg max-h-50 shadow-md p-6 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer"
+      className="bg-white rounded-lg hover:bg-blue-100 max-h-50 shadow-md p-6 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer"
       style={{ position: 'relative', zIndex: 1 }}
     >
       {/* Settings Icon with Dropdown */}
