@@ -14,6 +14,7 @@ interface BottomNavProps {
   onToggleSidebar: () => void;
   sidebarOpen: boolean;
   onTimerClick: () => void;
+  onRandomClick: () => void;
 }
 
 export default function BottomNav({ 
@@ -22,7 +23,8 @@ export default function BottomNav({
   teacherProfile, 
   onToggleSidebar,
   sidebarOpen,
-  onTimerClick
+  onTimerClick,
+  onRandomClick
 }: BottomNavProps) {
   // Calculate left margin based on sidebar state
   // w-76 = 19rem = 304px, plus pl-2 padding (0.5rem = 8px) on outer container
@@ -55,7 +57,10 @@ export default function BottomNav({
         </div>
 
         {/* Random Button */}
-        <div className="w-[200px] bg-white text-white p-3 mb-4 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2">
+        <div 
+          onClick={onRandomClick}
+          className="w-[200px] bg-white text-white p-3 mb-4 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2"
+        >
           {/* Shuffle icon */}
           <svg 
             className="w-5 h-5 text-gray-400" 

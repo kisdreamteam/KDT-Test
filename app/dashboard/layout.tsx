@@ -9,6 +9,7 @@ import TopNav from '@/components/dashboard/TopNav';
 import BottomNav from '@/components/dashboard/BottomNav';
 import MainContent from '@/components/dashboard/MainContent';
 import Timer from '@/components/dashboard/Timer';
+import Random from '@/components/dashboard/Random';
 
 interface TeacherProfile {
   id: string;
@@ -41,6 +42,7 @@ export default function DashboardLayout({
   const [currentClassName, setCurrentClassName] = useState<string | null>(null);
   const [teacherCount, setTeacherCount] = useState<number | null>(null);
   const [isTimerOpen, setIsTimerOpen] = useState(false);
+  const [isRandomOpen, setIsRandomOpen] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -241,6 +243,8 @@ export default function DashboardLayout({
           }}>
             {isTimerOpen ? (
               <Timer onClose={() => setIsTimerOpen(false)} />
+            ) : isRandomOpen ? (
+              <Random onClose={() => setIsRandomOpen(false)} />
             ) : (
               <MainContent currentClassName={currentClassName}>
                 {children}
@@ -257,6 +261,7 @@ export default function DashboardLayout({
               onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
               sidebarOpen={sidebarOpen}
               onTimerClick={() => setIsTimerOpen(true)}
+              onRandomClick={() => setIsRandomOpen(true)}
             />
           )}
         </div>
