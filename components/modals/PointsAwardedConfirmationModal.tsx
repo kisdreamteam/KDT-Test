@@ -17,7 +17,7 @@ interface PointsAwardedConfirmationModalProps {
 // Function to play a chime sound for positive points
 const playChime = async () => {
   try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) {
       return;
     }
@@ -61,7 +61,7 @@ const playChime = async () => {
 // Function to play a boing sound for negative points
 const playBoing = async () => {
   try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) {
       return;
     }

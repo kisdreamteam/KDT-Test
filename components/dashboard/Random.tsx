@@ -12,7 +12,7 @@ interface RandomProps {
 // Function to play a click sound for wheel spinning
 const playClickSound = async () => {
   try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) {
       return;
     }
