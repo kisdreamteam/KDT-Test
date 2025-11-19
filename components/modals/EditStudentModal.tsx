@@ -51,7 +51,7 @@ export default function EditStudentModal({ isOpen, onClose, student, onRefresh }
       setLastName(student.last_name || '');
       setStudentNumber(student.student_number || '');
       setSelectedAvatar(student.avatar || '/images/classes/avatars/avatar-01.png');
-      setGender(''); // Placeholder for now, not connected to DB
+      setGender(student.gender || '');
       setIsLoadingData(false);
     } else if (!isOpen) {
       // Reset form when modal closes
@@ -86,8 +86,8 @@ export default function EditStudentModal({ isOpen, onClose, student, onRefresh }
           first_name: firstName.trim(),
           last_name: lastName.trim(),
           student_number: studentNumber.trim() || null,
+          gender: gender.trim() || null,
           avatar: selectedAvatar
-          // Note: gender is not saved yet as it's a placeholder
         })
         .eq('id', student.id);
 

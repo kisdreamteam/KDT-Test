@@ -58,9 +58,9 @@ export default function AwardPointsModal({
         .eq('class_id', classId);
 
       console.log('AWARD POINTS MODAL: Fetched categories data:', data);
-      console.error('AWARD POINTS MODAL: Fetched categories error:', error);
 
       if (error) {
+        console.error('AWARD POINTS MODAL: Fetched categories error:', error);
         console.error('Error fetching categories:', error?.message || error);
         setCategories([]);
       } else {

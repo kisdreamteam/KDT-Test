@@ -101,6 +101,7 @@ export default function ClassRosterApp() {
           points,
           avatar,
           student_number,
+          gender,
           class_id
         `)
         .eq('class_id', classId)

@@ -16,6 +16,7 @@ export interface Student {
   points: number;
   avatar?: string; // Optional, may have a default
   student_number: string | null;
+  gender: string | null; // Optional, nullable
   class_id: string;
 }
 

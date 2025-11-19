@@ -116,7 +116,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       const supabase = createClient();
       const { data: studentsData, error } = await supabase
         .from('students')
-        .select('id, first_name, last_name, avatar, student_number, class_id, points')
+        .select('id, first_name, last_name, avatar, student_number, gender, class_id, points')
         .eq('class_id', classId)
         .order('last_name', { ascending: true });
 

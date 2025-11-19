@@ -14,6 +14,101 @@ interface PointsAwardedConfirmationModalProps {
   categoryIcon?: string;
 }
 
+// Function to play a chime sound for positive points
+const playChime = async () => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) {
+      return;
+    }
+    
+    const audioContext = new AudioContextClass();
+    
+    // Resume audio context if suspended (required by some browsers)
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+    
+    // Create a pleasant chime using multiple oscillators
+    const frequencies = [523.25, 659.25, 783.99]; // C, E, G notes (C major chord)
+    const duration = 0.3; // 300ms
+    
+    frequencies.forEach((freq, index) => {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = freq;
+      oscillator.type = 'sine';
+      
+      // Create a fade-out envelope
+      const now = audioContext.currentTime;
+      gainNode.gain.setValueAtTime(0.3, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration);
+      
+      // Stagger the notes slightly for a more pleasant effect
+      oscillator.start(now + index * 0.05);
+      oscillator.stop(now + duration + index * 0.05);
+    });
+  } catch (error) {
+    // Silently fail if audio cannot be played (e.g., no user interaction yet)
+    console.log('Could not play chime sound:', error);
+  }
+};
+
+// Function to play a boing sound for negative points
+const playBoing = async () => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) {
+      return;
+    }
+    
+    const audioContext = new AudioContextClass();
+    
+    // Resume audio context if suspended (required by some browsers)
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+    
+    // Create a boing sound with a descending frequency sweep
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    // Start at a higher frequency and sweep down (boing effect)
+    const startFreq = 200; // Lower starting frequency
+    const endFreq = 100;   // Even lower end frequency
+    const duration = 0.4;   // 400ms
+    
+    oscillator.type = 'sawtooth'; // Sawtooth gives a more bouncy/boing-like sound
+    
+    const now = audioContext.currentTime;
+    
+    // Set initial frequency
+    oscillator.frequency.setValueAtTime(startFreq, now);
+    // Sweep down to create the boing effect
+    oscillator.frequency.exponentialRampToValueAtTime(endFreq, now + duration);
+    
+    // Create a bouncy envelope - quick attack, then decay with a slight bounce
+    gainNode.gain.setValueAtTime(0, now);
+    gainNode.gain.linearRampToValueAtTime(0.4, now + 0.05); // Quick attack
+    gainNode.gain.linearRampToValueAtTime(0.3, now + 0.1);  // Slight bounce
+    gainNode.gain.linearRampToValueAtTime(0.2, now + 0.15); // Another bounce
+    gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration); // Fade out
+    
+    oscillator.start(now);
+    oscillator.stop(now + duration);
+  } catch (error) {
+    // Silently fail if audio cannot be played (e.g., no user interaction yet)
+    console.log('Could not play boing sound:', error);
+  }
+};
+
 export default function PointsAwardedConfirmationModal({
   isOpen,
   onClose,
@@ -23,12 +118,24 @@ export default function PointsAwardedConfirmationModal({
   categoryName,
   categoryIcon,
 }: PointsAwardedConfirmationModalProps) {
-  // Auto-dismiss after 0.5 seconds
+  // Play appropriate sound when modal opens based on points value
+  useEffect(() => {
+    if (isOpen) {
+      if (points > 0) {
+        playChime(); // Positive points - play chime
+      } else if (points < 0) {
+        playBoing(); // Negative points - play boing
+      }
+      // If points is 0, don't play any sound
+    }
+  }, [isOpen, points]);
+
+  // Auto-dismiss after 1 second
   useEffect(() => {
     if (isOpen) {
       const timer = setTimeout(() => {
         onClose();
-      }, 1000); // 0.5 seconds
+      }, 1000); // 1 second
 
       return () => clearTimeout(timer);
     }
