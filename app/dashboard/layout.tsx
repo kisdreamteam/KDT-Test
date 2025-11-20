@@ -212,7 +212,7 @@ export default function DashboardLayout({
 
   return (
     // Outer Container of the left-nav and main content container
-    <div className="flex w-sceen h-screen bg-[#4A3B8D] pl-2 pb-0 pt-0">
+    <div className="flex flex-row h-screen bg-[#4A3B8D] pl-2 pb-0 pt-0">
       {/* Left Sidebar */}
       <div className={`${sidebarOpen ? 'w-76' : 'w-0'} transition-all duration-300 overflow-hidden bg-white flex flex-col`}>
         <LeftNav 
@@ -247,7 +247,7 @@ export default function DashboardLayout({
               <Random onClose={() => setIsRandomOpen(false)} />
             ) : (
               <div className="flex-1 flex flex-col min-h-0">
-                <div className="flex-1 overflow-y-auto" style={currentClassName && !isTimerOpen && !isRandomOpen ? { maxHeight: 'calc(100% - 80px)' } : {}}>
+                <div className="flex-1 overflow-y-auto " style={currentClassName && !isTimerOpen && !isRandomOpen ? { maxHeight: 'calc(100% - 80px)' } : {}}>
                   <MainContent currentClassName={currentClassName}>
                     {children}
                   </MainContent>

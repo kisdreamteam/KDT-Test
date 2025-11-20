@@ -23,7 +23,7 @@ export default function StudentCard({
       key={student.id}
       data-student-card={`${student.id}`}
       onClick={() => onClick(student)}
-      className="bg-white rounded-lg hover:bg-blue-100 max-h-50 shadow-md p-6 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer"
+      className="bg-white rounded-lg hover:bg-blue-100 hover:rounded-3xl shadow-md p-6 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer aspect-square flex flex-col"
       style={{ position: 'relative', zIndex: 1 }}
     >
       {/* Settings Icon with Dropdown */}
@@ -91,7 +91,7 @@ export default function StudentCard({
       </div>
 
       {/* Student Avatar */}
-      <div className="flex justify-center mb-4 pointer-events-none">
+      <div className="flex justify-center mb-4 pointer-events-none flex-shrink-0">
         <Image
           src={student.avatar || "/images/students/avatars/student_avatar_1.png"}
           alt={`${student.first_name} ${student.last_name} avatar`}
@@ -102,14 +102,14 @@ export default function StudentCard({
       </div>
 
       {/* Student Name */}
-      <div className="text-center mb-3 pointer-events-none">
+      <div className="text-center mb-3 pointer-events-none flex-shrink-0">
         <h3 className="text-lg font-semibold text-gray-900">
           {student.first_name}
         </h3>
       </div>
 
       {/* Student Points */}
-      <div className="text-center pointer-events-none">
+      <div className="text-center pointer-events-none mt-auto">
         <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#FDF2F0] text-red-400 text-xl font-large font-bold">
           {student.points || 0}
         </div>

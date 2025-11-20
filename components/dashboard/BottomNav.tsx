@@ -38,7 +38,7 @@ export default function BottomNav({
     // Bottom Nav Container - Fixed at bottom
     <div 
       className="fixed bottom-0 bg-white h-20 py-6 flex items-center justify-center gap-15 pl-10 pt-10 z-50 transition-all duration-300 border-t border-[#4A3B8D]"
-      style={{ left: leftPosition, right: '16px' }}>
+      style={{ left: leftPosition, right: '8px' }}>
         {/* Toolkit Button */}
         <div className="w-[200px] bg-white text-white p-3 mb-4 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2">
           {/* 9 dots grid icon */}

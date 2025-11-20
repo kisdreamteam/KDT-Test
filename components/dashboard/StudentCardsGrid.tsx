@@ -22,7 +22,12 @@ export default function StudentCardsGrid({
   onAddStudent,
 }: StudentCardsGridProps) {
   return (
-    <div className="grid sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-6 mb-8 ">
+    <div 
+      className="grid gap-6 mb-8"
+      style={{
+        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))'
+      }}
+    >
       {students.map((student) => (
         <StudentCard
           key={student.id}

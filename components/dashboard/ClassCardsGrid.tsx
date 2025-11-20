@@ -31,7 +31,12 @@ export default function ClassCardsGrid({
   showAddCard = true,
 }: ClassCardsGridProps) {
   return (
-    <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 bg-[#fcf1f0]">
+    <div 
+      className="grid gap-6 bg-[#fcf1f0]"
+      style={{
+        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))'
+      }}
+    >
       {classes.map((cls) => (
         <ClassCard
           key={cls.id}
