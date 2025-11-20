@@ -233,6 +233,10 @@ export default function DashboardLayout({
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           />
 
+          <div className="flex-1 flex flex-row bg-[#fcf1f0] top-2 max-h-[30px] relative">
+
+          </div>
+
           {/* Main Content */}
           <DashboardProvider value={{ 
             classes, 

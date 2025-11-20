@@ -49,7 +49,8 @@ export default function EditStudentModal({ isOpen, onClose, student, onRefresh }
     if (isOpen && student) {
       setFirstName(student.first_name || '');
       setLastName(student.last_name || '');
-      setStudentNumber(student.student_number || '');
+      // Convert number to string for input field
+      setStudentNumber(student.student_number?.toString() || '');
       setSelectedAvatar(student.avatar || '/images/classes/avatars/avatar-01.png');
       setGender(student.gender || '');
       setIsLoadingData(false);
@@ -80,12 +81,24 @@ export default function EditStudentModal({ isOpen, onClose, student, onRefresh }
     setIsLoading(true);
     try {
       const supabase = createClient();
+      // Convert student_number string to number or null
+      const studentNumberValue = studentNumber.trim() 
+        ? parseInt(studentNumber.trim(), 10) 
+        : null;
+      
+      // Validate that if provided, it's a valid number
+      if (studentNumber.trim() && isNaN(studentNumberValue as number)) {
+        alert('Please enter a valid student number.');
+        setIsLoading(false);
+        return;
+      }
+
       const { error } = await supabase
         .from('students')
         .update({
           first_name: firstName.trim(),
           last_name: lastName.trim(),
-          student_number: studentNumber.trim() || null,
+          student_number: studentNumberValue,
           gender: gender.trim() || null,
           avatar: selectedAvatar
         })
