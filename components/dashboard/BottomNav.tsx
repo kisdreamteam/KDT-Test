@@ -26,15 +26,19 @@ export default function BottomNav({
   onTimerClick,
   onRandomClick
 }: BottomNavProps) {
-  // Calculate left margin based on sidebar state
-  // w-76 = 19rem = 304px, plus pl-2 padding (0.5rem = 8px) on outer container
-  // Total: 304px + 8px = 312px when sidebar is open
-  const leftMargin = sidebarOpen ? '312px' : '8px';
+  // Calculate left position based on sidebar state
+  // w-76 = 19rem = 304px (sidebar width)
+  // Outer container has pl-2 (8px), main content has pl-2 pr-2 (8px each side)
+  // When sidebar open: left = 8px (outer) + 304px (sidebar) + 8px (main content left) = 320px
+  // When sidebar closed: left = 8px (outer) + 8px (main content left) = 16px
+  // Right padding: 8px (main content right) + 8px (outer) = 16px
+  const leftPosition = sidebarOpen ? '320px' : '16px';
   
   return (
     // Bottom Nav Container - Fixed at bottom
     <div 
-      className="bg-white h-20 py-6 w-full flex items-center justify-center gap-15 pl-10 pt-10 bg-white h-15 py-6 transition-all duration-300">
+      className="fixed bottom-0 bg-white h-20 py-6 flex items-center justify-center gap-15 pl-10 pt-10 z-50 transition-all duration-300 border-t border-[#4A3B8D]"
+      style={{ left: leftPosition, right: '16px' }}>
         {/* Toolkit Button */}
         <div className="w-[200px] bg-white text-white p-3 mb-4 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2">
           {/* 9 dots grid icon */}

@@ -224,7 +224,6 @@ export default function DashboardLayout({
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col relative pl-2 pr-2 pt-2 bg-[#4A3B8D]">
-        <div className="flex-1 flex flex-col relative">
           {/* Top Bar */}
           <TopNav
             isLoadingProfile={isLoadingProfile}
@@ -233,9 +232,6 @@ export default function DashboardLayout({
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           />
 
-          <div className="flex-1 flex flex-row bg-[#fcf1f0] top-2 max-h-[30px] relative">
-
-          </div>
 
           {/* Main Content */}
           <DashboardProvider value={{ 
@@ -250,14 +246,21 @@ export default function DashboardLayout({
             ) : isRandomOpen ? (
               <Random onClose={() => setIsRandomOpen(false)} />
             ) : (
-              <MainContent currentClassName={currentClassName}>
-                {children}
-              </MainContent>
+              <div className="flex-1 flex flex-col min-h-0">
+                <div className="flex-1 overflow-y-auto" style={currentClassName && !isTimerOpen && !isRandomOpen ? { maxHeight: 'calc(100% - 80px)' } : {}}>
+                  <MainContent currentClassName={currentClassName}>
+                    {children}
+                  </MainContent>
+                </div>
+                {currentClassName && !isTimerOpen && !isRandomOpen && (
+                  <div className="h-20 flex-shrink-0"></div>
+                )}
+              </div>
             )}
           </DashboardProvider>
 
-          {/* Bottom Bar - Only visible when on a class page */}
-          {currentClassName && (
+          {/* Bottom Bar - Only visible when on a class page and not viewing timer/random */}
+          {currentClassName && !isTimerOpen && !isRandomOpen && (
             <BottomNav
               isLoadingProfile={isLoadingProfile}
               currentClassName={currentClassName}
@@ -269,7 +272,6 @@ export default function DashboardLayout({
             />
           )}
         </div>
-      </div>
     </div>
   );
 }

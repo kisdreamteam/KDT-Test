@@ -22,7 +22,7 @@ export default function StudentCardsGrid({
   onAddStudent,
 }: StudentCardsGridProps) {
   return (
-    <div className="grid sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 mb-8 ">
+    <div className="grid sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-6 mb-8 ">
       {students.map((student) => (
         <StudentCard
           key={student.id}
