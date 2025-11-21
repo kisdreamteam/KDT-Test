@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AddStudentsModal from '@/components/modals/AddStudentsModal';
@@ -8,6 +8,7 @@ import AwardPointsModal from '@/components/modals/AwardPointsModal';
 import EditStudentModal from '@/components/modals/EditStudentModal';
 import PointsAwardedConfirmationModal from '@/components/modals/PointsAwardedConfirmationModal';
 import { Student } from '@/lib/types';
+import { useStudentSort } from '@/context/StudentSortContext';
 import LoadingState from './LoadingState';
 import ErrorState from './ErrorState';
 import EmptyState from './EmptyState';
@@ -16,6 +17,7 @@ import StudentCardsGrid from './StudentCardsGrid';
 export default function ClassRosterApp() {
   const params = useParams();
   const classId = params.classId as string;
+  const { sortBy } = useStudentSort();
   const [students, setStudents] = useState<Student[]>([]);
   const [className, setClassName] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
@@ -187,6 +189,28 @@ export default function ClassRosterApp() {
     setIsConfirmationModalOpen(true);
   };
 
+  // Sort students based on sortBy option
+  const sortedStudents = useMemo(() => {
+    const studentsCopy = [...students];
+    
+    if (sortBy === 'number') {
+      return studentsCopy.sort((a, b) => {
+        // Handle null student numbers - put them at the end
+        if (a.student_number === null && b.student_number === null) return 0;
+        if (a.student_number === null) return 1;
+        if (b.student_number === null) return -1;
+        return a.student_number - b.student_number;
+      });
+    } else {
+      // Alphabetical sort by last name, then first name
+      return studentsCopy.sort((a, b) => {
+        const lastNameCompare = (a.last_name || '').localeCompare(b.last_name || '');
+        if (lastNameCompare !== 0) return lastNameCompare;
+        return (a.first_name || '').localeCompare(b.first_name || '');
+      });
+    }
+  }, [students, sortBy]);
+
   if (isLoading) {
     return <LoadingState message="Loading students..." />;
   }
@@ -208,7 +232,7 @@ export default function ClassRosterApp() {
             />
           ) : (
             <StudentCardsGrid
-              students={students}
+              students={sortedStudents}
               openDropdownId={openDropdownId}
               onToggleDropdown={toggleDropdown}
               onEdit={handleEditStudent}

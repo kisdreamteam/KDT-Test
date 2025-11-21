@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { DashboardProvider } from '@/context/DashboardContext';
+import { StudentSortProvider } from '@/context/StudentSortContext';
 import LeftNav from '@/components/dashboard/LeftNav';
 import TopNav from '@/components/dashboard/TopNav';
 import BottomNav from '@/components/dashboard/BottomNav';
@@ -224,40 +225,42 @@ export default function DashboardLayout({
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col relative pl-2 pr-2 pt-2 bg-[#4A3B8D]">
-          {/* Top Bar */}
-          <TopNav
-            isLoadingProfile={isLoadingProfile}
-            currentClassName={currentClassName}
-            teacherProfile={teacherProfile}
-            onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-          />
+          <StudentSortProvider>
+            {/* Top Bar */}
+            <TopNav
+              isLoadingProfile={isLoadingProfile}
+              currentClassName={currentClassName}
+              teacherProfile={teacherProfile}
+              onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+            />
 
 
-          {/* Main Content */}
-          <DashboardProvider value={{ 
-            classes, 
-            isLoadingClasses, 
-            teacherProfile, 
-            isLoadingProfile,
-            refreshClasses: fetchClasses
-          }}>
-            {isTimerOpen ? (
-              <Timer onClose={() => setIsTimerOpen(false)} />
-            ) : isRandomOpen ? (
-              <Random onClose={() => setIsRandomOpen(false)} />
-            ) : (
-              <div className="flex-1 flex flex-col min-h-0">
-                <div className="flex-1 overflow-y-auto " style={currentClassName && !isTimerOpen && !isRandomOpen ? { maxHeight: 'calc(100% - 80px)' } : {}}>
-                  <MainContent currentClassName={currentClassName}>
-                    {children}
-                  </MainContent>
+            {/* Main Content */}
+            <DashboardProvider value={{ 
+              classes, 
+              isLoadingClasses, 
+              teacherProfile, 
+              isLoadingProfile,
+              refreshClasses: fetchClasses
+            }}>
+              {isTimerOpen ? (
+                <Timer onClose={() => setIsTimerOpen(false)} />
+              ) : isRandomOpen ? (
+                <Random onClose={() => setIsRandomOpen(false)} />
+              ) : (
+                <div className="flex-1 flex flex-col min-h-0">
+                  <div className="flex-1 overflow-y-auto " style={currentClassName && !isTimerOpen && !isRandomOpen ? { maxHeight: 'calc(100% - 80px)' } : {}}>
+                    <MainContent currentClassName={currentClassName}>
+                      {children}
+                    </MainContent>
+                  </div>
+                  {currentClassName && !isTimerOpen && !isRandomOpen && (
+                    <div className="h-20 flex-shrink-0"></div>
+                  )}
                 </div>
-                {currentClassName && !isTimerOpen && !isRandomOpen && (
-                  <div className="h-20 flex-shrink-0"></div>
-                )}
-              </div>
-            )}
-          </DashboardProvider>
+              )}
+            </DashboardProvider>
+          </StudentSortProvider>
 
           {/* Bottom Bar - Only visible when on a class page and not viewing timer/random */}
           {currentClassName && !isTimerOpen && !isRandomOpen && (

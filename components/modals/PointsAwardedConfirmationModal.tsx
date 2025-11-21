@@ -135,7 +135,7 @@ export default function PointsAwardedConfirmationModal({
     if (isOpen) {
       const timer = setTimeout(() => {
         onClose();
-      }, 1000); // 1 second
+      }, 1500); // 1 second
 
       return () => clearTimeout(timer);
     }
