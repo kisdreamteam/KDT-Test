@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Modal from '@/components/ui/Modal';
 import { createClient } from '@/lib/supabase/client';
@@ -43,6 +44,7 @@ interface EditClassModalProps {
 }
 
 export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: EditClassModalProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'info' | 'students' | 'teachers' | 'settings'>('info');
   const [className, setClassName] = useState('');
   const [grade, setGrade] = useState('');
@@ -57,6 +59,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
   // Generate array of all available icons
   const availableIcons = Array.from({ length: 15 }, (_, i) => 
@@ -335,6 +338,23 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
     setHasUnsavedChanges(true);
   };
 
+  const handleGenderToggle = (studentId: string, targetGender: 'Boy' | 'Girl') => {
+    // Get current gender from state to ensure we have the latest value
+    setStudents(prevStudents => {
+      const student = prevStudents.find(s => s.id === studentId);
+      const currentGender = student?.gender;
+      // Toggle: if already the target gender, set to null; otherwise set to target gender
+      const newGender = currentGender === targetGender ? null : targetGender;
+      
+      return prevStudents.map(s =>
+        s.id === studentId
+          ? { ...s, gender: newGender }
+          : s
+      );
+    });
+    setHasUnsavedChanges(true);
+  };
+
   const handleSaveAllChanges = async () => {
     setIsLoading(true);
     try {
@@ -392,13 +412,26 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       // Refresh students and reset change tracking
       await fetchStudents();
       setHasUnsavedChanges(false);
-      alert('All changes saved successfully!');
+      
+      // Show confirmation popup instead of alert
+      setShowSaveConfirmation(true);
     } catch (err) {
       console.error('Error saving changes:', err);
       alert('Failed to save some changes. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleReturnToDashboard = () => {
+    setShowSaveConfirmation(false);
+    onClose();
+    onRefresh();
+    router.push('/dashboard');
+  };
+
+  const handleContinueEditing = () => {
+    setShowSaveConfirmation(false);
   };
 
   const handleCancelChanges = () => {
@@ -677,9 +710,10 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                       return (
                         <div
                           key={student.id}
-                          className="w-full flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                          className="w-full flex gap-1 items-center justify-between p-2 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
                         >
-                          <div className="flex items-center space-x-3 flex-1">
+                          {/* image and edit inputs with radio buttons with rounded corners */}
+                          <div className="flex items-center space-x-1 flex-1 gap-4">
                             <div className="w-10 h-10 flex-shrink-0">
                               <Image
                                 src={imageSrc}
@@ -704,7 +738,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                                 );
                                 setHasUnsavedChanges(true);
                               }}
-                              className="w-55 h-8 rounded border border-gray-300 bg-white px-2 text-sm text-gray-800 outline-none focus:border-[#4A3B8D] focus:ring-1 focus:ring-[#4A3B8D]"
+                              className="w-50 h-8 rounded border border-gray-300 bg-white px-2 text-sm text-gray-800 outline-none focus:border-[#4A3B8D] focus:ring-1 focus:ring-[#4A3B8D]"
                               placeholder="First name"
                             />
                             {/* Last Name Input */}
@@ -722,12 +756,10 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                                 );
                                 setHasUnsavedChanges(true);
                               }}
-                              className="w-55 h-8 rounded border border-gray-300 bg-white px-2 text-sm text-gray-800 outline-none focus:border-[#4A3B8D] focus:ring-1 focus:ring-[#4A3B8D]"
+                              className="w-50 h-8 rounded border border-gray-300 bg-white px-2 text-sm text-gray-800 outline-none focus:border-[#4A3B8D] focus:ring-1 focus:ring-[#4A3B8D]"
                               placeholder="Last name (optional)"
                             />
-                          </div>
-                          {/* Student Number and Gender Controls */}
-                          <div className="flex items-center gap-4 ml-2">
+                            {/* Student Number and Gender Controls */}
                             {/* Student Number Input */}
                             <input
                               type="text"
@@ -748,7 +780,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                                   setHasUnsavedChanges(true);
                                 }
                               }}
-                              className="w-25 h-8 rounded border border-gray-300 bg-white px-2 text-center text-sm text-gray-800 outline-none focus:border-[#4A3B8D] focus:ring-1 focus:ring-[#4A3B8D]"
+                              className="w-20 h-8 rounded border border-gray-300 bg-white px-2 text-center text-sm text-gray-800 outline-none focus:border-[#4A3B8D] focus:ring-1 focus:ring-[#4A3B8D]"
                               placeholder="Number"
                             />
                             
@@ -757,8 +789,8 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                               className="flex items-center gap-2 cursor-pointer"
                               onClick={(e) => {
                                 e.preventDefault();
-                                // Toggle: if already Boy, set to null; otherwise set to Boy
-                                handleGenderChange(student.id, currentGender === 'Boy' ? null : 'Boy');
+                                e.stopPropagation();
+                                handleGenderToggle(student.id, 'Boy');
                               }}
                             >
                               <div className="relative">
@@ -767,7 +799,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                                   name={`gender-${student.id}`}
                                   checked={currentGender === 'Boy'}
                                   readOnly
-                                  className="w-4 h-4 text-[#4A3B8D] focus:ring-[#4A3B8D] focus:ring-2 cursor-pointer"
+                                  className="w-4 h-4 text-[#4A3B8D] focus:ring-[#4A3B8D] focus:ring-2 cursor-pointer pointer-events-none"
                                 />
                               </div>
                               <span className="text-sm text-gray-700">Boy</span>
@@ -776,8 +808,8 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                               className="flex items-center gap-2 cursor-pointer"
                               onClick={(e) => {
                                 e.preventDefault();
-                                // Toggle: if already Girl, set to null; otherwise set to Girl
-                                handleGenderChange(student.id, currentGender === 'Girl' ? null : 'Girl');
+                                e.stopPropagation();
+                                handleGenderToggle(student.id, 'Girl');
                               }}
                             >
                               <div className="relative">
@@ -786,7 +818,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                                   name={`gender-${student.id}`}
                                   checked={currentGender === 'Girl'}
                                   readOnly
-                                  className="w-4 h-4 text-[#4A3B8D] focus:ring-[#4A3B8D] focus:ring-2 cursor-pointer"
+                                  className="w-4 h-4 text-[#4A3B8D] focus:ring-[#4A3B8D] focus:ring-2 cursor-pointer pointer-events-none"
                                 />
                               </div>
                               <span className="text-sm text-gray-700">Girl</span>
@@ -904,6 +936,38 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
           setHasUnsavedChanges(false); // Reset change tracking after adding
         }}
       />
+
+      {/* Save Confirmation Modal */}
+      <Modal
+        isOpen={showSaveConfirmation}
+        onClose={handleContinueEditing}
+        className="max-w-md"
+      >
+        <div className="bg-[#F5F5F5] rounded-[28px] p-8 -m-6">
+          <div className="text-center mb-6">
+            <h3 className="text-2xl font-extrabold text-[#4A3B8D] mb-2">
+              Changes Saved Successfully!
+            </h3>
+            <p className="text-gray-600">
+              All student information has been updated.
+            </p>
+          </div>
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={handleReturnToDashboard}
+              className="px-6 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Return to Dashboard
+            </button>
+            <button
+              onClick={handleContinueEditing}
+              className="px-6 py-2 bg-[#D96B7B] text-white rounded-lg font-bold hover:brightness-95 transition"
+            >
+              Continue Editing Class Info
+            </button>
+          </div>
+        </div>
+      </Modal>
     </Modal>
   );
 }
