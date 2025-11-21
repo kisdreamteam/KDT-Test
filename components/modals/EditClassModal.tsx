@@ -616,13 +616,20 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                     <label className="block text-sm font-semibold text-black mb-2">
                       Grade
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={grade}
                       onChange={(e) => setGrade(e.target.value)}
                       className="w-full h-12 rounded-[12px] border border-black/20 bg-white px-4 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-[#4A3B8D]/30"
-                      placeholder="Enter grade"
-                    />
+                    >
+                      <option value="">Select a grade</option>
+                      <option value="Grade1">Grade 1</option>
+                      <option value="Grade2">Grade 2</option>
+                      <option value="Grade3">Grade 3</option>
+                      <option value="Grade4">Grade 4</option>
+                      <option value="Grade5">Grade 5</option>
+                      <option value="Grade6">Grade 6</option>
+                      <option value="Grade7">Grade 7</option>
+                    </select>
                   </div>
 
                   <div className="flex justify-end gap-3 pt-4">
