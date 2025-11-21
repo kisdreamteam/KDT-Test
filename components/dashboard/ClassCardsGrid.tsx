@@ -17,6 +17,8 @@ interface ClassCardsGridProps {
   onAddClass: () => void;
   archiveButtonText?: string;
   showAddCard?: boolean;
+  onDelete?: (classId: string, className: string) => void;
+  showDelete?: boolean;
 }
 
 export default function ClassCardsGrid({
@@ -29,6 +31,8 @@ export default function ClassCardsGrid({
   onAddClass,
   archiveButtonText,
   showAddCard = true,
+  onDelete,
+  showDelete = false,
 }: ClassCardsGridProps) {
   return (
     <div 
@@ -47,6 +51,8 @@ export default function ClassCardsGrid({
           onEdit={onEdit}
           onArchive={onArchive}
           archiveButtonText={archiveButtonText}
+          onDelete={onDelete}
+          showDelete={showDelete}
         />
       ))}
       {showAddCard && <AddClassCard onClick={onAddClass} />}

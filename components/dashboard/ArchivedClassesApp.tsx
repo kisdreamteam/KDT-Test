@@ -23,6 +23,9 @@ export default function ArchivedClassesApp() {
   const [isUnarchiveModalOpen, setIsUnarchiveModalOpen] = useState(false);
   const [unarchiveClassId, setUnarchiveClassId] = useState<string | null>(null);
   const [unarchiveClassName, setUnarchiveClassName] = useState<string>('');
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteClassId, setDeleteClassId] = useState<string | null>(null);
+  const [deleteClassName, setDeleteClassName] = useState<string>('');
 
   // Fetch archived classes
   useEffect(() => {
@@ -180,6 +183,57 @@ export default function ArchivedClassesApp() {
     console.log('Edit class:', classId);
   };
 
+  // Handle delete class - open confirmation modal
+  const handleDeleteClass = (classId: string, className: string) => {
+    setDeleteClassId(classId);
+    setDeleteClassName(className);
+    setIsDeleteModalOpen(true);
+    setOpenDropdownId(null);
+  };
+
+  // Confirm delete class
+  const handleConfirmDelete = async () => {
+    if (!deleteClassId) return;
+
+    try {
+      const supabase = createClient();
+      
+      // First, delete all students in this class
+      const { error: studentsError } = await supabase
+        .from('students')
+        .delete()
+        .eq('class_id', deleteClassId);
+
+      if (studentsError) {
+        console.error('Error deleting students:', studentsError);
+        alert('Failed to delete students. Please try again.');
+        return;
+      }
+
+      // Then delete the class
+      const { error: classError } = await supabase
+        .from('classes')
+        .delete()
+        .eq('id', deleteClassId);
+
+      if (classError) {
+        console.error('Error deleting class:', classError);
+        alert('Failed to delete class. Please try again.');
+        return;
+      }
+
+      console.log('Class deleted successfully');
+      fetchArchivedClasses(); // Refresh the archived classes list
+    } catch (err) {
+      console.error('Unexpected error deleting class:', err);
+      alert('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsDeleteModalOpen(false);
+      setDeleteClassId(null);
+      setDeleteClassName('');
+    }
+  };
+
   if (isLoadingClasses) {
     return <LoadingState message="Loading archived classes..." />;
   }
@@ -212,6 +266,8 @@ export default function ArchivedClassesApp() {
           onAddClass={() => {}}
           archiveButtonText="Unarchive Class"
           showAddCard={false}
+          onDelete={handleDeleteClass}
+          showDelete={true}
         />
       )}
 
@@ -232,6 +288,27 @@ export default function ArchivedClassesApp() {
         icon={
           <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+          </svg>
+        }
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setDeleteClassId(null);
+          setDeleteClassName('');
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete Class"
+        message={`Are you sure you want to permanently delete "${deleteClassName}"? This action cannot be undone and will delete all students in this class.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmButtonColor="red"
+        icon={
+          <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
           </svg>
         }
       />
