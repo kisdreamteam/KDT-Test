@@ -50,6 +50,8 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
   const [isIconDropdownOpen, setIsIconDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [students, setStudents] = useState<StudentWithPhoto[]>([]);
+  const [originalStudents, setOriginalStudents] = useState<StudentWithPhoto[]>([]);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [newTeacherEmail, setNewTeacherEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -117,8 +119,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       const { data: studentsData, error } = await supabase
         .from('students')
         .select('id, first_name, last_name, avatar, student_number, gender, class_id, points')
-        .eq('class_id', classId)
-        .order('last_name', { ascending: true });
+        .eq('class_id', classId);
 
       if (error) {
         console.error('Error fetching students:', error);
@@ -127,13 +128,40 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       }
 
       if (studentsData) {
-        setStudents(studentsData as StudentWithPhoto[]);
+        // Sort by student number first (nulls last), then by first name alphabetically
+        const sortedStudents = [...studentsData].sort((a, b) => {
+          // Primary sort: student_number
+          // Handle null values - put them at the end
+          if (a.student_number === null && b.student_number === null) {
+            // Both null, sort by first name
+            return (a.first_name || '').localeCompare(b.first_name || '');
+          }
+          if (a.student_number === null) return 1; // a goes to end
+          if (b.student_number === null) return -1; // b goes to end
+          
+          // Both have numbers, compare them
+          if (a.student_number !== b.student_number) {
+            return a.student_number - b.student_number;
+          }
+          
+          // If student numbers are equal, sort by first name (secondary sort)
+          return (a.first_name || '').localeCompare(b.first_name || '');
+        });
+        
+        const typedStudents = sortedStudents as StudentWithPhoto[];
+        setStudents(typedStudents);
+        setOriginalStudents(JSON.parse(JSON.stringify(typedStudents))); // Deep copy for comparison
+        setHasUnsavedChanges(false);
       } else {
         setStudents([]);
+        setOriginalStudents([]);
+        setHasUnsavedChanges(false);
       }
     } catch (err) {
       console.error('Unexpected error fetching students:', err);
       setStudents([]);
+      setOriginalStudents([]);
+      setHasUnsavedChanges(false);
     }
   };
 
@@ -293,6 +321,90 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleGenderChange = (studentId: string, newGender: string | null) => {
+    // Update local state only, mark as changed
+    setStudents(prevStudents =>
+      prevStudents.map(student =>
+        student.id === studentId
+          ? { ...student, gender: newGender }
+          : student
+      )
+    );
+    setHasUnsavedChanges(true);
+  };
+
+  const handleSaveAllChanges = async () => {
+    setIsLoading(true);
+    try {
+      const supabase = createClient();
+      
+      // Validate all changes before saving
+      for (const student of students) {
+        if (!student.first_name?.trim()) {
+          alert(`First name cannot be empty for student: ${student.first_name || 'Unknown'}`);
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Save all changes
+      const updatePromises = students.map(async (student) => {
+        const originalStudent = originalStudents.find(s => s.id === student.id);
+        if (!originalStudent) return;
+
+        // Check if any field has changed
+        const hasChanged = 
+          student.first_name !== originalStudent.first_name ||
+          student.last_name !== originalStudent.last_name ||
+          student.student_number !== originalStudent.student_number ||
+          student.gender !== originalStudent.gender;
+
+        if (!hasChanged) return;
+
+        // Prepare update data
+        const updateData: {
+          first_name: string;
+          last_name: string | null;
+          student_number: number | null;
+          gender: string | null;
+        } = {
+          first_name: student.first_name.trim(),
+          last_name: student.last_name?.trim() || null,
+          student_number: student.student_number,
+          gender: student.gender
+        };
+
+        const { error } = await supabase
+          .from('students')
+          .update(updateData)
+          .eq('id', student.id);
+
+        if (error) {
+          console.error(`Error updating student ${student.id}:`, error);
+          throw error;
+        }
+      });
+
+      await Promise.all(updatePromises);
+      
+      // Refresh students and reset change tracking
+      await fetchStudents();
+      setHasUnsavedChanges(false);
+      alert('All changes saved successfully!');
+    } catch (err) {
+      console.error('Error saving changes:', err);
+      alert('Failed to save some changes. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancelChanges = () => {
+    // Revert to original students
+    setStudents(JSON.parse(JSON.stringify(originalStudents))); // Deep copy
+    setHasUnsavedChanges(false);
   };
 
   return (
@@ -503,7 +615,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
 
           {/* Students Tab */}
           {activeTab === 'students' && (
-            <div>
+            <div className="flex flex-col h-full min-h-[400px] max-h-[600px]">
               {isLoadingData ? (
                 <div className="flex items-center justify-center py-16">
                   <div className="text-center">
@@ -512,60 +624,198 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                   </div>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {/* Add New Student Option - Always First */}
-                  <button
-                    onClick={() => setIsAddStudentModalOpen(true)}
-                    className="w-full flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-blue-300 transition-colors text-left"
-                  >
-                    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg
-                        className="w-6 h-6 text-white"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                        />
-                      </svg>
-                    </div>
-                    <span className="text-sm font-medium text-gray-800">Add New Student</span>
-                  </button>
+                <>
+                  {/* Scrollable Content Area */}
+                  <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                    {/* Add New Student Option - Always First */}
+                    <button
+                      onClick={() => setIsAddStudentModalOpen(true)}
+                      className="w-full flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-blue-300 transition-colors text-left"
+                    >
+                      <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg
+                          className="w-6 h-6 text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                          />
+                        </svg>
+                      </div>
+                      <span className="text-sm font-medium text-gray-800">Add New Student</span>
+                    </button>
 
-                  {/* Students List */}
-                  {students.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500 text-sm">No students in this class yet.</p>
-                    </div>
-                  ) : (
-                    students.map((student) => {
+                    {/* Column Headers */}
+                    {students.length > 0 && (
+                      <div className="w-full flex items-center justify-between px-3 bg-gray-100 rounded-lg border border-gray-200">
+                        <div className="flex items-center space-x-3 flex-1">
+                          <div className="w-10 h-10 flex-shrink-0"></div>
+                          <span className="w-55 text-xs font-semibold text-gray-600 uppercase">First Name</span>
+                          <span className="w-53 text-xs font-semibold text-gray-600 uppercase">Last Name</span>
+                        {/* </div>
+                        <div className="flex items-center gap-4 ml-4"> */}
+                          <span className="w-35 text-xs font-semibold text-gray-600 uppercase">Student Number</span>
+                          <span className="text-xs font-semibold text-gray-600 uppercase">Gender</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Students List */}
+                    {students.length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-gray-500 text-sm">No students in this class yet.</p>
+                      </div>
+                    ) : (
+                      students.map((student) => {
                       const imageSrc = student.avatar || "/images/students/avatars/student_avatar_1.png";
+                      const currentGender = student.gender;
                       return (
                         <div
                           key={student.id}
-                          className="w-full flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                          className="w-full flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
                         >
-                          <div className="w-10 h-10 flex-shrink-0">
-                            <Image
-                              src={imageSrc}
-                              alt={`${student.first_name} ${student.last_name}`}
-                              width={40}
-                              height={40}
-                              className="rounded-full object-cover w-10 h-10"
+                          <div className="flex items-center space-x-3 flex-1">
+                            <div className="w-10 h-10 flex-shrink-0">
+                              <Image
+                                src={imageSrc}
+                                alt={`${student.first_name} ${student.last_name}`}
+                                width={40}
+                                height={40}
+                                className="rounded-full object-cover w-10 h-10"
+                              />
+                            </div>
+                            {/* First Name Input */}
+                            <input
+                              type="text"
+                              value={student.first_name || ''}
+                              onChange={(e) => {
+                                // Update local state immediately for responsive UI
+                                setStudents(prevStudents =>
+                                  prevStudents.map(s =>
+                                    s.id === student.id
+                                      ? { ...s, first_name: e.target.value }
+                                      : s
+                                  )
+                                );
+                                setHasUnsavedChanges(true);
+                              }}
+                              className="w-55 h-8 rounded border border-gray-300 bg-white px-2 text-sm text-gray-800 outline-none focus:border-[#4A3B8D] focus:ring-1 focus:ring-[#4A3B8D]"
+                              placeholder="First name"
+                            />
+                            {/* Last Name Input */}
+                            <input
+                              type="text"
+                              value={student.last_name || ''}
+                              onChange={(e) => {
+                                // Update local state immediately for responsive UI
+                                setStudents(prevStudents =>
+                                  prevStudents.map(s =>
+                                    s.id === student.id
+                                      ? { ...s, last_name: e.target.value }
+                                      : s
+                                  )
+                                );
+                                setHasUnsavedChanges(true);
+                              }}
+                              className="w-55 h-8 rounded border border-gray-300 bg-white px-2 text-sm text-gray-800 outline-none focus:border-[#4A3B8D] focus:ring-1 focus:ring-[#4A3B8D]"
+                              placeholder="Last name (optional)"
                             />
                           </div>
-                          <span className="text-sm font-medium text-gray-800 flex-1">
-                            {student.first_name} {student.last_name}
-                          </span>
+                          {/* Student Number and Gender Controls */}
+                          <div className="flex items-center gap-4 ml-2">
+                            {/* Student Number Input */}
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={student.student_number?.toString() || ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                // Only allow numbers and empty string
+                                if (value === '' || /^\d+$/.test(value)) {
+                                  // Update local state immediately for responsive UI
+                                  setStudents(prevStudents =>
+                                    prevStudents.map(s =>
+                                      s.id === student.id
+                                        ? { ...s, student_number: value.trim() ? parseInt(value.trim(), 10) : null }
+                                        : s
+                                    )
+                                  );
+                                  setHasUnsavedChanges(true);
+                                }
+                              }}
+                              className="w-25 h-8 rounded border border-gray-300 bg-white px-2 text-center text-sm text-gray-800 outline-none focus:border-[#4A3B8D] focus:ring-1 focus:ring-[#4A3B8D]"
+                              placeholder="Number"
+                            />
+                            
+                            {/* Gender Radio Buttons */}
+                            <label 
+                              className="flex items-center gap-2 cursor-pointer"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                // Toggle: if already Boy, set to null; otherwise set to Boy
+                                handleGenderChange(student.id, currentGender === 'Boy' ? null : 'Boy');
+                              }}
+                            >
+                              <div className="relative">
+                                <input
+                                  type="radio"
+                                  name={`gender-${student.id}`}
+                                  checked={currentGender === 'Boy'}
+                                  readOnly
+                                  className="w-4 h-4 text-[#4A3B8D] focus:ring-[#4A3B8D] focus:ring-2 cursor-pointer"
+                                />
+                              </div>
+                              <span className="text-sm text-gray-700">Boy</span>
+                            </label>
+                            <label 
+                              className="flex items-center gap-2 cursor-pointer"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                // Toggle: if already Girl, set to null; otherwise set to Girl
+                                handleGenderChange(student.id, currentGender === 'Girl' ? null : 'Girl');
+                              }}
+                            >
+                              <div className="relative">
+                                <input
+                                  type="radio"
+                                  name={`gender-${student.id}`}
+                                  checked={currentGender === 'Girl'}
+                                  readOnly
+                                  className="w-4 h-4 text-[#4A3B8D] focus:ring-[#4A3B8D] focus:ring-2 cursor-pointer"
+                                />
+                              </div>
+                              <span className="text-sm text-gray-700">Girl</span>
+                            </label>
+                          </div>
                         </div>
                       );
                     })
-                  )}
-                </div>
+                    )}
+                  </div>
+                  
+                  {/* Fixed Footer with Save/Cancel Buttons */}
+                  <div className="flex-shrink-0 flex justify-end gap-3 pt-4 mt-4 border-t border-gray-200 bg-[#F5F5F5] pb-2">
+                    <button
+                      onClick={handleCancelChanges}
+                      disabled={isLoading || !hasUnsavedChanges}
+                      className="px-6 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveAllChanges}
+                      disabled={isLoading || !hasUnsavedChanges}
+                      className="px-6 py-2 bg-[#D96B7B] text-white rounded-lg font-bold hover:brightness-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoading ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -648,9 +898,10 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
         isOpen={isAddStudentModalOpen}
         onClose={() => setIsAddStudentModalOpen(false)}
         classId={classId}
-        onStudentAdded={() => {
-          fetchStudents(); // Refresh the students list
+        onStudentAdded={async () => {
+          await fetchStudents(); // Refresh the students list
           setIsAddStudentModalOpen(false);
+          setHasUnsavedChanges(false); // Reset change tracking after adding
         }}
       />
     </Modal>

@@ -73,11 +73,6 @@ export default function EditStudentModal({ isOpen, onClose, student, onRefresh }
       return;
     }
 
-    if (!lastName.trim()) {
-      alert('Please enter a last name.');
-      return;
-    }
-
     setIsLoading(true);
     try {
       const supabase = createClient();
@@ -97,7 +92,7 @@ export default function EditStudentModal({ isOpen, onClose, student, onRefresh }
         .from('students')
         .update({
           first_name: firstName.trim(),
-          last_name: lastName.trim(),
+          last_name: lastName.trim() || null,
           student_number: studentNumberValue,
           gender: gender.trim() || null,
           avatar: selectedAvatar
@@ -258,14 +253,14 @@ export default function EditStudentModal({ isOpen, onClose, student, onRefresh }
             {/* Last Name */}
             <div>
               <label className="block text-sm font-semibold text-black mb-2">
-                Last Name
+                Last Name <span className="text-gray-500 font-normal">(Optional)</span>
               </label>
               <input
                 type="text"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 className="w-full h-12 rounded-[12px] border border-black/20 bg-white px-4 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-[#4A3B8D]/30"
-                placeholder="Enter last name"
+                placeholder="Enter last name (optional)"
               />
             </div>
 
