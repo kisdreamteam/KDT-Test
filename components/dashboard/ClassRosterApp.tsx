@@ -13,6 +13,7 @@ import LoadingState from './LoadingState';
 import ErrorState from './ErrorState';
 import EmptyState from './EmptyState';
 import StudentCardsGrid from './StudentCardsGrid';
+import StudentCardsGridMulti from './StudentCardsGridMulti';
 
 export default function ClassRosterApp() {
   const params = useParams();
@@ -38,6 +39,13 @@ export default function ClassRosterApp() {
     categoryName: string;
     categoryIcon?: string;
   } | null>(null);
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+
+  // Dispatch initial state to BottomNav
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('multiSelectStateChanged', { detail: { isMultiSelect: false } }));
+  }, []);
 
   useEffect(() => {
     if (classId) {
@@ -66,6 +74,46 @@ export default function ClassRosterApp() {
     document.addEventListener('click', handleClickOutside, true);
     return () => document.removeEventListener('click', handleClickOutside, true);
   }, [openDropdownId]);
+
+  // Listen for multi-select toggle event from BottomNav
+  useEffect(() => {
+    const handleToggleEvent = () => {
+      setIsMultiSelectMode(prev => {
+        const newState = !prev;
+        // Dispatch state update event so BottomNav can sync
+        window.dispatchEvent(new CustomEvent('multiSelectStateChanged', { detail: { isMultiSelect: newState } }));
+        if (newState === false) {
+          // Clear selections when exiting multi-select mode
+          setSelectedStudentIds([]);
+        }
+        return newState;
+      });
+    };
+
+    const handleSelectAll = () => {
+      if (isMultiSelectMode) {
+        // Select all students
+        setSelectedStudentIds(students.map(s => s.id));
+      }
+    };
+
+    const handleSelectNone = () => {
+      if (isMultiSelectMode) {
+        // Deselect all students
+        setSelectedStudentIds([]);
+      }
+    };
+
+    window.addEventListener('toggleMultiSelect', handleToggleEvent);
+    window.addEventListener('selectAll', handleSelectAll);
+    window.addEventListener('selectNone', handleSelectNone);
+    
+    return () => {
+      window.removeEventListener('toggleMultiSelect', handleToggleEvent);
+      window.removeEventListener('selectAll', handleSelectAll);
+      window.removeEventListener('selectNone', handleSelectNone);
+    };
+  }, [isMultiSelectMode, students]);
 
   const fetchClass = async () => {
     try {
@@ -185,6 +233,19 @@ export default function ClassRosterApp() {
     setIsWholeClassModalOpen(true);
   };
 
+  // Handle student selection in multi-select mode
+  const handleSelectStudent = (studentId: string) => {
+    setSelectedStudentIds(prev => {
+      if (prev.includes(studentId)) {
+        // Deselect if already selected
+        return prev.filter(id => id !== studentId);
+      } else {
+        // Select if not selected
+        return [...prev, studentId];
+      }
+    });
+  };
+
   // Handle points awarded callback
   const handlePointsAwarded = (info: {
     studentAvatar: string;
@@ -242,6 +303,15 @@ export default function ClassRosterApp() {
               message="Students will appear here once they are added to this class."
               buttonText="Add Your First Student"
               onAddClick={() => setAddStudentModalOpen(true)}
+            />
+          ) : isMultiSelectMode ? (
+            <StudentCardsGridMulti
+              students={sortedStudents}
+              classIcon={classIcon}
+              totalClassPoints={totalClassPoints}
+              onWholeClassClick={handleWholeClassClick}
+              selectedStudentIds={selectedStudentIds}
+              onSelectStudent={handleSelectStudent}
             />
           ) : (
             <StudentCardsGrid
