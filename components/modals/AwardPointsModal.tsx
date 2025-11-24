@@ -166,26 +166,63 @@ export default function AwardPointsModal({
 
   // Handle custom points submission
   const handleCustomAward = async () => {
-    // Validate custom points
-    if (!customPoints || customPoints === 0) {
-      alert('Please enter a valid point value.');
+    // Validate custom points - allow positive or negative, but not zero or empty
+    if (customPoints === 0 || customPoints === null || customPoints === undefined || isNaN(customPoints)) {
+      alert('Please enter a valid point value (positive or negative, but not zero).');
       return;
     }
 
     try {
       const supabase = createClient();
       
-      const { error } = await supabase.rpc('award_points_to_student', {
-        student_id_in: student.id,
-        category_id_in: null,
-        points_in: customPoints,
-        memo_in: customMemo || ''
-      });
+      // Get current authenticated user (required for teacher_id and RLS policy)
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        console.error('User not authenticated:', userError);
+        alert('You must be logged in to award custom points.');
+        return;
+      }
+      
+      // Insert directly into custom_point_events table
+      const { error: insertError } = await supabase
+        .from('custom_point_events')
+        .insert({
+          student_id: student.id,
+          teacher_id: user.id, // Required for RLS policy and foreign key
+          points: customPoints,
+          memo: customMemo || null
+        });
 
-      if (error) {
-        console.error('Error awarding custom points:', error);
-        alert('Failed to award points. Please try again.');
-      } else {
+      if (insertError) {
+        console.error('Error inserting custom points into custom_point_events:', insertError);
+        console.error('Error details:', {
+          message: insertError.message,
+          details: insertError.details,
+          hint: insertError.hint,
+          code: insertError.code
+        });
+        alert(`Failed to award custom points: ${insertError.message || 'Please try again.'}`);
+        return;
+      }
+
+      // Update student's total points
+      const currentPoints = student.points || 0;
+      const newPoints = currentPoints + customPoints;
+      
+      const { error: updateError } = await supabase
+        .from('students')
+        .update({ points: newPoints })
+        .eq('id', student.id);
+
+      if (updateError) {
+        console.error('Error updating student points:', updateError);
+        alert('Points were recorded but failed to update student total. Please refresh the page.');
+        return;
+      }
+
+      // Success - reset form and notify
+      {
         // Reset custom form
         setCustomPoints(0);
         setCustomMemo('');
@@ -452,11 +489,25 @@ export default function AwardPointsModal({
                 </label>
                 <input
                   type="number"
-                  value={customPoints || ''}
-                  onChange={(e) => setCustomPoints(Number(e.target.value))}
+                  value={customPoints === 0 ? '' : customPoints}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow empty string for clearing the input
+                    if (value === '' || value === '-') {
+                      setCustomPoints(0);
+                    } else {
+                      const numValue = Number(value);
+                      if (!isNaN(numValue)) {
+                        setCustomPoints(numValue);
+                      }
+                    }
+                  }}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Enter point value"
+                  placeholder="Enter point value (positive or negative)"
                 />
+                <p className="text-xs text-gray-500">
+                  Enter a positive or negative point value. Zero is not allowed.
+                </p>
               </div>
               
               <div className="space-y-2">

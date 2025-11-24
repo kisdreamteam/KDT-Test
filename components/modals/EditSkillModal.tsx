@@ -326,86 +326,117 @@ export default function EditSkillModal({ isOpen, onClose, skill, refreshCategori
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Points
               </label>
-              <input
-                type="number"
-                min={activeTab === 'positive' ? 1 : undefined}
-                step="1"
-                value={points}
-                ref={inputRef}
-                onChange={(e) => {
-                  const numValue = Number(e.target.value);
-                  if (isNaN(numValue)) {
-                    const defaultValue = activeTab === 'positive' ? 1 : -1;
-                    setPoints(defaultValue);
-                    previousValueRef.current = defaultValue;
-                    if (inputRef.current) {
-                      inputRef.current.value = defaultValue.toString();
-                    }
-                  } else {
-                    if (activeTab === 'negative' && previousValueRef.current !== undefined) {
-                      const diff = numValue - previousValueRef.current;
-                      if (Math.abs(diff) === 1) {
-                        if (diff > 0) {
-                          const currentAbs = Math.abs(previousValueRef.current);
-                          const newValue = -(currentAbs + 1);
-                          setPoints(newValue);
-                          previousValueRef.current = newValue;
-                          if (inputRef.current) {
-                            inputRef.current.value = newValue.toString();
-                          }
-                          return;
-                        } else {
-                          if (previousValueRef.current <= -1) {
-                            handlePointsChange(numValue);
-                            previousValueRef.current = numValue;
-                            return;
-                          }
-                        }
-                      }
-                      if (numValue >= 0 || numValue > -1) {
+              {activeTab === 'negative' ? (
+                // Custom input with buttons for negative tab
+                <div className="relative flex items-center">
+                  <input
+                    type="number"
+                    value={points}
+                    ref={inputRef}
+                    onChange={(e) => {
+                      const numValue = Number(e.target.value);
+                      if (isNaN(numValue)) {
                         setPoints(-1);
                         previousValueRef.current = -1;
-                        if (inputRef.current) {
-                          inputRef.current.value = '-1';
+                      } else if (numValue >= 0 || numValue > -1) {
+                        setPoints(-1);
+                        previousValueRef.current = -1;
+                      } else {
+                        handlePointsChange(numValue);
+                        previousValueRef.current = numValue;
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      // Invert arrow key behavior for negative tab
+                      if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        // Up arrow decreases value (makes more negative: -1 -> -2 -> -3, etc.)
+                        handlePointsChange(points - 1);
+                      } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        // Down arrow increases value (makes less negative, but max is -1: -3 -> -2 -> -1)
+                        if (points < -1) {
+                          handlePointsChange(points + 1);
                         }
-                        return;
                       }
-                    }
-                    handlePointsChange(numValue);
-                    previousValueRef.current = numValue;
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (activeTab === 'negative') {
-                    const currentAbs = Math.abs(points);
-                    if (e.key === 'ArrowUp') {
-                      e.preventDefault();
-                      handlePointsChange(-(currentAbs + 1));
-                    } else if (e.key === 'ArrowDown') {
-                      e.preventDefault();
-                      if (currentAbs > 1) {
-                        handlePointsChange(-(currentAbs - 1));
+                    }}
+                    onWheel={(e) => {
+                      // Handle mouse wheel on the input for negative tab
+                      if (document.activeElement === e.currentTarget) {
+                        e.preventDefault();
+                        if (e.deltaY < 0) {
+                          // Scroll up - decrease value (make more negative: -1 -> -2 -> -3)
+                          handlePointsChange(points - 1);
+                        } else {
+                          // Scroll down - increase value (make less negative, but max is -1: -3 -> -2 -> -1)
+                          if (points < -1) {
+                            handlePointsChange(points + 1);
+                          }
+                        }
                       }
-                    }
-                  }
-                }}
-                onWheel={(e) => {
-                  if (activeTab === 'negative' && document.activeElement === e.currentTarget) {
-                    e.preventDefault();
-                    const currentAbs = Math.abs(points);
-                    if (e.deltaY < 0) {
-                      handlePointsChange(-(currentAbs + 1));
+                    }}
+                    className="w-full px-4 py-3 pr-16 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    placeholder="e.g., -2"
+                    disabled={isLoading}
+                  />
+                  <div className="absolute right-2 flex flex-col">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Up arrow: decrease value (make more negative: -1 -> -2)
+                        const newValue = points - 1;
+                        setPoints(newValue);
+                        previousValueRef.current = newValue;
+                      }}
+                      className="px-2 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-t border border-gray-300 border-b-0"
+                      disabled={isLoading}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Down arrow: increase value (make less negative: -2 -> -1, max -1)
+                        if (points < -1) {
+                          const newValue = points + 1;
+                          setPoints(newValue);
+                          previousValueRef.current = newValue;
+                        }
+                      }}
+                      className="px-2 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-b border border-gray-300"
+                      disabled={isLoading || points >= -1}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                // Regular input for positive tab
+                <input
+                  type="number"
+                  min={1}
+                  step="1"
+                  value={points}
+                  ref={inputRef}
+                  onChange={(e) => {
+                    const numValue = Number(e.target.value);
+                    if (isNaN(numValue)) {
+                      setPoints(1);
+                      previousValueRef.current = 1;
                     } else {
-                      if (currentAbs > 1) {
-                        handlePointsChange(-(currentAbs - 1));
-                      }
+                      handlePointsChange(numValue);
+                      previousValueRef.current = numValue;
                     }
-                  }
-                }}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder={activeTab === 'positive' ? 'e.g., 5' : 'e.g., -2'}
-                disabled={isLoading}
-              />
+                  }}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="e.g., 5"
+                  disabled={isLoading}
+                />
+              )}
               <p className="text-xs text-gray-500 mt-1">
                 {activeTab === 'positive' 
                   ? 'Only positive values are allowed.' 
