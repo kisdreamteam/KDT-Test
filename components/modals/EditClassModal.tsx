@@ -60,6 +60,8 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+  const [showValidationWarning, setShowValidationWarning] = useState(false);
+  const [studentsWithoutFirstName, setStudentsWithoutFirstName] = useState<StudentWithPhoto[]>([]);
 
   // Generate array of all available icons
   const availableIcons = Array.from({ length: 15 }, (_, i) => 
@@ -360,13 +362,14 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
     try {
       const supabase = createClient();
       
-      // Validate all changes before saving
-      for (const student of students) {
-        if (!student.first_name?.trim()) {
-          alert(`First name cannot be empty for student: ${student.first_name || 'Unknown'}`);
-          setIsLoading(false);
-          return;
-        }
+      // Validate all changes before saving - collect students without first names
+      const invalidStudents = students.filter(student => !student.first_name?.trim());
+      
+      if (invalidStudents.length > 0) {
+        setStudentsWithoutFirstName(invalidStudents);
+        setShowValidationWarning(true);
+        setIsLoading(false);
+        return;
       }
 
       // Save all changes
@@ -438,6 +441,18 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
     // Revert to original students
     setStudents(JSON.parse(JSON.stringify(originalStudents))); // Deep copy
     setHasUnsavedChanges(false);
+  };
+
+  const handleSwitchFirstAndLastNames = () => {
+    // Swap first_name and last_name for all students
+    setStudents(prevStudents =>
+      prevStudents.map(student => ({
+        ...student,
+        first_name: student.last_name || '',
+        last_name: student.first_name || null
+      }))
+    );
+    setHasUnsavedChanges(true);
   };
 
   return (
@@ -838,21 +853,30 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                   </div>
                   
                   {/* Fixed Footer with Save/Cancel Buttons */}
-                  <div className="flex-shrink-0 flex justify-end gap-3 pt-4 mt-4 border-t border-gray-200 bg-[#F5F5F5] pb-2">
+                  <div className="flex-shrink-0 flex justify-between items-center gap-3 pt-4 mt-4 border-t border-gray-200 bg-[#F5F5F5] pb-2">
                     <button
-                      onClick={handleCancelChanges}
-                      disabled={isLoading || !hasUnsavedChanges}
+                      onClick={handleSwitchFirstAndLastNames}
+                      disabled={isLoading || students.length === 0}
                       className="px-6 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Cancel
+                      Switch First and Last Names
                     </button>
-                    <button
-                      onClick={handleSaveAllChanges}
-                      disabled={isLoading || !hasUnsavedChanges}
-                      className="px-6 py-2 bg-[#D96B7B] text-white rounded-lg font-bold hover:brightness-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isLoading ? 'Saving...' : 'Save Changes'}
-                    </button>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={handleCancelChanges}
+                        disabled={isLoading || !hasUnsavedChanges}
+                        className="px-6 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSaveAllChanges}
+                        disabled={isLoading || !hasUnsavedChanges}
+                        className="px-6 py-2 bg-[#D96B7B] text-white rounded-lg font-bold hover:brightness-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isLoading ? 'Saving...' : 'Save Changes'}
+                      </button>
+                    </div>
                   </div>
                 </>
               )}
@@ -971,6 +995,59 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
               className="px-6 py-2 bg-[#D96B7B] text-white rounded-lg font-bold hover:brightness-95 transition"
             >
               Continue Editing Class Info
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Validation Warning Modal */}
+      <Modal
+        isOpen={showValidationWarning}
+        onClose={() => setShowValidationWarning(false)}
+        className="max-w-md"
+      >
+        <div className="bg-[#F5F5F5] rounded-[28px] p-8 -m-6">
+          <div className="text-center mb-6">
+            <h3 className="text-2xl font-extrabold text-[#4A3B8D] mb-2">
+              Validation Warning
+            </h3>
+            <p className="text-gray-600 mb-4">
+              One or more students are missing a first name. First name is required for all students.
+            </p>
+            {studentsWithoutFirstName.length > 0 && (
+              <div className="bg-white rounded-lg border border-gray-200 p-4 text-left max-h-60 overflow-y-auto">
+                <p className="text-sm font-semibold text-gray-700 mb-2">
+                  Students missing first name:
+                </p>
+                <ul className="space-y-1">
+                  {studentsWithoutFirstName.map((student, index) => {
+                    let identifier = '';
+                    if (student.student_number) {
+                      identifier = `Student #${student.student_number}`;
+                      if (student.last_name) {
+                        identifier += ` (${student.last_name})`;
+                      }
+                    } else if (student.last_name) {
+                      identifier = student.last_name;
+                    } else {
+                      identifier = `Student ${index + 1}`;
+                    }
+                    return (
+                      <li key={student.id || index} className="text-sm text-gray-600">
+                        • {identifier}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={() => setShowValidationWarning(false)}
+              className="px-6 py-2 bg-[#D96B7B] text-white rounded-lg font-bold hover:brightness-95 transition"
+            >
+              OK
             </button>
           </div>
         </div>
