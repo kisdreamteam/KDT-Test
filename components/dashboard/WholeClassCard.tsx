@@ -3,15 +3,18 @@ import Image from 'next/image';
 interface WholeClassCardProps {
   classIcon: string;
   totalPoints: number;
+  onClick: () => void;
 }
 
 export default function WholeClassCard({
   classIcon,
   totalPoints,
+  onClick,
 }: WholeClassCardProps) {
   return (
     <div
-      className="bg-white rounded-lg hover:bg-blue-100 hover:rounded-3xl shadow-md p-6 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer aspect-square flex flex-col"
+      onClick={onClick}
+      className="bg-blue-300 rounded-lg hover:bg-blue-100 hover:rounded-3xl shadow-md p-6 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer aspect-square flex flex-col"
       style={{ position: 'relative', zIndex: 1 }}
     >
       {/* Class Icon */}

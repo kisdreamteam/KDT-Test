@@ -7,6 +7,7 @@ interface StudentCardsGridProps {
   students: Student[];
   classIcon: string;
   totalClassPoints: number;
+  onWholeClassClick: () => void;
   openDropdownId: string | null;
   onToggleDropdown: (studentId: string, event: React.MouseEvent) => void;
   onEdit: (studentId: string) => void;
@@ -19,6 +20,7 @@ export default function StudentCardsGrid({
   students,
   classIcon,
   totalClassPoints,
+  onWholeClassClick,
   openDropdownId,
   onToggleDropdown,
   onEdit,
@@ -37,6 +39,7 @@ export default function StudentCardsGrid({
       <WholeClassCard 
         classIcon={classIcon}
         totalPoints={totalClassPoints}
+        onClick={onWholeClassClick}
       />
       
       {/* Student Cards */}

@@ -11,8 +11,10 @@ import { PointCategory, Student } from '@/lib/types';
 interface AwardPointsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  student: Student;
+  student: Student | null; // null for whole class mode
   classId: string;
+  className?: string; // For whole class mode
+  classIcon?: string; // For whole class mode
   onRefresh?: () => void;
   onPointsAwarded?: (awardInfo: {
     studentAvatar: string;
@@ -28,9 +30,12 @@ export default function AwardPointsModal({
   onClose,
   student,
   classId,
+  className,
+  classIcon,
   onRefresh,
   onPointsAwarded,
 }: AwardPointsModalProps) {
+  const isWholeClassMode = student === null;
   console.log('AWARD POINTS MODAL: classId received:', classId);
   
   const [categories, setCategories] = useState<PointCategory[]>([]);
@@ -128,17 +133,44 @@ export default function AwardPointsModal({
       const supabase = createClient();
       const points = category.points ?? category.default_points ?? 0;
       
-      const { error } = await supabase.rpc('award_points_to_student', {
-        student_id_in: student.id,
-        category_id_in: category.id,
-        points_in: points,
-        memo_in: '' // Empty memo for a standard skill click
-      });
+      if (isWholeClassMode) {
+        // Award points to all students in the class
+        const { data: students, error: fetchError } = await supabase
+          .from('students')
+          .select('id')
+          .eq('class_id', classId);
 
-      if (error) {
-        console.error('Error awarding skill points:', error);
-        alert('Failed to award points. Please try again.');
-      } else {
+        if (fetchError) {
+          console.error('Error fetching students:', fetchError);
+          alert('Failed to fetch students. Please try again.');
+          return;
+        }
+
+        if (!students || students.length === 0) {
+          alert('No students found in this class.');
+          return;
+        }
+
+        // Award points to each student
+        const awardPromises = students.map(async (s) => {
+          const { error } = await supabase.rpc('award_points_to_student', {
+            student_id_in: s.id,
+            category_id_in: category.id,
+            points_in: points,
+            memo_in: '' // Empty memo for a standard skill click
+          });
+          return error;
+        });
+
+        const errors = await Promise.all(awardPromises);
+        const hasError = errors.some(err => err !== null);
+
+        if (hasError) {
+          console.error('Error awarding skill points to some students:', errors);
+          alert('Failed to award points to some students. Please try again.');
+          return;
+        }
+
         // Refresh the student list if onRefresh is provided
         if (onRefresh) {
           onRefresh();
@@ -147,8 +179,8 @@ export default function AwardPointsModal({
         // Notify parent about the award
         if (onPointsAwarded) {
           onPointsAwarded({
-            studentAvatar: student.avatar || "/images/classes/avatars/avatar-01.png",
-            studentFirstName: student.first_name,
+            studentAvatar: classIcon || "/images/classes/avatars/avatar-01.png",
+            studentFirstName: className || 'Whole Class',
             points: points,
             categoryName: category.name,
             categoryIcon: category.icon,
@@ -157,6 +189,40 @@ export default function AwardPointsModal({
         
         // Close the modal
         onClose();
+      } else {
+        // Single student mode
+        if (!student) return;
+        
+        const { error } = await supabase.rpc('award_points_to_student', {
+          student_id_in: student.id,
+          category_id_in: category.id,
+          points_in: points,
+          memo_in: '' // Empty memo for a standard skill click
+        });
+
+        if (error) {
+          console.error('Error awarding skill points:', error);
+          alert('Failed to award points. Please try again.');
+        } else {
+          // Refresh the student list if onRefresh is provided
+          if (onRefresh) {
+            onRefresh();
+          }
+          
+          // Notify parent about the award
+          if (onPointsAwarded) {
+            onPointsAwarded({
+              studentAvatar: student.avatar || "/images/classes/avatars/avatar-01.png",
+              studentFirstName: student.first_name,
+              points: points,
+              categoryName: category.name,
+              categoryIcon: category.icon,
+            });
+          }
+          
+          // Close the modal
+          onClose();
+        }
       }
     } catch (err) {
       console.error('Unexpected error awarding points:', err);
@@ -184,46 +250,123 @@ export default function AwardPointsModal({
         return;
       }
       
-      // Insert directly into custom_point_events table
-      const { error: insertError } = await supabase
-        .from('custom_point_events')
-        .insert({
-          student_id: student.id,
-          teacher_id: user.id, // Required for RLS policy and foreign key
-          points: customPoints,
-          memo: customMemo || null
+      if (isWholeClassMode) {
+        // Award custom points to all students in the class
+        const { data: students, error: fetchError } = await supabase
+          .from('students')
+          .select('id, points')
+          .eq('class_id', classId);
+
+        if (fetchError) {
+          console.error('Error fetching students:', fetchError);
+          alert('Failed to fetch students. Please try again.');
+          return;
+        }
+
+        if (!students || students.length === 0) {
+          alert('No students found in this class.');
+          return;
+        }
+
+        // Insert custom point events for each student
+        const insertPromises = students.map(async (s) => {
+          const { error: insertError } = await supabase
+            .from('custom_point_events')
+            .insert({
+              student_id: s.id,
+              teacher_id: user.id,
+              points: customPoints,
+              memo: customMemo || null
+            });
+          
+          if (insertError) {
+            return insertError;
+          }
+
+          // Update student's total points
+          const currentPoints = s.points || 0;
+          const newPoints = currentPoints + customPoints;
+          
+          const { error: updateError } = await supabase
+            .from('students')
+            .update({ points: newPoints })
+            .eq('id', s.id);
+
+          return updateError;
         });
 
-      if (insertError) {
-        console.error('Error inserting custom points into custom_point_events:', insertError);
-        console.error('Error details:', {
-          message: insertError.message,
-          details: insertError.details,
-          hint: insertError.hint,
-          code: insertError.code
-        });
-        alert(`Failed to award custom points: ${insertError.message || 'Please try again.'}`);
-        return;
-      }
+        const errors = await Promise.all(insertPromises);
+        const hasError = errors.some(err => err !== null);
 
-      // Update student's total points
-      const currentPoints = student.points || 0;
-      const newPoints = currentPoints + customPoints;
-      
-      const { error: updateError } = await supabase
-        .from('students')
-        .update({ points: newPoints })
-        .eq('id', student.id);
+        if (hasError) {
+          console.error('Error awarding custom points to some students:', errors);
+          alert('Failed to award points to some students. Please try again.');
+          return;
+        }
 
-      if (updateError) {
-        console.error('Error updating student points:', updateError);
-        alert('Points were recorded but failed to update student total. Please refresh the page.');
-        return;
-      }
+        // Success - reset form and notify
+        setCustomPoints(0);
+        setCustomMemo('');
+        // Refresh the student list if onRefresh is provided
+        if (onRefresh) {
+          onRefresh();
+        }
+        
+        // Notify parent about the award (custom points)
+        if (onPointsAwarded) {
+          onPointsAwarded({
+            studentAvatar: classIcon || "/images/classes/avatars/avatar-01.png",
+            studentFirstName: className || 'Whole Class',
+            points: customPoints,
+            categoryName: customMemo || 'Custom Points',
+            categoryIcon: undefined, // No icon for custom points
+          });
+        }
+        
+        // Close the modal
+        onClose();
+      } else {
+        // Single student mode
+        if (!student) return;
+        
+        // Insert directly into custom_point_events table
+        const { error: insertError } = await supabase
+          .from('custom_point_events')
+          .insert({
+            student_id: student.id,
+            teacher_id: user.id, // Required for RLS policy and foreign key
+            points: customPoints,
+            memo: customMemo || null
+          });
 
-      // Success - reset form and notify
-      {
-        // Reset custom form
+        if (insertError) {
+          console.error('Error inserting custom points into custom_point_events:', insertError);
+          console.error('Error details:', {
+            message: insertError.message,
+            details: insertError.details,
+            hint: insertError.hint,
+            code: insertError.code
+          });
+          alert(`Failed to award custom points: ${insertError.message || 'Please try again.'}`);
+          return;
+        }
+
+        // Update student's total points
+        const currentPoints = student.points || 0;
+        const newPoints = currentPoints + customPoints;
+        
+        const { error: updateError } = await supabase
+          .from('students')
+          .update({ points: newPoints })
+          .eq('id', student.id);
+
+        if (updateError) {
+          console.error('Error updating student points:', updateError);
+          alert('Points were recorded but failed to update student total. Please refresh the page.');
+          return;
+        }
+
+        // Success - reset form and notify
         setCustomPoints(0);
         setCustomMemo('');
         // Refresh the student list if onRefresh is provided
@@ -257,29 +400,45 @@ export default function AwardPointsModal({
         <div className="relative">
         {/* Header Section */}
         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
-          {/* Student Info */}
+          {/* Student/Class Info */}
           <div className="flex items-center gap-3">
             <div className="relative">
               <Image
-                src={student.avatar || "/images/classes/avatars/avatar-01.png"}
-                alt={`${student.first_name} ${student.last_name}`}
+                src={isWholeClassMode 
+                  ? (classIcon || "/images/1Landing Page Image.png")
+                  : (student?.avatar || "/images/classes/avatars/avatar-01.png")
+                }
+                alt={isWholeClassMode 
+                  ? (className || "Whole Class")
+                  : `${student?.first_name} ${student?.last_name}`
+                }
                 width={48}
                 height={48}
                 className="rounded-full"
               />
-              {/* Crown icon overlay */}
-              <div className="absolute -top-1 -right-1">
-                <svg className="w-5 h-5 text-yellow-400" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2L8.5 8.5 2 9.5l5 5-1 7 6-3.5 6 3.5-1-7 5-5-6.5-1L12 2z"/>
-                </svg>
-              </div>
+              {/* Crown icon overlay - only for single student */}
+              {!isWholeClassMode && (
+                <div className="absolute -top-1 -right-1">
+                  <svg className="w-5 h-5 text-yellow-400" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2L8.5 8.5 2 9.5l5 5-1 7 6-3.5 6 3.5-1-7 5-5-6.5-1L12 2z"/>
+                  </svg>
+                </div>
+              )}
             </div>
-            <span className="text-5xl font-bold text-gray-900 lowercase">{student.first_name} {student.last_name}</span>
+            <span className="text-5xl font-bold text-gray-900 lowercase">
+              {isWholeClassMode 
+                ? (className || 'Whole Class')
+                : `${student?.first_name} ${student?.last_name}`
+              }
+            </span>
             
             {/* Point Totals */}
             <div className="flex items-left gap-2 ml-4">
               <span className="px-3 py-1 bg-gray-100 border border-gray-300 rounded-full text-5xl font-bold text-red-600">
-                {student.points || 0} Points
+                {isWholeClassMode 
+                  ? 'Class Points'
+                  : `${student?.points || 0} Points`
+                }
               </span>
              </div>
           </div>

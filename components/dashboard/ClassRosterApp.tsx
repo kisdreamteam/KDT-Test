@@ -27,6 +27,7 @@ export default function ClassRosterApp() {
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [isPointsModalOpen, setPointsModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [isWholeClassModalOpen, setIsWholeClassModalOpen] = useState(false);
   const [isEditStudentModalOpen, setIsEditStudentModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
@@ -179,6 +180,11 @@ export default function ClassRosterApp() {
     setPointsModalOpen(true);
   };
 
+  // Handle whole class card click to open Award Points modal
+  const handleWholeClassClick = () => {
+    setIsWholeClassModalOpen(true);
+  };
+
   // Handle points awarded callback
   const handlePointsAwarded = (info: {
     studentAvatar: string;
@@ -242,6 +248,7 @@ export default function ClassRosterApp() {
               students={sortedStudents}
               classIcon={classIcon}
               totalClassPoints={totalClassPoints}
+              onWholeClassClick={handleWholeClassClick}
               openDropdownId={openDropdownId}
               onToggleDropdown={toggleDropdown}
               onEdit={handleEditStudent}
@@ -275,6 +282,20 @@ export default function ClassRosterApp() {
           onPointsAwarded={handlePointsAwarded}
         />
       )}
+
+      {/* Award Points Modal for Whole Class */}
+      <AwardPointsModal
+        isOpen={isWholeClassModalOpen}
+        onClose={() => {
+          setIsWholeClassModalOpen(false);
+        }}
+        student={null}
+        classId={classId}
+        className={className}
+        classIcon={classIcon}
+        onRefresh={fetchStudents}
+        onPointsAwarded={handlePointsAwarded}
+      />
 
       {/* Edit Student Modal */}
       <EditStudentModal
