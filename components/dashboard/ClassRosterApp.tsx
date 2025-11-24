@@ -20,6 +20,7 @@ export default function ClassRosterApp() {
   const { sortBy } = useStudentSort();
   const [students, setStudents] = useState<Student[]>([]);
   const [className, setClassName] = useState<string>('');
+  const [classIcon, setClassIcon] = useState<string>('/images/dashboard/icons/icon-1.png');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddStudentModalOpen, setAddStudentModalOpen] = useState(false);
@@ -71,7 +72,7 @@ export default function ClassRosterApp() {
       
       const { data: classData, error: fetchError } = await supabase
         .from('classes')
-        .select('name')
+        .select('name, icon')
         .eq('id', classId)
         .single();
 
@@ -82,6 +83,7 @@ export default function ClassRosterApp() {
 
       if (classData) {
         setClassName(classData.name);
+        setClassIcon(classData.icon || '/images/dashboard/icons/icon-1.png');
       }
     } catch (err) {
       console.error('Unexpected error fetching class:', err instanceof Error ? err.message : err);
@@ -211,6 +213,11 @@ export default function ClassRosterApp() {
     }
   }, [students, sortBy]);
 
+  // Calculate total points for the whole class
+  const totalClassPoints = useMemo(() => {
+    return students.reduce((total, student) => total + (student.points || 0), 0);
+  }, [students]);
+
   if (isLoading) {
     return <LoadingState message="Loading students..." />;
   }
@@ -233,6 +240,8 @@ export default function ClassRosterApp() {
           ) : (
             <StudentCardsGrid
               students={sortedStudents}
+              classIcon={classIcon}
+              totalClassPoints={totalClassPoints}
               openDropdownId={openDropdownId}
               onToggleDropdown={toggleDropdown}
               onEdit={handleEditStudent}

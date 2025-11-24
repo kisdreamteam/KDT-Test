@@ -1,9 +1,12 @@
 import { Student } from '@/lib/types';
 import StudentCard from './StudentCard';
 import AddStudentCard from './AddStudentCard';
+import WholeClassCard from './WholeClassCard';
 
 interface StudentCardsGridProps {
   students: Student[];
+  classIcon: string;
+  totalClassPoints: number;
   openDropdownId: string | null;
   onToggleDropdown: (studentId: string, event: React.MouseEvent) => void;
   onEdit: (studentId: string) => void;
@@ -14,6 +17,8 @@ interface StudentCardsGridProps {
 
 export default function StudentCardsGrid({
   students,
+  classIcon,
+  totalClassPoints,
   openDropdownId,
   onToggleDropdown,
   onEdit,
@@ -28,6 +33,13 @@ export default function StudentCardsGrid({
         gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))'
       }}
     >
+      {/* Whole Class Card - Always First */}
+      <WholeClassCard 
+        classIcon={classIcon}
+        totalPoints={totalClassPoints}
+      />
+      
+      {/* Student Cards */}
       {students.map((student) => (
         <StudentCard
           key={student.id}
