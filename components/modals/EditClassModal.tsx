@@ -448,8 +448,8 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
     setStudents(prevStudents =>
       prevStudents.map(student => ({
         ...student,
-        first_name: student.last_name || '',
-        last_name: student.first_name || null
+        first_name: (student.last_name || '') as string,
+        last_name: student.first_name
       }))
     );
     setHasUnsavedChanges(true);
