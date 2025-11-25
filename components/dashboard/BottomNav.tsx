@@ -28,6 +28,7 @@ export default function BottomNav({
   onRandomClick
 }: BottomNavProps) {
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [selectedCount, setSelectedCount] = useState(0);
 
   // Listen for multi-select state changes from components
   useEffect(() => {
@@ -35,10 +36,16 @@ export default function BottomNav({
       setIsMultiSelectMode(event.detail.isMultiSelect);
     };
 
+    const handleSelectionCountChange = (event: CustomEvent) => {
+      setSelectedCount(event.detail.count || 0);
+    };
+
     window.addEventListener('multiSelectStateChanged', handleStateChange as EventListener);
+    window.addEventListener('selectionCountChanged', handleSelectionCountChange as EventListener);
     
     return () => {
       window.removeEventListener('multiSelectStateChanged', handleStateChange as EventListener);
+      window.removeEventListener('selectionCountChanged', handleSelectionCountChange as EventListener);
     };
   }, []);
 
@@ -55,7 +62,9 @@ export default function BottomNav({
   };
 
   const handleSelectNone = () => {
-    window.dispatchEvent(new CustomEvent('selectNone'));
+    if (selectedCount > 0) {
+      window.dispatchEvent(new CustomEvent('selectNone'));
+    }
   };
 
   const handleCancel = () => {
@@ -63,14 +72,23 @@ export default function BottomNav({
   };
 
   const handleAwardPoints = () => {
-    // Placeholder - no function yet
-    console.log('Award points clicked');
+    window.dispatchEvent(new CustomEvent('awardPoints'));
+  };
+
+  const handleRecentlySelect = () => {
+    window.dispatchEvent(new CustomEvent('recentlySelect'));
+  };
+
+  const handleInverseSelect = () => {
+    if (selectedCount > 0) {
+      window.dispatchEvent(new CustomEvent('inverseSelect'));
+    }
   };
   
   return (
     // Bottom Nav Container - Fixed at bottom
     <div 
-      className="fixed bottom-0 bg-white h-20 py-6 flex items-center justify-between gap-15 pl-10 pr-10 pt-10 z-50 transition-all duration-300 border-t border-[#4A3B8D]"
+      className="fixed bottom-0 bg-white h-20 py-6 flex items-center justify-start gap-15 pl-10 pr-10 pt-10 z-50 transition-all duration-300 border-t border-[#4A3B8D]"
       style={{ left: leftPosition, right: '8px' }}>
       {!isMultiSelectMode ? (
         // Normal mode buttons
@@ -161,8 +179,9 @@ export default function BottomNav({
         </>
       ) : (
         // Multi-select mode buttons
-        <>
-          <div className="flex items-center gap-15">
+        <div className="flex items-center justify-between w-full">
+          {/* Left side buttons */}
+          <div className="flex flex-row items-center gap-15">
             {/* Select All Button */}
             <div 
               onClick={handleSelectAll}
@@ -188,11 +207,15 @@ export default function BottomNav({
             {/* Select None Button */}
             <div 
               onClick={handleSelectNone}
-              className="w-[200px] bg-white text-white p-3 mb-4 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2"
+              className={`w-[200px] p-3 mb-4 transition-colors flex items-center justify-center gap-2 ${
+                selectedCount > 0
+                  ? 'bg-white text-white hover:bg-pink-50 hover:shadow-sm cursor-pointer'
+                  : 'bg-gray-100 cursor-not-allowed opacity-50'
+              }`}
             >
               {/* Uncheck all icon */}
               <svg 
-                className="w-5 h-5 text-gray-400" 
+                className={`w-5 h-5 ${selectedCount > 0 ? 'text-gray-400' : 'text-gray-300'}`}
                 fill="none" 
                 stroke="currentColor" 
                 viewBox="0 0 24 24"
@@ -204,11 +227,12 @@ export default function BottomNav({
                   d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" 
                 />
               </svg>
-              <h2 className="font-semibold text-gray-400">Select None</h2>
+              <h2 className={`font-semibold ${selectedCount > 0 ? 'text-gray-400' : 'text-gray-300'}`}>Select None</h2>
             </div>
 
             {/* Recently Select Button */}
             <div 
+              onClick={handleRecentlySelect}
               className="w-[200px] bg-white text-white p-3 mb-4 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2"
             >
               {/* Clock/History icon */}
@@ -230,11 +254,16 @@ export default function BottomNav({
 
             {/* Inverse Select Button */}
             <div 
-              className="w-[200px] bg-white text-white p-3 mb-4 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2"
+              onClick={handleInverseSelect}
+              className={`w-[200px] p-3 mb-4 transition-colors flex items-center justify-center gap-2 ${
+                selectedCount > 0
+                  ? 'bg-white text-white hover:bg-pink-50 hover:shadow-sm cursor-pointer'
+                  : 'bg-gray-100 cursor-not-allowed opacity-50'
+              }`}
             >
               {/* Swap/Inverse icon */}
               <svg 
-                className="w-5 h-5 text-gray-400" 
+                className={`w-5 h-5 ${selectedCount > 0 ? 'text-gray-400' : 'text-gray-300'}`}
                 fill="none" 
                 stroke="currentColor" 
                 viewBox="0 0 24 24"
@@ -246,7 +275,7 @@ export default function BottomNav({
                   d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" 
                 />
               </svg>
-              <h2 className="font-semibold text-gray-400">Inverse Select</h2>
+              <h2 className={`font-semibold ${selectedCount > 0 ? 'text-gray-400' : 'text-gray-300'}`}>Inverse Select</h2>
             </div>
           </div>
 
@@ -296,7 +325,7 @@ export default function BottomNav({
               <h2 className="font-semibold text-white">Award Points</h2>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

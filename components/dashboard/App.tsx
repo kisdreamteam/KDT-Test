@@ -11,6 +11,7 @@ import ErrorState from './ErrorState';
 import EmptyState from './EmptyState';
 import ClassCardsGrid from './ClassCardsGrid';
 import ClassCardsGridMulti from './ClassCardsGridMulti';
+import AwardPointsModal from '@/components/modals/AwardPointsModal';
 import { createClient } from '@/lib/supabase/client';
 
 interface Class {
@@ -32,6 +33,7 @@ export default function App() {
   const [archiveClassName, setArchiveClassName] = useState<string>('');
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
+  const [isAwardPointsModalOpen, setIsAwardPointsModalOpen] = useState(false);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -55,6 +57,10 @@ export default function App() {
         if (newState === false) {
           // Clear selections when exiting multi-select mode
           setSelectedClassIds([]);
+          window.dispatchEvent(new CustomEvent('selectionCountChanged', { detail: { count: 0 } }));
+        } else {
+          // When entering multi-select mode, dispatch initial count (0)
+          window.dispatchEvent(new CustomEvent('selectionCountChanged', { detail: { count: 0 } }));
         }
         return newState;
       });
@@ -63,7 +69,9 @@ export default function App() {
     const handleSelectAll = () => {
       if (isMultiSelectMode) {
         // Select all classes
-        setSelectedClassIds(classes.map(c => c.id));
+        const allIds = classes.map(c => c.id);
+        setSelectedClassIds(allIds);
+        window.dispatchEvent(new CustomEvent('selectionCountChanged', { detail: { count: allIds.length } }));
       }
     };
 
@@ -71,19 +79,61 @@ export default function App() {
       if (isMultiSelectMode) {
         // Deselect all classes
         setSelectedClassIds([]);
+        window.dispatchEvent(new CustomEvent('selectionCountChanged', { detail: { count: 0 } }));
+      }
+    };
+
+    const handleRecentlySelect = () => {
+      if (isMultiSelectMode) {
+        // Get last selected class IDs from localStorage
+        const lastSelected = localStorage.getItem('lastSelectedClasses');
+        if (lastSelected) {
+          try {
+            const ids = JSON.parse(lastSelected);
+            setSelectedClassIds(ids);
+            window.dispatchEvent(new CustomEvent('selectionCountChanged', { detail: { count: ids.length } }));
+          } catch (e) {
+            console.error('Error parsing last selected classes:', e);
+          }
+        }
+      }
+    };
+
+    const handleAwardPoints = () => {
+      if (isMultiSelectMode && selectedClassIds.length > 0) {
+        setIsAwardPointsModalOpen(true);
+      } else {
+        alert('Please select at least one class to award points.');
+      }
+    };
+
+    const handleInverseSelect = () => {
+      if (isMultiSelectMode) {
+        // Get all class IDs
+        const allClassIds = classes.map(c => c.id);
+        // Inverse: select all that are not currently selected
+        const newSelectedIds = allClassIds.filter(id => !selectedClassIds.includes(id));
+        setSelectedClassIds(newSelectedIds);
+        window.dispatchEvent(new CustomEvent('selectionCountChanged', { detail: { count: newSelectedIds.length } }));
       }
     };
 
     window.addEventListener('toggleMultiSelect', handleToggleEvent);
     window.addEventListener('selectAll', handleSelectAll);
     window.addEventListener('selectNone', handleSelectNone);
+    window.addEventListener('recentlySelect', handleRecentlySelect);
+    window.addEventListener('awardPoints', handleAwardPoints);
+    window.addEventListener('inverseSelect', handleInverseSelect);
     
     return () => {
       window.removeEventListener('toggleMultiSelect', handleToggleEvent);
       window.removeEventListener('selectAll', handleSelectAll);
       window.removeEventListener('selectNone', handleSelectNone);
+      window.removeEventListener('recentlySelect', handleRecentlySelect);
+      window.removeEventListener('awardPoints', handleAwardPoints);
+      window.removeEventListener('inverseSelect', handleInverseSelect);
     };
-  }, [isMultiSelectMode, classes]);
+  }, [isMultiSelectMode, classes, selectedClassIds]);
 
   // Fetch student counts for all classes
   useEffect(() => {
@@ -212,15 +262,33 @@ export default function App() {
   // Handle class selection in multi-select mode
   const handleSelectClass = (classId: string) => {
     setSelectedClassIds(prev => {
-      if (prev.includes(classId)) {
-        // Deselect if already selected
-        return prev.filter(id => id !== classId);
-      } else {
-        // Select if not selected
-        return [...prev, classId];
-      }
+      const newSelection = prev.includes(classId)
+        ? prev.filter(id => id !== classId)
+        : [...prev, classId];
+      
+      // Dispatch selection count change event for BottomNav
+      window.dispatchEvent(new CustomEvent('selectionCountChanged', { detail: { count: newSelection.length } }));
+      
+      return newSelection;
     });
   };
+
+  // Dispatch selection count when selection changes
+  useEffect(() => {
+    if (isMultiSelectMode) {
+      window.dispatchEvent(new CustomEvent('selectionCountChanged', { detail: { count: selectedClassIds.length } }));
+    }
+  }, [selectedClassIds, isMultiSelectMode]);
+
+  // Handle award complete - store selected class IDs in localStorage
+  const handleAwardComplete = (selectedIds: string[], type: 'classes' | 'students') => {
+    if (type === 'classes') {
+      localStorage.setItem('lastSelectedClasses', JSON.stringify(selectedIds));
+    }
+  };
+
+  // Get selected classes data for the modal
+  const selectedClasses = classes.filter(c => selectedClassIds.includes(c.id));
 
   if (isLoadingClasses) {
     return <LoadingState message="Loading classes..." />;
@@ -304,6 +372,20 @@ export default function App() {
           </svg>
         }
       />
+
+      {/* Award Points Modal for Multi-Select */}
+      {selectedClassIds.length > 0 && (
+        <AwardPointsModal
+          isOpen={isAwardPointsModalOpen}
+          onClose={() => setIsAwardPointsModalOpen(false)}
+          student={null}
+          classId={selectedClassIds[0]} // Use first class for categories
+          selectedClassIds={selectedClassIds}
+          classes={selectedClasses}
+          onAwardComplete={handleAwardComplete}
+          onRefresh={refreshClasses}
+        />
+      )}
     </div>
   );
 }

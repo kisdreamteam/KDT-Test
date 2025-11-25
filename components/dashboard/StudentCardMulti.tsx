@@ -15,7 +15,7 @@ export default function StudentCardMulti({
   return (
     <div 
       onClick={() => onSelect(student.id)}
-      className={`rounded-lg hover:rounded-3xl shadow-md p-6 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group aspect-square flex flex-col cursor-pointer ${
+      className={`rounded-3xl hover:rounded-3xl shadow-md p-6 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group aspect-square flex flex-col cursor-pointer ${
         isSelected
           ? 'bg-blue-300 hover:bg-blue-400'
           : 'bg-white hover:bg-blue-100'

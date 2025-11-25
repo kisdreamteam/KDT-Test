@@ -41,6 +41,7 @@ export default function ClassRosterApp() {
   } | null>(null);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [isMultiStudentAwardModalOpen, setIsMultiStudentAwardModalOpen] = useState(false);
 
   // Dispatch initial state to BottomNav
   useEffect(() => {
@@ -85,6 +86,10 @@ export default function ClassRosterApp() {
         if (newState === false) {
           // Clear selections when exiting multi-select mode
           setSelectedStudentIds([]);
+          window.dispatchEvent(new CustomEvent('selectionCountChanged', { detail: { count: 0 } }));
+        } else {
+          // When entering multi-select mode, dispatch initial count (0)
+          window.dispatchEvent(new CustomEvent('selectionCountChanged', { detail: { count: 0 } }));
         }
         return newState;
       });
@@ -93,7 +98,9 @@ export default function ClassRosterApp() {
     const handleSelectAll = () => {
       if (isMultiSelectMode) {
         // Select all students
-        setSelectedStudentIds(students.map(s => s.id));
+        const allIds = students.map(s => s.id);
+        setSelectedStudentIds(allIds);
+        window.dispatchEvent(new CustomEvent('selectionCountChanged', { detail: { count: allIds.length } }));
       }
     };
 
@@ -101,19 +108,61 @@ export default function ClassRosterApp() {
       if (isMultiSelectMode) {
         // Deselect all students
         setSelectedStudentIds([]);
+        window.dispatchEvent(new CustomEvent('selectionCountChanged', { detail: { count: 0 } }));
+      }
+    };
+
+    const handleRecentlySelect = () => {
+      if (isMultiSelectMode) {
+        // Get last selected student IDs from localStorage
+        const lastSelected = localStorage.getItem('lastSelectedStudents');
+        if (lastSelected) {
+          try {
+            const ids = JSON.parse(lastSelected);
+            setSelectedStudentIds(ids);
+            window.dispatchEvent(new CustomEvent('selectionCountChanged', { detail: { count: ids.length } }));
+          } catch (e) {
+            console.error('Error parsing last selected students:', e);
+          }
+        }
+      }
+    };
+
+    const handleAwardPoints = () => {
+      if (isMultiSelectMode && selectedStudentIds.length > 0) {
+        setIsMultiStudentAwardModalOpen(true);
+      } else {
+        alert('Please select at least one student to award points.');
+      }
+    };
+
+    const handleInverseSelect = () => {
+      if (isMultiSelectMode) {
+        // Get all student IDs
+        const allStudentIds = students.map(s => s.id);
+        // Inverse: select all that are not currently selected
+        const newSelectedIds = allStudentIds.filter(id => !selectedStudentIds.includes(id));
+        setSelectedStudentIds(newSelectedIds);
+        window.dispatchEvent(new CustomEvent('selectionCountChanged', { detail: { count: newSelectedIds.length } }));
       }
     };
 
     window.addEventListener('toggleMultiSelect', handleToggleEvent);
     window.addEventListener('selectAll', handleSelectAll);
     window.addEventListener('selectNone', handleSelectNone);
+    window.addEventListener('recentlySelect', handleRecentlySelect);
+    window.addEventListener('awardPoints', handleAwardPoints);
+    window.addEventListener('inverseSelect', handleInverseSelect);
     
     return () => {
       window.removeEventListener('toggleMultiSelect', handleToggleEvent);
       window.removeEventListener('selectAll', handleSelectAll);
       window.removeEventListener('selectNone', handleSelectNone);
+      window.removeEventListener('recentlySelect', handleRecentlySelect);
+      window.removeEventListener('awardPoints', handleAwardPoints);
+      window.removeEventListener('inverseSelect', handleInverseSelect);
     };
-  }, [isMultiSelectMode, students]);
+  }, [isMultiSelectMode, students, selectedStudentIds]);
 
   const fetchClass = async () => {
     try {
@@ -236,14 +285,29 @@ export default function ClassRosterApp() {
   // Handle student selection in multi-select mode
   const handleSelectStudent = (studentId: string) => {
     setSelectedStudentIds(prev => {
-      if (prev.includes(studentId)) {
-        // Deselect if already selected
-        return prev.filter(id => id !== studentId);
-      } else {
-        // Select if not selected
-        return [...prev, studentId];
-      }
+      const newSelection = prev.includes(studentId)
+        ? prev.filter(id => id !== studentId)
+        : [...prev, studentId];
+      
+      // Dispatch selection count change event for BottomNav
+      window.dispatchEvent(new CustomEvent('selectionCountChanged', { detail: { count: newSelection.length } }));
+      
+      return newSelection;
     });
+  };
+
+  // Dispatch selection count when selection changes
+  useEffect(() => {
+    if (isMultiSelectMode) {
+      window.dispatchEvent(new CustomEvent('selectionCountChanged', { detail: { count: selectedStudentIds.length } }));
+    }
+  }, [selectedStudentIds, isMultiSelectMode]);
+
+  // Handle award complete - store selected student IDs in localStorage
+  const handleAwardComplete = (selectedIds: string[], type: 'classes' | 'students') => {
+    if (type === 'students') {
+      localStorage.setItem('lastSelectedStudents', JSON.stringify(selectedIds));
+    }
   };
 
   // Handle points awarded callback
@@ -363,6 +427,19 @@ export default function ClassRosterApp() {
         onRefresh={fetchStudents}
         onPointsAwarded={handlePointsAwarded}
       />
+
+      {/* Award Points Modal for Multi-Select Students */}
+      {selectedStudentIds.length > 0 && (
+        <AwardPointsModal
+          isOpen={isMultiStudentAwardModalOpen}
+          onClose={() => setIsMultiStudentAwardModalOpen(false)}
+          student={null}
+          classId={classId}
+          selectedStudentIds={selectedStudentIds}
+          onAwardComplete={handleAwardComplete}
+          onRefresh={fetchStudents}
+        />
+      )}
 
       {/* Edit Student Modal */}
       <EditStudentModal

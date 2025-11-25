@@ -11,8 +11,8 @@ import { PointCategory, Student } from '@/lib/types';
 interface AwardPointsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  student: Student | null; // null for whole class mode
-  classId: string;
+  student: Student | null; // null for whole class mode or multi-select mode
+  classId: string; // Single classId for backward compatibility
   className?: string; // For whole class mode
   classIcon?: string; // For whole class mode
   onRefresh?: () => void;
@@ -23,6 +23,11 @@ interface AwardPointsModalProps {
     categoryName: string;
     categoryIcon?: string;
   }) => void;
+  // Multi-select support
+  selectedClassIds?: string[]; // For multi-class selection
+  selectedStudentIds?: string[]; // For multi-student selection
+  classes?: Array<{id: string, name: string, icon?: string}>; // For displaying class info in multi-class mode
+  onAwardComplete?: (selectedIds: string[], type: 'classes' | 'students') => void; // Callback to store selected IDs
 }
 
 export default function AwardPointsModal({
@@ -34,8 +39,14 @@ export default function AwardPointsModal({
   classIcon,
   onRefresh,
   onPointsAwarded,
+  selectedClassIds,
+  selectedStudentIds,
+  classes,
+  onAwardComplete,
 }: AwardPointsModalProps) {
-  const isWholeClassMode = student === null;
+  const isMultiClassMode = selectedClassIds && selectedClassIds.length > 0;
+  const isMultiStudentMode = selectedStudentIds && selectedStudentIds.length > 0;
+  const isWholeClassMode = student === null && !isMultiClassMode && !isMultiStudentMode;
   console.log('AWARD POINTS MODAL: classId received:', classId);
   
   const [categories, setCategories] = useState<PointCategory[]>([]);
@@ -57,10 +68,17 @@ export default function AwardPointsModal({
 
     try {
       const supabase = createClient();
+      
+      // For multi-class mode, fetch categories from all selected classes
+      // For other modes, use the single classId
+      const classIdsToFetch = (selectedClassIds && selectedClassIds.length > 0)
+        ? selectedClassIds 
+        : [classId];
+
       const { data, error } = await supabase
         .from('point_categories')
         .select('*')
-        .eq('class_id', classId);
+        .in('class_id', classIdsToFetch);
 
       console.log('AWARD POINTS MODAL: Fetched categories data:', data);
 
@@ -69,6 +87,8 @@ export default function AwardPointsModal({
         console.error('Error fetching categories:', error?.message || error);
         setCategories([]);
       } else {
+        // For multi-class mode, we might have duplicate categories, so we'll use unique ones
+        // For now, we'll just use all categories (they should be class-specific anyway)
         setCategories(data || []);
       }
     } catch (err) {
@@ -79,10 +99,10 @@ export default function AwardPointsModal({
     }
   };
 
-  // Fetch categories when modal opens or classId changes
+  // Fetch categories when modal opens or classId/selectedClassIds changes
   useEffect(() => {
     fetchCategories();
-  }, [isOpen, classId]);
+  }, [isOpen, classId, selectedClassIds]);
 
   // Debug logging for categories and loading state
   useEffect(() => {
@@ -133,7 +153,90 @@ export default function AwardPointsModal({
       const supabase = createClient();
       const points = category.points ?? category.default_points ?? 0;
       
-      if (isWholeClassMode) {
+      if (isMultiClassMode && selectedClassIds) {
+        // Award points to all students in all selected classes
+        const { data: students, error: fetchError } = await supabase
+          .from('students')
+          .select('id')
+          .in('class_id', selectedClassIds);
+
+        if (fetchError) {
+          console.error('Error fetching students:', fetchError);
+          alert('Failed to fetch students. Please try again.');
+          return;
+        }
+
+        if (!students || students.length === 0) {
+          alert('No students found in the selected classes.');
+          return;
+        }
+
+        // Award points to each student
+        const awardPromises = students.map(async (s) => {
+          const { error } = await supabase.rpc('award_points_to_student', {
+            student_id_in: s.id,
+            category_id_in: category.id,
+            points_in: points,
+            memo_in: '' // Empty memo for a standard skill click
+          });
+          return error;
+        });
+
+        const errors = await Promise.all(awardPromises);
+        const hasError = errors.some(err => err !== null);
+
+        if (hasError) {
+          console.error('Error awarding skill points to some students:', errors);
+          alert('Failed to award points to some students. Please try again.');
+          return;
+        }
+
+        // Store selected class IDs in localStorage and notify parent
+        if (onAwardComplete) {
+          onAwardComplete(selectedClassIds, 'classes');
+        }
+
+        // Refresh if onRefresh is provided
+        if (onRefresh) {
+          onRefresh();
+        }
+        
+        // Close the modal
+        onClose();
+      } else if (isMultiStudentMode && selectedStudentIds) {
+        // Award points to selected students
+        const awardPromises = selectedStudentIds.map(async (studentId) => {
+          const { error } = await supabase.rpc('award_points_to_student', {
+            student_id_in: studentId,
+            category_id_in: category.id,
+            points_in: points,
+            memo_in: '' // Empty memo for a standard skill click
+          });
+          return error;
+        });
+
+        const errors = await Promise.all(awardPromises);
+        const hasError = errors.some(err => err !== null);
+
+        if (hasError) {
+          console.error('Error awarding skill points to some students:', errors);
+          alert('Failed to award points to some students. Please try again.');
+          return;
+        }
+
+        // Store selected student IDs in localStorage and notify parent
+        if (onAwardComplete) {
+          onAwardComplete(selectedStudentIds, 'students');
+        }
+
+        // Refresh if onRefresh is provided
+        if (onRefresh) {
+          onRefresh();
+        }
+        
+        // Close the modal
+        onClose();
+      } else if (isWholeClassMode) {
         // Award points to all students in the class
         const { data: students, error: fetchError } = await supabase
           .from('students')
@@ -250,7 +353,145 @@ export default function AwardPointsModal({
         return;
       }
       
-      if (isWholeClassMode) {
+      if (isMultiClassMode && selectedClassIds) {
+        // Award custom points to all students in all selected classes
+        const { data: students, error: fetchError } = await supabase
+          .from('students')
+          .select('id, points')
+          .in('class_id', selectedClassIds);
+
+        if (fetchError) {
+          console.error('Error fetching students:', fetchError);
+          alert('Failed to fetch students. Please try again.');
+          return;
+        }
+
+        if (!students || students.length === 0) {
+          alert('No students found in the selected classes.');
+          return;
+        }
+
+        // Insert custom point events for each student
+        const insertPromises = students.map(async (s) => {
+          const { error: insertError } = await supabase
+            .from('custom_point_events')
+            .insert({
+              student_id: s.id,
+              teacher_id: user.id,
+              points: customPoints,
+              memo: customMemo || null
+            });
+          
+          if (insertError) {
+            return insertError;
+          }
+
+          // Update student's total points
+          const currentPoints = s.points || 0;
+          const newPoints = currentPoints + customPoints;
+          
+          const { error: updateError } = await supabase
+            .from('students')
+            .update({ points: newPoints })
+            .eq('id', s.id);
+
+          return updateError;
+        });
+
+        const errors = await Promise.all(insertPromises);
+        const hasError = errors.some(err => err !== null);
+
+        if (hasError) {
+          console.error('Error awarding custom points to some students:', errors);
+          alert('Failed to award points to some students. Please try again.');
+          return;
+        }
+
+        // Store selected class IDs in localStorage and notify parent
+        if (onAwardComplete) {
+          onAwardComplete(selectedClassIds, 'classes');
+        }
+
+        // Success - reset form
+        setCustomPoints(0);
+        setCustomMemo('');
+        // Refresh if onRefresh is provided
+        if (onRefresh) {
+          onRefresh();
+        }
+        
+        // Close the modal
+        onClose();
+      } else if (isMultiStudentMode && selectedStudentIds) {
+        // Award custom points to selected students
+        const { data: students, error: fetchError } = await supabase
+          .from('students')
+          .select('id, points')
+          .in('id', selectedStudentIds);
+
+        if (fetchError) {
+          console.error('Error fetching students:', fetchError);
+          alert('Failed to fetch students. Please try again.');
+          return;
+        }
+
+        if (!students || students.length === 0) {
+          alert('No students found.');
+          return;
+        }
+
+        // Insert custom point events for each student
+        const insertPromises = students.map(async (s) => {
+          const { error: insertError } = await supabase
+            .from('custom_point_events')
+            .insert({
+              student_id: s.id,
+              teacher_id: user.id,
+              points: customPoints,
+              memo: customMemo || null
+            });
+          
+          if (insertError) {
+            return insertError;
+          }
+
+          // Update student's total points
+          const currentPoints = s.points || 0;
+          const newPoints = currentPoints + customPoints;
+          
+          const { error: updateError } = await supabase
+            .from('students')
+            .update({ points: newPoints })
+            .eq('id', s.id);
+
+          return updateError;
+        });
+
+        const errors = await Promise.all(insertPromises);
+        const hasError = errors.some(err => err !== null);
+
+        if (hasError) {
+          console.error('Error awarding custom points to some students:', errors);
+          alert('Failed to award points to some students. Please try again.');
+          return;
+        }
+
+        // Store selected student IDs in localStorage and notify parent
+        if (onAwardComplete) {
+          onAwardComplete(selectedStudentIds, 'students');
+        }
+
+        // Success - reset form
+        setCustomPoints(0);
+        setCustomMemo('');
+        // Refresh if onRefresh is provided
+        if (onRefresh) {
+          onRefresh();
+        }
+        
+        // Close the modal
+        onClose();
+      } else if (isWholeClassMode) {
         // Award custom points to all students in the class
         const { data: students, error: fetchError } = await supabase
           .from('students')
@@ -404,11 +645,15 @@ export default function AwardPointsModal({
           <div className="flex items-center gap-3">
             <div className="relative">
               <Image
-                src={isWholeClassMode 
+                src={isMultiClassMode || isWholeClassMode
                   ? (classIcon || "/images/1Landing Page Image.png")
                   : (student?.avatar || "/images/classes/avatars/avatar-01.png")
                 }
-                alt={isWholeClassMode 
+                alt={isMultiClassMode && selectedClassIds
+                  ? `${selectedClassIds.length} Selected Classes`
+                  : isMultiStudentMode && selectedStudentIds
+                  ? `${selectedStudentIds.length} Selected Students`
+                  : isWholeClassMode 
                   ? (className || "Whole Class")
                   : `${student?.first_name} ${student?.last_name}`
                 }
@@ -417,7 +662,7 @@ export default function AwardPointsModal({
                 className="rounded-full"
               />
               {/* Crown icon overlay - only for single student */}
-              {!isWholeClassMode && (
+              {!isWholeClassMode && !isMultiClassMode && !isMultiStudentMode && (
                 <div className="absolute -top-1 -right-1">
                   <svg className="w-5 h-5 text-yellow-400" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 2L8.5 8.5 2 9.5l5 5-1 7 6-3.5 6 3.5-1-7 5-5-6.5-1L12 2z"/>
@@ -426,7 +671,11 @@ export default function AwardPointsModal({
               )}
             </div>
             <span className="text-5xl font-bold text-gray-900 lowercase">
-              {isWholeClassMode 
+              {isMultiClassMode && selectedClassIds
+                ? `${selectedClassIds.length} Selected ${selectedClassIds.length === 1 ? 'Class' : 'Classes'}`
+                : isMultiStudentMode && selectedStudentIds
+                ? `${selectedStudentIds.length} Selected ${selectedStudentIds.length === 1 ? 'Student' : 'Students'}`
+                : isWholeClassMode 
                 ? (className || 'Whole Class')
                 : `${student?.first_name} ${student?.last_name}`
               }
@@ -435,7 +684,9 @@ export default function AwardPointsModal({
             {/* Point Totals */}
             <div className="flex items-left gap-2 ml-4">
               <span className="px-3 py-1 bg-gray-100 border border-gray-300 rounded-full text-5xl font-bold text-red-600">
-                {isWholeClassMode 
+                {isMultiClassMode || isMultiStudentMode
+                  ? 'Multiple'
+                  : isWholeClassMode 
                   ? 'Class Points'
                   : `${student?.points || 0} Points`
                 }
