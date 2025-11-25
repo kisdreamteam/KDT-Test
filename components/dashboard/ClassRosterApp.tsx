@@ -50,6 +50,12 @@ export default function ClassRosterApp() {
 
   useEffect(() => {
     if (classId) {
+      // Clear recently selected data when a new class is selected
+      localStorage.removeItem('lastSelectedClasses');
+      localStorage.removeItem('lastSelectedStudents');
+      // Dispatch event to notify BottomNav
+      window.dispatchEvent(new CustomEvent('recentlySelectedCleared'));
+      
       fetchClass();
       fetchStudents();
     }
@@ -307,6 +313,8 @@ export default function ClassRosterApp() {
   const handleAwardComplete = (selectedIds: string[], type: 'classes' | 'students') => {
     if (type === 'students') {
       localStorage.setItem('lastSelectedStudents', JSON.stringify(selectedIds));
+      // Notify BottomNav that recently selected data is now available
+      window.dispatchEvent(new CustomEvent('recentlySelectedUpdated'));
     }
   };
 

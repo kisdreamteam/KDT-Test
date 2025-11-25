@@ -284,6 +284,8 @@ export default function App() {
   const handleAwardComplete = (selectedIds: string[], type: 'classes' | 'students') => {
     if (type === 'classes') {
       localStorage.setItem('lastSelectedClasses', JSON.stringify(selectedIds));
+      // Notify BottomNav that recently selected data is now available
+      window.dispatchEvent(new CustomEvent('recentlySelectedUpdated'));
     }
   };
 

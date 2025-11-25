@@ -29,23 +29,50 @@ export default function BottomNav({
 }: BottomNavProps) {
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedCount, setSelectedCount] = useState(0);
+  const [hasRecentlySelected, setHasRecentlySelected] = useState(false);
+
+  // Check for recently selected data in localStorage
+  const checkRecentlySelected = () => {
+    const lastSelectedClasses = localStorage.getItem('lastSelectedClasses');
+    const lastSelectedStudents = localStorage.getItem('lastSelectedStudents');
+    const hasData = !!(lastSelectedClasses || lastSelectedStudents);
+    setHasRecentlySelected(hasData);
+  };
 
   // Listen for multi-select state changes from components
   useEffect(() => {
     const handleStateChange = (event: CustomEvent) => {
       setIsMultiSelectMode(event.detail.isMultiSelect);
+      // Check for recently selected data when entering multi-select mode
+      if (event.detail.isMultiSelect) {
+        checkRecentlySelected();
+      }
     };
 
     const handleSelectionCountChange = (event: CustomEvent) => {
       setSelectedCount(event.detail.count || 0);
     };
 
+    // Listen for localStorage changes (when recently selected data is cleared or updated)
+    const handleStorageChange = () => {
+      checkRecentlySelected();
+    };
+
+    // Check initially
+    checkRecentlySelected();
+
     window.addEventListener('multiSelectStateChanged', handleStateChange as EventListener);
     window.addEventListener('selectionCountChanged', handleSelectionCountChange as EventListener);
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('recentlySelectedCleared', handleStorageChange);
+    window.addEventListener('recentlySelectedUpdated', handleStorageChange);
     
     return () => {
       window.removeEventListener('multiSelectStateChanged', handleStateChange as EventListener);
       window.removeEventListener('selectionCountChanged', handleSelectionCountChange as EventListener);
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('recentlySelectedCleared', handleStorageChange);
+      window.removeEventListener('recentlySelectedUpdated', handleStorageChange);
     };
   }, []);
 
@@ -76,7 +103,9 @@ export default function BottomNav({
   };
 
   const handleRecentlySelect = () => {
-    window.dispatchEvent(new CustomEvent('recentlySelect'));
+    if (hasRecentlySelected) {
+      window.dispatchEvent(new CustomEvent('recentlySelect'));
+    }
   };
 
   const handleInverseSelect = () => {
@@ -233,11 +262,15 @@ export default function BottomNav({
             {/* Recently Select Button */}
             <div 
               onClick={handleRecentlySelect}
-              className="w-[200px] bg-white text-white p-3 mb-4 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2"
+              className={`w-[200px] p-3 mb-4 transition-colors flex items-center justify-center gap-2 ${
+                hasRecentlySelected
+                  ? 'bg-white text-white hover:bg-pink-50 hover:shadow-sm cursor-pointer'
+                  : 'bg-gray-100 cursor-not-allowed opacity-50'
+              }`}
             >
               {/* Clock/History icon */}
               <svg 
-                className="w-5 h-5 text-gray-400" 
+                className={`w-5 h-5 ${hasRecentlySelected ? 'text-gray-400' : 'text-gray-300'}`}
                 fill="none" 
                 stroke="currentColor" 
                 viewBox="0 0 24 24"
@@ -249,7 +282,7 @@ export default function BottomNav({
                   d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
                 />
               </svg>
-              <h2 className="font-semibold text-gray-400">Recently Select</h2>
+              <h2 className={`font-semibold ${hasRecentlySelected ? 'text-gray-400' : 'text-gray-300'}`}>Recently Select</h2>
             </div>
 
             {/* Inverse Select Button */}
