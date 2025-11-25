@@ -307,9 +307,6 @@ export default function ClassRosterApp() {
           ) : isMultiSelectMode ? (
             <StudentCardsGridMulti
               students={sortedStudents}
-              classIcon={classIcon}
-              totalClassPoints={totalClassPoints}
-              onWholeClassClick={handleWholeClassClick}
               selectedStudentIds={selectedStudentIds}
               onSelectStudent={handleSelectStudent}
             />
