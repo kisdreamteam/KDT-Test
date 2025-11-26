@@ -638,7 +638,15 @@ export default function AwardPointsModal({
   return (
     <>
       <Modal isOpen={isOpen} onClose={onClose} className="max-w-4xl" fixedTop={true}>
-        <div className="relative">
+        <div className={`relative p-6 rounded-lg transition-colors ${
+          activeTab === 'positive' 
+            ? 'bg-blue-100' 
+            : activeTab === 'negative' 
+            ? 'bg-pink-100' 
+            : activeTab === 'custom'
+            ? 'bg-orange-100'
+            : 'bg-white'
+        }`}>
         {/* Header Section */}
         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
           {/* Student/Class Info */}
@@ -903,7 +911,7 @@ export default function AwardPointsModal({
                       }
                     }
                   }}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="Enter point value (positive or negative)"
                 />
                 <p className="text-xs text-gray-500">
@@ -919,7 +927,7 @@ export default function AwardPointsModal({
                   value={customMemo}
                   onChange={(e) => setCustomMemo(e.target.value)}
                   rows={4}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-y"
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-y"
                   placeholder="Add a note about these points..."
                 />
               </div>
