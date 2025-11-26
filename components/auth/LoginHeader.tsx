@@ -39,7 +39,7 @@ export default function LoginHeader() {
       </div>
 
       {/* Login Title - Below Back Arrow */}
-      <h1 className="text-4xl font-extrabold text-[#4A3B8D] mb-8 mt-4">
+      <h1 className="text-6xl font-extrabold text-[#4A3B8D] mb-8 mt-4 font-spartan">
         Login
       </h1>
     </>

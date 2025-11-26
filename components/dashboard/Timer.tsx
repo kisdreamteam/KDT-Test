@@ -111,10 +111,10 @@ export default function Timer({ onClose }: TimerProps) {
       {/* Close Button */}
       <button
         onClick={onClose}
-        className="absolute top-8 right-8 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors z-10"
+        className="absolute top-10 right-10 w-12 h-12 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors z-10"
       >
         <svg
-          className="w-6 h-6 text-white"
+          className="w-8 h-8 text-white"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -130,21 +130,21 @@ export default function Timer({ onClose }: TimerProps) {
 
       <div className="w-full max-w-4xl px-8">
         {/* Tabs */}
-        <div className="flex gap-8 mb-8">
+        <div className="flex gap-12 mb-10">
           <button
             onClick={() => handleTabChange('countdown')}
-            className="text-2xl font-semibold pb-2 transition-colors text-white"
+            className="text-3xl font-semibold pb-3 transition-colors text-white"
             style={{
-              borderBottom: `2px solid ${activeTab === 'countdown' ? 'white' : '#4A3B8D'}`,
+              borderBottom: `3px solid ${activeTab === 'countdown' ? 'white' : '#4A3B8D'}`,
             }}
           >
             Countdown
           </button>
           <button
             onClick={() => handleTabChange('stopwatch')}
-            className="text-2xl font-semibold pb-2 transition-colors text-white"
+            className="text-3xl font-semibold pb-3 transition-colors text-white"
             style={{
-              borderBottom: `2px solid ${activeTab === 'stopwatch' ? 'white' : '#4A3B8D'}`,
+              borderBottom: `3px solid ${activeTab === 'stopwatch' ? 'white' : '#4A3B8D'}`,
             }}
           >
             Stopwatch
@@ -152,67 +152,67 @@ export default function Timer({ onClose }: TimerProps) {
         </div>
 
         {/* Timer Display */}
-        <div className="bg-pink-600 rounded-3xl p-10 mb-8 border-4 border-white">
-          <div className="flex items-center justify-center gap-4">
+        <div className="bg-pink-600 rounded-3xl p-[60px] mb-8 border-[6px] border-white">
+          <div className="flex items-center justify-center gap-6">
             {/* Minutes */}
             <div className="text-center">
-              <div className="text-9xl font-bold text-white mb-2">
+              <div className="text-[12rem] font-bold text-white mb-3 leading-none">
                 {displayTime.minutes}
               </div>
-              <div className="text-4xl text-white/80">Minutes</div>
+              <div className="text-6xl text-white/80">Minutes</div>
             </div>
 
             {/* Colon */}
-            <div className="text-9xl font-bold text-white mb-15">:</div>
+            <div className="text-[12rem] -translate-y-10 font-bold text-white leading-none">:</div>
 
             {/* Seconds */}
             <div className="text-center">
-              <div className="text-9xl font-bold text-white mb-2">
+              <div className="text-[12rem] font-bold text-white mb-3 leading-none">
                 {displayTime.seconds}
               </div>
-              <div className="text-4xl text-white/80">Seconds</div>
+              <div className="text-6xl text-white/80">Seconds</div>
             </div>
           </div>
         </div>
 
         {/* Countdown Time Input (only shown in countdown mode when not running) */}
         {activeTab === 'countdown' && !isRunning && (
-          <div className="flex items-center justify-center gap-4 mb-8">
-            <div className="flex items-center gap-2">
-              <label className="text-white text-lg">Minutes:</label>
+          <div className="flex items-center justify-center gap-6 mb-8">
+            <div className="flex items-center gap-3">
+              <label className="text-white text-2xl">Minutes:</label>
               <input
                 type="number"
                 min="0"
                 max="99"
                 value={countdownMinutes}
                 onChange={(e) => handleMinutesChange(parseInt(e.target.value) || 0)}
-                className="w-20 px-4 py-2 rounded-lg bg-white/20 text-white text-center text-2xl font-bold border-2 border-white/30 focus:border-white focus:outline-none"
+                className="w-28 px-5 py-3 rounded-lg bg-white/20 text-white text-center text-3xl font-bold border-[3px] border-white/30 focus:border-white focus:outline-none"
               />
             </div>
-            <div className="text-white text-2xl">:</div>
-            <div className="flex items-center gap-2">
-              <label className="text-white text-lg">Seconds:</label>
+            <div className="text-white text-3xl">:</div>
+            <div className="flex items-center gap-3">
+              <label className="text-white text-2xl">Seconds:</label>
               <input
                 type="number"
                 min="0"
                 max="59"
                 value={countdownSeconds}
                 onChange={(e) => handleSecondsChange(parseInt(e.target.value) || 0)}
-                className="w-20 px-4 py-2 rounded-lg bg-white/20 text-white text-center text-2xl font-bold border-2 border-white/30 focus:border-white focus:outline-none"
+                className="w-28 px-5 py-3 rounded-lg bg-white/20 text-white text-center text-3xl font-bold border-[3px] border-white/30 focus:border-white focus:outline-none"
               />
             </div>
           </div>
         )}
 
         {/* Control Buttons */}
-        <div className="flex items-center justify-center gap-4">
+        <div className="flex items-center justify-center gap-6">
           {!isRunning ? (
             <button
               onClick={handleStart}
-              className="bg-pink-600 border-white border-4 hover:bg-[#5a4b9d] text-white px-12 py-4 rounded-xl font-semibold text-xl flex items-center gap-3 transition-colors shadow-lg"
+              className="bg-pink-600 border-white border-[6px] hover:bg-[#5a4b9d] text-white px-[72px] py-6 rounded-xl font-semibold text-2xl flex items-center gap-4 transition-colors shadow-lg"
             >
               <svg
-                className="w-6 h-6"
+                className="w-9 h-9"
                 fill="currentColor"
                 viewBox="0 0 24 24"
               >
@@ -224,10 +224,10 @@ export default function Timer({ onClose }: TimerProps) {
             <>
               <button
                 onClick={handlePause}
-                className="bg-[#4A3B8D] hover:bg-[#5a4b9d] text-white px-12 py-4 rounded-xl font-semibold text-xl flex items-center gap-3 transition-colors shadow-lg"
+                className="bg-[#4A3B8D] hover:bg-[#5a4b9d] text-white px-[72px] py-6 rounded-xl font-semibold text-2xl flex items-center gap-4 transition-colors shadow-lg"
               >
                 <svg
-                  className="w-6 h-6"
+                  className="w-9 h-9"
                   fill="currentColor"
                   viewBox="0 0 24 24"
                 >
@@ -237,7 +237,7 @@ export default function Timer({ onClose }: TimerProps) {
               </button>
               <button
                 onClick={handleReset}
-                className="bg-white/20 hover:bg-white/30 text-white px-12 py-4 rounded-xl font-semibold text-xl transition-colors shadow-lg"
+                className="bg-white/20 hover:bg-white/30 text-white px-[72px] py-6 rounded-xl font-semibold text-2xl transition-colors shadow-lg"
               >
                 Reset
               </button>

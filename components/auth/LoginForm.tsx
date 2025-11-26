@@ -29,7 +29,7 @@ export default function LoginForm() {
     }}>
       {/* Email Field */}
       <div className="grid gap-2">
-        <label htmlFor="email" className="text-base font-semibold text-black">
+        <label htmlFor="email" className="text-base font-semibold text-black font-spartan">
           Email address
         </label>
         <input
@@ -47,7 +47,7 @@ export default function LoginForm() {
 
       {/* Password Field */}
       <div className="grid gap-2">
-        <label htmlFor="password" className="text-base font-semibold text-black">
+        <label htmlFor="password" className="text-base font-semibold text-black font-spartan">
           Password
         </label>
         <div className="relative">
@@ -65,7 +65,7 @@ export default function LoginForm() {
           <button
             type="button"
             onClick={() => setShowPassword((v) => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-black/50 hover:text-black/80"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-black/50 hover:text-black/80 "
             aria-label={showPassword ? 'Hide password' : 'Show password'}
           >
             <EyeIcon hidden={showPassword} />
@@ -75,7 +75,7 @@ export default function LoginForm() {
 
       {/* Forgot Password Link - Left Aligned */}
       <div className="text-left">
-        <Link href="#" className="text-sm text-gray-600 hover:underline">
+        <Link href="#" className="text-sm text-gray-600 hover:underline font-spartan">
           Forgot your password?
         </Link>
       </div>
@@ -84,7 +84,7 @@ export default function LoginForm() {
       <div className="grid gap-3">
         <button
           type="submit"
-          className="h-12 rounded-[12px] bg-[#D96B7B] text-white font-bold text-lg tracking-tight hover:brightness-95 transition focus:outline-none focus:ring-4 focus:ring-[#D96B7B]/30"
+          className="h-12 rounded-[12px] bg-[#D96B7B] text-white font-bold text-2xl tracking-tight hover:brightness-95 transition focus:outline-none focus:ring-4 focus:ring-[#D96B7B]/30 font-spartan"
         >
           Login
         </button>

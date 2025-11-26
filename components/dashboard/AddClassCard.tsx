@@ -5,7 +5,7 @@ interface AddClassCardProps {
 export default function AddClassCard({ onClick }: AddClassCardProps) {
   return (
     <div 
-      className="bg-blue-100 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-blue-200"
+      className="bg-blue-100 font-spartan rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-blue-200"
       onClick={onClick}
     >
       <div className="text-center">

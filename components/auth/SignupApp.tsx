@@ -4,7 +4,7 @@ import SignupForm from './SignupForm';
 
 export default function SignupApp() {
   return (
-    <div className="min-h-screen w-full bg-[#4A3B8D] flex items-center justify-center p-6 relative">
+    <div className="min-h-screen w-full bg-[#4A3B8D] flex items-center justify-center p-6 relative font-spartan">
       <SignupHeader />
       
       <div className="w-full max-w-7xl flex items-center gap-8">

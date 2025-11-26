@@ -35,7 +35,7 @@ export default function ClassCard({
       href={`/dashboard/classes/${classItem.id}`}
       className="block aspect-square"
     >
-      <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-xl hover:rounded-3xl hover:bg-blue-100 transition-shadow cursor-pointer relative group h-full flex flex-col">
+      <div className="bg-white rounded-lg font-spartan shadow-md p-6 hover:shadow-xl hover:rounded-3xl hover:bg-blue-100 transition-shadow cursor-pointer relative group h-full flex flex-col">
         {/* Settings Icon with Dropdown */}
         <div className="absolute top-2 right-2">
           <div className="relative">
