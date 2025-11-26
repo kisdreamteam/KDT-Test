@@ -3,8 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
-
 interface CreateClassFormProps {
   onClose: () => void;
 }
@@ -13,7 +11,6 @@ export default function CreateClassForm({ onClose }: CreateClassFormProps) {
   const [className, setClassName] = useState('');
   const [grade, setGrade] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
 
   // Initialize with random icon
   const getRandomIcon = () => {

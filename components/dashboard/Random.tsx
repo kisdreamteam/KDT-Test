@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Student } from '@/lib/types';
@@ -21,23 +21,7 @@ export default function Random({ onClose }: RandomProps) {
   const reelRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
 
-  // Fetch students when component mounts
-  useEffect(() => {
-    if (classId) {
-      fetchStudents();
-    }
-  }, [classId]);
-
-  // Cleanup animation frame on unmount
-  useEffect(() => {
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, []);
-
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async () => {
     try {
       setIsLoading(true);
       const supabase = createClient();
@@ -59,7 +43,23 @@ export default function Random({ onClose }: RandomProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [classId]);
+
+  // Fetch students when component mounts
+  useEffect(() => {
+    if (classId) {
+      fetchStudents();
+    }
+  }, [classId, fetchStudents]);
+
+  // Cleanup animation frame on unmount
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
 
   const handleSpin = () => {
     if (students.length === 0 || isSpinning) return;
@@ -242,7 +242,6 @@ export default function Random({ onClose }: RandomProps) {
                     {/* Duplicate students multiple times for seamless scrolling */}
                     {[...Array(5)].map((_, rotation) => 
                       students.map((student, index) => {
-                        const position = rotation * students.length + index;
                         return (
                           <div
                             key={`${student.id}-${rotation}-${index}`}

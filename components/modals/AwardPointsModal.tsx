@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import Modal from '@/components/ui/Modal';
 import { createClient } from '@/lib/supabase/client';
@@ -58,7 +58,7 @@ export default function AwardPointsModal({
   const [isEditModalOpen, setEditModalOpen] = useState(false);
 
   // Fetch categories function
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     if (!isOpen) {
       setIsLoading(false);
       return;
@@ -97,12 +97,12 @@ export default function AwardPointsModal({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isOpen, classId, selectedClassIds]);
 
   // Fetch categories when modal opens or classId/selectedClassIds changes
   useEffect(() => {
     fetchCategories();
-  }, [isOpen, classId, selectedClassIds]);
+  }, [isOpen, classId, selectedClassIds, fetchCategories]);
 
   // Debug logging for categories and loading state
   useEffect(() => {

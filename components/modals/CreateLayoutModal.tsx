@@ -59,7 +59,7 @@ export default function CreateLayoutModal({
             Create New Layout
           </h2>
           <p className="text-gray-600">
-            Give your seating chart layout a name (e.g., "Math Groups", "Reading Circles").
+            Give your seating chart layout a name (e.g., &quot;Math Groups&quot;, &quot;Reading Circles&quot;).
           </p>
         </div>
 

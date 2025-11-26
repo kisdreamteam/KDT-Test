@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Modal from '@/components/ui/Modal';
@@ -82,16 +82,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
     }
   }, [isIconDropdownOpen]);
 
-  // Fetch class data
-  useEffect(() => {
-    if (isOpen && classId) {
-      fetchClassData();
-      fetchStudents();
-      fetchTeachers();
-    }
-  }, [isOpen, classId]);
-
-  const fetchClassData = async () => {
+  const fetchClassData = useCallback(async () => {
     try {
       setIsLoadingData(true);
       const supabase = createClient();
@@ -116,9 +107,9 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
     } finally {
       setIsLoadingData(false);
     }
-  };
+  }, [classId]);
 
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async () => {
     try {
       const supabase = createClient();
       const { data: studentsData, error } = await supabase
@@ -168,9 +159,9 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       setOriginalStudents([]);
       setHasUnsavedChanges(false);
     }
-  };
+  }, [classId]);
 
-  const fetchTeachers = async () => {
+  const fetchTeachers = useCallback(async () => {
     try {
       const supabase = createClient();
       // For now, we'll fetch teachers from a class_teachers junction table if it exists
@@ -214,7 +205,16 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       console.error('Unexpected error fetching teachers:', err);
       setTeachers([]);
     }
-  };
+  }, [classId]);
+
+  // Fetch class data
+  useEffect(() => {
+    if (isOpen && classId) {
+      fetchClassData();
+      fetchStudents();
+      fetchTeachers();
+    }
+  }, [isOpen, classId, fetchClassData, fetchStudents, fetchTeachers]);
 
   const handleSaveInfo = async () => {
     if (!className.trim()) {

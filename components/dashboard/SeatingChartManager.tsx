@@ -33,12 +33,47 @@ export default function SeatingChartManager({ classId }: SeatingChartManagerProp
   const [groups, setGroups] = useState<SeatingGroup[]>([]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
 
+  const fetchLayouts = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const supabase = createClient();
+      
+      const { data, error: fetchError } = await supabase
+        .from('seating_charts')
+        .select('*')
+        .eq('class_id', classId)
+        .order('created_at', { ascending: false });
+
+      if (fetchError) {
+        console.error('Error fetching seating charts:', fetchError);
+        setError('Failed to load seating charts. Please try again.');
+        return;
+      }
+
+      if (data) {
+        setLayouts(data);
+        // Auto-select the first layout if available
+        if (data.length > 0 && !selectedLayoutId) {
+          setSelectedLayoutId(data[0].id);
+        }
+      } else {
+        setLayouts([]);
+      }
+    } catch (err) {
+      console.error('Unexpected error fetching seating charts:', err);
+      setError('An unexpected error occurred.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [classId, selectedLayoutId]);
+
   // Fetch layouts from Supabase
   useEffect(() => {
     if (classId) {
       fetchLayouts();
     }
-  }, [classId]);
+  }, [classId, fetchLayouts]);
 
   const fetchGroups = useCallback(async () => {
     if (!selectedLayoutId) return;
@@ -78,41 +113,6 @@ export default function SeatingChartManager({ classId }: SeatingChartManagerProp
       setGroups([]);
     }
   }, [selectedLayoutId, fetchGroups]);
-
-  const fetchLayouts = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const supabase = createClient();
-      
-      const { data, error: fetchError } = await supabase
-        .from('seating_charts')
-        .select('*')
-        .eq('class_id', classId)
-        .order('created_at', { ascending: false });
-
-      if (fetchError) {
-        console.error('Error fetching seating charts:', fetchError);
-        setError('Failed to load seating charts. Please try again.');
-        return;
-      }
-
-      if (data) {
-        setLayouts(data);
-        // Auto-select the first layout if available
-        if (data.length > 0 && !selectedLayoutId) {
-          setSelectedLayoutId(data[0].id);
-        }
-      } else {
-        setLayouts([]);
-      }
-    } catch (err) {
-      console.error('Unexpected error fetching seating charts:', err);
-      setError('An unexpected error occurred.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleCreateLayout = async (layoutName: string) => {
     try {

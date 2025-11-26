@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 
 interface TeacherProfile {
@@ -26,12 +26,12 @@ export default function TopNav({
   const [fontSize, setFontSize] = useState(72); // Default 4.5rem (72px)
 
   // Get the text content
-  const getTitleText = () => {
+  const getTitleText = useCallback(() => {
     if (isLoadingProfile) return 'Loading...';
     if (currentClassName) return currentClassName;
     if (teacherProfile) return `${teacherProfile.title} ${teacherProfile.name.split(' ')[0]}'s Classes`;
     return 'Classes';
-  };
+  }, [isLoadingProfile, currentClassName, teacherProfile]);
 
   // Calculate and adjust font size based on container width
   useEffect(() => {
@@ -41,7 +41,6 @@ export default function TopNav({
       const container = titleContainerRef.current;
       const textElement = titleRef.current;
       const containerWidth = container.offsetWidth;
-      const text = getTitleText();
       
       // Start with a large font size and reduce until it fits
       let size = 72; // Start at 4.5rem
@@ -99,7 +98,7 @@ export default function TopNav({
         resizeObserver.disconnect();
       }
     };
-  }, [isLoadingProfile, currentClassName, teacherProfile]);
+  }, [isLoadingProfile, currentClassName, teacherProfile, getTitleText]);
 
   return (
     // Top Nav Container

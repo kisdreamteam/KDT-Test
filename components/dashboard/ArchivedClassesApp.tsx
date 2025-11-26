@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import ConfirmationModal from '@/components/ui/ConfirmationModal';
 import LoadingState from './LoadingState';
@@ -44,6 +44,45 @@ export default function ArchivedClassesApp() {
     }
   }, [openDropdownId]);
 
+  const fetchStudentCounts = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const classIds = classes.map(cls => cls.id);
+      
+      if (classIds.length === 0) {
+        setStudentCounts({});
+        return;
+      }
+      
+      // Fetch all students for these classes in a single query
+      const { data: students, error } = await supabase
+        .from('students')
+        .select('class_id')
+        .in('class_id', classIds);
+      
+      if (error) {
+        console.error('Error fetching student counts:', error);
+        return;
+      }
+      
+      // Count students per class
+      const countsMap: Record<string, number> = {};
+      classIds.forEach(classId => {
+        countsMap[classId] = 0;
+      });
+      
+      students?.forEach(student => {
+        if (student.class_id && countsMap[student.class_id] !== undefined) {
+          countsMap[student.class_id]++;
+        }
+      });
+      
+      setStudentCounts(countsMap);
+    } catch (err) {
+      console.error('Error fetching student counts:', err);
+    }
+  }, [classes]);
+
   // Fetch student counts for all classes
   useEffect(() => {
     if (classes.length > 0) {
@@ -51,7 +90,7 @@ export default function ArchivedClassesApp() {
     } else {
       setStudentCounts({});
     }
-  }, [classes]);
+  }, [classes, fetchStudentCounts]);
 
   const fetchArchivedClasses = async () => {
     try {
@@ -88,45 +127,6 @@ export default function ArchivedClassesApp() {
       setError('An unexpected error occurred');
     } finally {
       setIsLoadingClasses(false);
-    }
-  };
-
-  const fetchStudentCounts = async () => {
-    try {
-      const supabase = createClient();
-      const classIds = classes.map(cls => cls.id);
-      
-      if (classIds.length === 0) {
-        setStudentCounts({});
-        return;
-      }
-      
-      // Fetch all students for these classes in a single query
-      const { data: students, error } = await supabase
-        .from('students')
-        .select('class_id')
-        .in('class_id', classIds);
-      
-      if (error) {
-        console.error('Error fetching student counts:', error);
-        return;
-      }
-      
-      // Count students per class
-      const countsMap: Record<string, number> = {};
-      classIds.forEach(classId => {
-        countsMap[classId] = 0;
-      });
-      
-      students?.forEach(student => {
-        if (student.class_id && countsMap[student.class_id] !== undefined) {
-          countsMap[student.class_id]++;
-        }
-      });
-      
-      setStudentCounts(countsMap);
-    } catch (err) {
-      console.error('Error fetching student counts:', err);
     }
   };
 

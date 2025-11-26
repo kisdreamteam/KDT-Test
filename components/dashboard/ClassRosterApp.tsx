@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, useSearchParams, usePathname, useRouter } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AddStudentsModal from '@/components/modals/AddStudentsModal';
 import AwardPointsModal from '@/components/modals/AwardPointsModal';
@@ -20,8 +20,6 @@ export default function ClassRosterApp() {
   const params = useParams();
   const classId = params.classId as string;
   const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const router = useRouter();
   const { sortBy } = useStudentSort();
   
   // Get current view mode from URL

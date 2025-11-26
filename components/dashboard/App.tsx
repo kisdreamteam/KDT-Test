@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Modal from '@/components/ui/Modal';
 import ConfirmationModal from '@/components/ui/ConfirmationModal';
 import CreateClassForm from '@/components/forms/CreateClassForm';
@@ -11,12 +11,6 @@ import ErrorState from './ErrorState';
 import EmptyState from './EmptyState';
 import ClassCardsGrid from './ClassCardsGrid';
 import { createClient } from '@/lib/supabase/client';
-
-interface Class {
-  id: string;
-  name: string;
-  icon?: string;
-}
 
 export default function App() {
   const { classes, isLoadingClasses, refreshClasses } = useDashboard();
@@ -42,16 +36,7 @@ export default function App() {
     }
   }, [openDropdownId]);
 
-  // Fetch student counts for all classes
-  useEffect(() => {
-    if (classes.length > 0) {
-      fetchStudentCounts();
-    } else {
-      setStudentCounts({});
-    }
-  }, [classes]);
-
-  const fetchStudentCounts = async () => {
+  const fetchStudentCounts = useCallback(async () => {
     try {
       const supabase = createClient();
       const classIds = classes.map(cls => cls.id);
@@ -88,7 +73,16 @@ export default function App() {
     } catch (err) {
       console.error('Error fetching student counts:', err);
     }
-  };
+  }, [classes]);
+
+  // Fetch student counts for all classes
+  useEffect(() => {
+    if (classes.length > 0) {
+      fetchStudentCounts();
+    } else {
+      setStudentCounts({});
+    }
+  }, [classes, fetchStudentCounts]);
 
   // Handle modal close with refresh
   const handleModalClose = () => {

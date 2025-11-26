@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import Image from 'next/image';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useStudentSort } from '@/context/StudentSortContext';
@@ -22,10 +21,7 @@ interface BottomNavProps {
 }
 
 export default function BottomNav({ 
-  isLoadingProfile, 
   currentClassName, 
-  teacherProfile, 
-  onToggleSidebar,
   sidebarOpen,
   onTimerClick,
   onRandomClick

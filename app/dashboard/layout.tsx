@@ -219,7 +219,6 @@ export default function DashboardLayout({
         <LeftNav 
           classes={classes}
           isLoadingClasses={isLoadingClasses}
-          teacherCount={teacherCount}
         />
       </div>
 

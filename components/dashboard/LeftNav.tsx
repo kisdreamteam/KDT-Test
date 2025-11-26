@@ -12,10 +12,9 @@ interface Class {
 interface LeftNavProps {
   classes: Class[];
   isLoadingClasses: boolean;
-  teacherCount: number | null;
 }
 
-export default function LeftNav({ classes, isLoadingClasses, teacherCount }: LeftNavProps) {
+export default function LeftNav({ classes, isLoadingClasses }: LeftNavProps) {
   return (
     <div className="p-4 flex flex-col h-full max-h-screen overflow-y-auto">
       {/* Character Illustration */}
