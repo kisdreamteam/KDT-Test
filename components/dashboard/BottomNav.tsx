@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
+import { useStudentSort } from '@/context/StudentSortContext';
 
 interface TeacherProfile {
   title: string;
@@ -27,10 +28,14 @@ export default function BottomNav({
   onTimerClick,
   onRandomClick
 }: BottomNavProps) {
+  const { sortBy, setSortBy } = useStudentSort();
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedCount, setSelectedCount] = useState(0);
   const [hasRecentlySelected, setHasRecentlySelected] = useState(false);
   const [leftPosition, setLeftPosition] = useState(0);
+  const [isSortPopupOpen, setIsSortPopupOpen] = useState(false);
+  const [sortPopupPosition, setSortPopupPosition] = useState({ left: 0, bottom: 0 });
+  const sortButtonRef = useRef<HTMLDivElement>(null);
 
   // Check for recently selected data in localStorage
   const checkRecentlySelected = () => {
@@ -43,15 +48,21 @@ export default function BottomNav({
   // Listen for multi-select state changes from components
   useEffect(() => {
     const handleStateChange = (event: CustomEvent) => {
-      setIsMultiSelectMode(event.detail.isMultiSelect);
-      // Check for recently selected data when entering multi-select mode
-      if (event.detail.isMultiSelect) {
-        checkRecentlySelected();
-      }
+      // Defer state update to avoid updating during render
+      setTimeout(() => {
+        setIsMultiSelectMode(event.detail.isMultiSelect);
+        // Check for recently selected data when entering multi-select mode
+        if (event.detail.isMultiSelect) {
+          checkRecentlySelected();
+        }
+      }, 0);
     };
 
     const handleSelectionCountChange = (event: CustomEvent) => {
-      setSelectedCount(event.detail.count || 0);
+      // Defer state update to avoid updating during render
+      setTimeout(() => {
+        setSelectedCount(event.detail.count || 0);
+      }, 0);
     };
 
     // Listen for localStorage changes (when recently selected data is cleared or updated)
@@ -235,6 +246,31 @@ export default function BottomNav({
       window.dispatchEvent(new CustomEvent('inverseSelect'));
     }
   };
+
+  // Update popup position when it opens
+  useEffect(() => {
+    if (isSortPopupOpen && sortButtonRef.current) {
+      const rect = sortButtonRef.current.getBoundingClientRect();
+      setSortPopupPosition({
+        left: rect.left,
+        bottom: window.innerHeight - rect.top + 8, // 8px gap (0.5rem)
+      });
+    }
+  }, [isSortPopupOpen]);
+
+  // Close sort popup when clicking outside
+  useEffect(() => {
+    if (!isSortPopupOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (sortButtonRef.current && !sortButtonRef.current.contains(e.target as Node)) {
+        setIsSortPopupOpen(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside, true);
+    return () => document.removeEventListener('click', handleClickOutside, true);
+  }, [isSortPopupOpen]);
   
   return (
     // Bottom Nav Container - Fixed at bottom, aligned with TopNav
@@ -307,6 +343,72 @@ export default function BottomNav({
             </svg>
             <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Timer</h2>
           </div>
+
+          {/* Sorting Button - Only show when on a class page */}
+          {currentClassName && (
+            <div className="relative flex-shrink-0" ref={sortButtonRef}>
+              <div 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsSortPopupOpen(!isSortPopupOpen);
+                }}
+                className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2"
+              >
+                {/* Sort icon - same as TopNav */}
+                <svg 
+                  className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-gray-400" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
+                  />
+                </svg>
+                <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Sorting</h2>
+              </div>
+
+              {/* Sort Popup - opens upward since it's in bottom nav */}
+              {isSortPopupOpen && (
+                <div 
+                  className="fixed bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-[100] min-w-[200px]"
+                  style={{ 
+                    left: `${sortPopupPosition.left}px`,
+                    bottom: `${sortPopupPosition.bottom}px`,
+                  }}
+                >
+                  <div className="px-4 py-2 text-sm font-semibold text-gray-700 border-b border-gray-200">
+                    Sort by:
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSortBy('number');
+                      setIsSortPopupOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors ${
+                      sortBy === 'number' ? 'bg-purple-50 text-purple-600 font-medium' : 'text-gray-700'
+                    }`}
+                  >
+                    Student Number
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSortBy('alphabetical');
+                      setIsSortPopupOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors ${
+                      sortBy === 'alphabetical' ? 'bg-purple-50 text-purple-600 font-medium' : 'text-gray-700'
+                    }`}
+                  >
+                    Alphabetical
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Multiple Select Button */}
           <div 

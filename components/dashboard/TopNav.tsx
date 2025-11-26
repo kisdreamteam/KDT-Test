@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { useStudentSort } from '@/context/StudentSortContext';
 
 interface TeacherProfile {
   title: string;
@@ -22,9 +21,6 @@ export default function TopNav({
   teacherProfile, 
   onToggleSidebar 
 }: TopNavProps) {
-  const { sortBy, setSortBy } = useStudentSort();
-  const [isSortPopupOpen, setIsSortPopupOpen] = useState(false);
-  const sortButtonRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const titleContainerRef = useRef<HTMLDivElement>(null);
   const [fontSize, setFontSize] = useState(72); // Default 4.5rem (72px)
@@ -105,19 +101,6 @@ export default function TopNav({
     };
   }, [isLoadingProfile, currentClassName, teacherProfile]);
 
-  // Close popup when clicking outside
-  useEffect(() => {
-    if (!isSortPopupOpen) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      if (sortButtonRef.current && !sortButtonRef.current.contains(e.target as Node)) {
-        setIsSortPopupOpen(false);
-      }
-    };
-
-    document.addEventListener('click', handleClickOutside, true);
-    return () => document.removeEventListener('click', handleClickOutside, true);
-  }, [isSortPopupOpen]);
   return (
     // Top Nav Container
     <div className="bg-white h-30 py-6 flex flex-row items-center justify-between w-full pl-7 pt-8" data-top-nav>
@@ -130,65 +113,6 @@ export default function TopNav({
         >
           ☰
         </button>
-        {/* Sort Button - Only show when on a class page */}
-        {currentClassName && (
-          <div className="relative flex-shrink-0" ref={sortButtonRef}>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsSortPopupOpen(!isSortPopupOpen);
-              }}
-              className="text-gray-600 hover:text-gray-800 p-2 rounded-lg hover:bg-gray-100 transition-colors pl-6 pt-6"
-              title="Sort by"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-8 w-8"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
-                />
-              </svg>
-            </button>
-
-            {/* Sort Popup */}
-            {isSortPopupOpen && (
-              <div className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 min-w-[200px]">
-                <div className="px-4 py-2 text-sm font-semibold text-gray-700 border-b border-gray-200">
-                  Sort by:
-                </div>
-                <button
-                  onClick={() => {
-                    setSortBy('number');
-                    setIsSortPopupOpen(false);
-                  }}
-                  className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors ${
-                    sortBy === 'number' ? 'bg-purple-50 text-purple-600 font-medium' : 'text-gray-700'
-                  }`}
-                  >
-                  Student Number
-                </button>
-                <button
-                  onClick={() => {
-                    setSortBy('alphabetical');
-                    setIsSortPopupOpen(false);
-                  }}
-                  className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors ${
-                    sortBy === 'alphabetical' ? 'bg-purple-50 text-purple-600 font-medium' : 'text-gray-700'
-                  }`}
-                >
-                  Alphabetical
-                </button>
-              </div>
-            )}
-          </div>
-          )}
 
           {/* Main Title Container */}
           <div ref={titleContainerRef} className="flex-1 min-w-0 overflow-hidden pl-10 pt-0">

@@ -213,7 +213,7 @@ export default function DashboardLayout({
 
   return (
     // Outer Container of the left-nav and main content container
-    <div className="flex flex-row h-screen bg-[#4A3B8D] pl-2 pb-0 pt-0" data-sidebar-container>
+    <div className="flex flex-row h-screen bg-[#4A3B8D] pl-2 pb-0 pt-0">
       {/* Left Sidebar */}
       <div className={`${sidebarOpen ? 'w-76' : 'w-0'} transition-all duration-300 overflow-hidden bg-white flex flex-col`}>
         <LeftNav 
@@ -260,20 +260,20 @@ export default function DashboardLayout({
                 </div>
               )}
             </DashboardProvider>
-          </StudentSortProvider>
 
-          {/* Bottom Bar - Only visible when on a class page and not viewing timer/random */}
-          {currentClassName && !isTimerOpen && !isRandomOpen && (
-            <BottomNav
-              isLoadingProfile={isLoadingProfile}
-              currentClassName={currentClassName}
-              teacherProfile={teacherProfile}
-              onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-              sidebarOpen={sidebarOpen}
-              onTimerClick={() => setIsTimerOpen(true)}
-              onRandomClick={() => setIsRandomOpen(true)}
-            />
-          )}
+            {/* Bottom Bar - Only visible when on a class page and not viewing timer/random */}
+            {currentClassName && !isTimerOpen && !isRandomOpen && (
+              <BottomNav
+                isLoadingProfile={isLoadingProfile}
+                currentClassName={currentClassName}
+                teacherProfile={teacherProfile}
+                onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+                sidebarOpen={sidebarOpen}
+                onTimerClick={() => setIsTimerOpen(true)}
+                onRandomClick={() => setIsRandomOpen(true)}
+              />
+            )}
+          </StudentSortProvider>
         </div>
     </div>
   );
