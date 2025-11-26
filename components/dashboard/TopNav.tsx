@@ -122,7 +122,7 @@ export default function TopNav({
             ) : currentClassName ? (
               currentClassName
             ) : teacherProfile ? (
-              `${teacherProfile.title} ${teacherProfile.name}'s Classes`
+              `${teacherProfile.title} ${teacherProfile.name.split(' ')[0]}'s Classes`
             ) : (
               "Classes"
             )}
