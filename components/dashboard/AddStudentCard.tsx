@@ -12,7 +12,7 @@ export default function AddStudentCard({ onClick }: AddStudentCardProps) {
         {/* Add Icon */}
         <div className="mb-4 flex-shrink-0">
           <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto">
-            <span className="text-white text-2xl font-bold">+</span>
+            <span className="text-white text-4xl font-bold pt-2">+</span>
           </div>
         </div>
 

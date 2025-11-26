@@ -42,7 +42,7 @@ export default function StudentCard({
             data-dropdown-button
           >
             <svg
-              className="w-5 h-5"
+              className="w-10 h-10"
               fill="currentColor"
               viewBox="0 0 20 20"
             >
@@ -91,18 +91,18 @@ export default function StudentCard({
       </div>
 
       {/* Student Avatar */}
-      <div className="flex justify-center mb-4 pointer-events-none flex-shrink-0">
+      <div className="flex justify-center mb-1 pointer-events-none flex-shrink-0">
         <Image
           src={student.avatar || "/images/students/avatars/student_avatar_1.png"}
           alt={`${student.first_name} ${student.last_name} avatar`}
-          width={80}
-          height={80}
+          width={100}
+          height={100}
           className="rounded-xl bg-[#FDF2F0]"
         />
       </div>
 
       {/* Student Name */}
-      <div className="text-center mb-3 pointer-events-none flex-shrink-0">
+      <div className="text-center mb-1 pointer-events-none flex-shrink-0">
         <h3 className="text-lg font-semibold text-gray-900">
           {student.first_name}
         </h3>
