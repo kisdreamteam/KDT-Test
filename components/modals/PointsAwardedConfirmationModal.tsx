@@ -159,20 +159,31 @@ export default function PointsAwardedConfirmationModal({
           </div>
 
           <div className="flex flex-col gap-10 w-100 justify-center items-center">
-            {/* Student First Name */}
-            <h2 className="text-5xl font-bold text-gray-900">{studentFirstName}</h2>
-            <div className="flex flex-row gap-2 items-center justify-center">
-                {/* Points Awarded */}
-                <div className="text-4xl font-bold text-red-600">
-                {points > 0 ? '+' : ''}{points}
+            {/* Check if it's multiple students (contains "Student" or "Students") */}
+            {studentFirstName.includes('Student') ? (
+              // Multiple students format: "X points awarded to X students"
+              <>
+                <h2 className="text-5xl font-bold text-gray-900">
+                  {points > 0 ? '+' : ''}{points} points
+                </h2>
+                <div className="flex flex-row gap-2 items-center justify-center">
+                  <span className="text-lg font-semibold text-gray-900">awarded to</span>
+                  <span className="text-lg font-semibold text-gray-900">{studentFirstName}</span>
                 </div>
-                {/* Awarded For Section */}
-                <span className="text-lg font-semibold text-gray-900"> awarded for</span>
-                {/* Category Name */}
-                <span className="text-lg font-semibold text-gray-900">{categoryName}</span>
-
-                
-            </div>
+              </>
+            ) : (
+              // Single student format
+              <>
+                <h2 className="text-5xl font-bold text-gray-900">{studentFirstName}</h2>
+                <div className="flex flex-row gap-2 items-center justify-center">
+                  <div className="text-4xl font-bold text-red-600">
+                    {points > 0 ? '+' : ''}{points}
+                  </div>
+                  <span className="text-lg font-semibold text-gray-900"> awarded for</span>
+                  <span className="text-lg font-semibold text-gray-900">{categoryName}</span>
+                </div>
+              </>
+            )}
           </div>    
             
           <div className="flex items-center gap-3 w-40">

@@ -229,6 +229,17 @@ export default function AwardPointsModal({
           onAwardComplete(selectedStudentIds, 'students');
         }
 
+        // Notify parent about the award for multiple students
+        if (onPointsAwarded) {
+          onPointsAwarded({
+            studentAvatar: classIcon || "/images/classes/avatars/avatar-01.png",
+            studentFirstName: `${selectedStudentIds.length} ${selectedStudentIds.length === 1 ? 'Student' : 'Students'}`,
+            points: points,
+            categoryName: category.name,
+            categoryIcon: category.icon,
+          });
+        }
+
         // Refresh if onRefresh is provided
         if (onRefresh) {
           onRefresh();
@@ -479,6 +490,17 @@ export default function AwardPointsModal({
         // Store selected student IDs in localStorage and notify parent
         if (onAwardComplete) {
           onAwardComplete(selectedStudentIds, 'students');
+        }
+
+        // Notify parent about the award for multiple students (custom points)
+        if (onPointsAwarded) {
+          onPointsAwarded({
+            studentAvatar: classIcon || "/images/classes/avatars/avatar-01.png",
+            studentFirstName: `${selectedStudentIds.length} ${selectedStudentIds.length === 1 ? 'Student' : 'Students'}`,
+            points: customPoints,
+            categoryName: customMemo || 'Custom Points',
+            categoryIcon: undefined, // No icon for custom points
+          });
         }
 
         // Success - reset form

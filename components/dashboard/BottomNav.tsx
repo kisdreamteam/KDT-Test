@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 import { useStudentSort } from '@/context/StudentSortContext';
 
 interface TeacherProfile {
@@ -36,6 +38,10 @@ export default function BottomNav({
   const [isSortPopupOpen, setIsSortPopupOpen] = useState(false);
   const [sortPopupPosition, setSortPopupPosition] = useState({ left: 0, bottom: 0 });
   const sortButtonRef = useRef<HTMLDivElement>(null);
+  const [isSettingsPopupOpen, setIsSettingsPopupOpen] = useState(false);
+  const [settingsPopupPosition, setSettingsPopupPosition] = useState({ left: 0, bottom: 0 });
+  const settingsButtonRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   // Check for recently selected data in localStorage
   const checkRecentlySelected = () => {
@@ -258,6 +264,17 @@ export default function BottomNav({
     }
   }, [isSortPopupOpen]);
 
+  // Update settings popup position when it opens
+  useEffect(() => {
+    if (isSettingsPopupOpen && settingsButtonRef.current) {
+      const rect = settingsButtonRef.current.getBoundingClientRect();
+      setSettingsPopupPosition({
+        left: rect.left,
+        bottom: window.innerHeight - rect.top + 8, // 8px gap (0.5rem)
+      });
+    }
+  }, [isSettingsPopupOpen]);
+
   // Close sort popup when clicking outside
   useEffect(() => {
     if (!isSortPopupOpen) return;
@@ -271,6 +288,38 @@ export default function BottomNav({
     document.addEventListener('click', handleClickOutside, true);
     return () => document.removeEventListener('click', handleClickOutside, true);
   }, [isSortPopupOpen]);
+
+  // Close settings popup when clicking outside
+  useEffect(() => {
+    if (!isSettingsPopupOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (settingsButtonRef.current && !settingsButtonRef.current.contains(e.target as Node)) {
+        setIsSettingsPopupOpen(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside, true);
+    return () => document.removeEventListener('click', handleClickOutside, true);
+  }, [isSettingsPopupOpen]);
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Logout error:', error);
+        alert('Failed to log out. Please try again.');
+        return;
+      }
+      // Redirect to login page
+      router.push('/login');
+    } catch (err) {
+      console.error('Unexpected error during logout:', err);
+      alert('An unexpected error occurred. Please try again.');
+    }
+  };
   
   return (
     // Bottom Nav Container - Fixed at bottom, aligned with TopNav
@@ -374,7 +423,7 @@ export default function BottomNav({
               {/* Sort Popup - opens upward since it's in bottom nav */}
               {isSortPopupOpen && (
                 <div 
-                  className="fixed bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-[100] min-w-[200px]"
+                  className="fixed bg-blue-100 rounded-lg shadow-lg border-4 border-[#4A3B8D] py-2 z-[100] min-w-[200px]"
                   style={{ 
                     left: `${sortPopupPosition.left}px`,
                     bottom: `${sortPopupPosition.bottom}px`,
@@ -428,6 +477,57 @@ export default function BottomNav({
               <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Multiple Select</h2>
+          </div>
+
+          {/* Settings Button */}
+          <div className="relative flex-shrink-0" ref={settingsButtonRef}>
+            <div 
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsSettingsPopupOpen(!isSettingsPopupOpen);
+              }}
+              className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2"
+            >
+              {/* Settings/Gear icon */}
+              <svg 
+                className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-gray-400" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+              <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Settings</h2>
+            </div>
+
+            {/* Settings Popup - opens upward since it's in bottom nav */}
+            {isSettingsPopupOpen && (
+              <div 
+                className="fixed bg-blue-100 rounded-lg shadow-lg border-4 border-[#4A3B8D] py-2 z-[100] min-w-[200px]"
+                style={{ 
+                  left: `${settingsPopupPosition.left}px`,
+                  bottom: `${settingsPopupPosition.bottom}px`,
+                }}
+              >
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  Log out
+                </button>
+              </div>
+            )}
           </div>
         </>
       ) : (

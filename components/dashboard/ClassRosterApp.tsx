@@ -309,12 +309,16 @@ export default function ClassRosterApp() {
     }
   }, [selectedStudentIds, isMultiSelectMode]);
 
-  // Handle award complete - store selected student IDs in localStorage
+  // Handle award complete - store selected student IDs in localStorage and clear selection
   const handleAwardComplete = (selectedIds: string[], type: 'classes' | 'students') => {
     if (type === 'students') {
       localStorage.setItem('lastSelectedStudents', JSON.stringify(selectedIds));
       // Notify BottomNav that recently selected data is now available
       window.dispatchEvent(new CustomEvent('recentlySelectedUpdated'));
+      
+      // Clear the selection after awarding points
+      setSelectedStudentIds([]);
+      window.dispatchEvent(new CustomEvent('selectionCountChanged', { detail: { count: 0 } }));
     }
   };
 
@@ -446,6 +450,7 @@ export default function ClassRosterApp() {
           selectedStudentIds={selectedStudentIds}
           onAwardComplete={handleAwardComplete}
           onRefresh={fetchStudents}
+          onPointsAwarded={handlePointsAwarded}
         />
       )}
 
