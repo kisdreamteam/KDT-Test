@@ -120,7 +120,7 @@ export default function TopNav({
   }, [isSortPopupOpen]);
   return (
     // Top Nav Container
-    <div className="bg-white h-30 py-6 flex flex-row items-center justify-between w-full pl-7 pt-8">
+    <div className="bg-white h-30 py-6 flex flex-row items-center justify-between w-full pl-7 pt-8" data-top-nav>
       {/* <div className="bg-white flex flex-col items-start justify-start"> */}
       <div className="bg-white flex flex-row items-start justify-start flex-1 min-w-0">
         {/* Hamburger Menu */}

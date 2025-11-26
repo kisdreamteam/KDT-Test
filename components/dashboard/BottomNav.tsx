@@ -30,6 +30,7 @@ export default function BottomNav({
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedCount, setSelectedCount] = useState(0);
   const [hasRecentlySelected, setHasRecentlySelected] = useState(false);
+  const [leftPosition, setLeftPosition] = useState(0);
 
   // Check for recently selected data in localStorage
   const checkRecentlySelected = () => {
@@ -76,13 +77,134 @@ export default function BottomNav({
     };
   }, []);
 
-  // Calculate left position based on sidebar state
-  // w-76 = 19rem = 304px (sidebar width)
-  // Outer container has pl-2 (8px), main content has pl-2 pr-2 (8px each side)
-  // When sidebar open: left = 8px (outer) + 304px (sidebar) + 8px (main content left) = 320px
-  // When sidebar closed: left = 8px (outer) + 8px (main content left) = 16px
-  // Right padding: 8px (main content right) + 8px (outer) = 16px
-  const leftPosition = sidebarOpen ? '320px' : '16px';
+  // Dynamically calculate left position to match TopNav alignment
+  useEffect(() => {
+    let rafId: number | null = null;
+    let lastPosition = -1;
+    let isUpdating = false;
+
+    const updateLeftPosition = () => {
+      if (isUpdating) return;
+      isUpdating = true;
+
+      requestAnimationFrame(() => {
+        // Find the TopNav element
+        const topNav = document.querySelector('[data-top-nav]') as HTMLElement;
+        if (topNav) {
+          const rect = topNav.getBoundingClientRect();
+          const newPosition = rect.left;
+          // Only update if position actually changed (avoid unnecessary re-renders)
+          if (Math.abs(newPosition - lastPosition) > 0.1) {
+            setLeftPosition(newPosition);
+            lastPosition = newPosition;
+          }
+        } else {
+          // Fallback calculation if TopNav not found
+          const baseLeft = 8; // Outer container pl-2
+          const sidebarWidth = sidebarOpen ? 304 : 0; // w-76 = 304px
+          const mainContentPadding = 8; // Main content pl-2
+          const topNavPadding = 28; // TopNav pl-7
+          const newPosition = baseLeft + sidebarWidth + mainContentPadding + topNavPadding;
+          if (Math.abs(newPosition - lastPosition) > 0.1) {
+            setLeftPosition(newPosition);
+            lastPosition = newPosition;
+          }
+        }
+        isUpdating = false;
+      });
+    };
+
+    // Throttled continuous update - check every few frames instead of every frame
+    const scheduleUpdate = () => {
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        updateLeftPosition();
+        rafId = null;
+        // Schedule next update after a short delay
+        setTimeout(() => {
+          if (rafId === null) {
+            scheduleUpdate();
+          }
+        }, 16); // ~60fps
+      });
+    };
+
+    // Start the update loop
+    scheduleUpdate();
+
+    // Initial calculation
+    updateLeftPosition();
+
+    // Update on window resize and zoom
+    const handleResize = () => {
+      updateLeftPosition();
+      scheduleUpdate();
+    };
+    window.addEventListener('resize', handleResize);
+    
+    // Use ResizeObserver to watch for layout changes (including zoom)
+    let resizeObserver: ResizeObserver | null = null;
+    const topNav = document.querySelector('[data-top-nav]') as HTMLElement;
+    if (topNav && typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        updateLeftPosition();
+        scheduleUpdate();
+      });
+      resizeObserver.observe(topNav);
+    }
+
+    // Also watch for sidebar container changes
+    let sidebarObserver: ResizeObserver | null = null;
+    const sidebarContainer = document.querySelector('[data-sidebar-container]') as HTMLElement;
+    if (sidebarContainer && typeof ResizeObserver !== 'undefined') {
+      sidebarObserver = new ResizeObserver(() => {
+        updateLeftPosition();
+        scheduleUpdate();
+      });
+      sidebarObserver.observe(sidebarContainer);
+    }
+
+    // Watch for zoom changes using visualViewport API if available
+    const visualViewport = window.visualViewport;
+    if (visualViewport) {
+      const handleViewportChange = () => {
+        updateLeftPosition();
+        scheduleUpdate();
+      };
+      visualViewport.addEventListener('resize', handleViewportChange);
+      visualViewport.addEventListener('scroll', handleViewportChange);
+
+      return () => {
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+        }
+        window.removeEventListener('resize', handleResize);
+        if (visualViewport) {
+          visualViewport.removeEventListener('resize', handleViewportChange);
+          visualViewport.removeEventListener('scroll', handleViewportChange);
+        }
+        if (resizeObserver) {
+          resizeObserver.disconnect();
+        }
+        if (sidebarObserver) {
+          sidebarObserver.disconnect();
+        }
+      };
+    }
+
+    return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      window.removeEventListener('resize', handleResize);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      if (sidebarObserver) {
+        sidebarObserver.disconnect();
+      }
+    };
+  }, [sidebarOpen]);
 
   const handleSelectAll = () => {
     window.dispatchEvent(new CustomEvent('selectAll'));
@@ -115,10 +237,10 @@ export default function BottomNav({
   };
   
   return (
-    // Bottom Nav Container - Fixed at bottom
+    // Bottom Nav Container - Fixed at bottom, aligned with TopNav
     <div 
-      className="fixed bottom-0 font-spartan bg-white h-12 sm:h-14 md:h-16 lg:h-20 flex items-center justify-start gap-2 sm:gap-4 md:gap-8 lg:gap-15 pl-4 sm:pl-6 md:pl-8 lg:pl-10 pr-4 sm:pr-6 md:pr-8 lg:pr-10 z-50 transition-all duration-300 border-t border-[#4A3B8D] overflow-hidden"
-      style={{ left: leftPosition, right: '8px' }}>
+      className="fixed bottom-0 font-spartan bg-white h-12 sm:h-14 md:h-16 lg:h-20 flex items-center justify-start gap-2 sm:gap-4 md:gap-8 lg:gap-15 pr-4 sm:pr-6 md:pr-8 lg:pr-10 z-50 transition-all duration-300 border-t border-[#4A3B8D] overflow-hidden"
+      style={{ left: `${leftPosition}px`, right: '0.5rem' }}>
       {!isMultiSelectMode ? (
         // Normal mode buttons
         <>
