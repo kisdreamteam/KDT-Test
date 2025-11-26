@@ -35,9 +35,9 @@ export default function ClassCard({
       href={`/dashboard/classes/${classItem.id}`}
       className="block aspect-square"
     >
-      <div className="bg-white rounded-lg font-spartan shadow-md p-6 hover:shadow-xl hover:rounded-3xl hover:bg-blue-100 transition-shadow cursor-pointer relative group h-full flex flex-col">
+      <div className="bg-white rounded-lg font-spartan shadow-md py-6 hover:shadow-xl hover:rounded-3xl hover:bg-blue-100 transition-shadow cursor-pointer relative group h-full flex flex-col">
         {/* Settings Icon with Dropdown */}
-        <div className="absolute top-2 right-2">
+        <div className="absolute top-2 right-2 z-10">
           <div className="relative">
             <button
               onClick={(e) => onToggleDropdown(classItem.id, e)}
@@ -120,8 +120,8 @@ export default function ClassCard({
           </div>
         </div>
 
-        {/* Class Icon */}
-        <div className="text-center mb-4">
+        {/* Class Icon - Fixed */}
+        <div className="text-center mb-4 flex-shrink-0">
           <Image
             src={classItem.icon || "/images/1Landing Page Image.png"}
             alt={`${classItem.name} icon`}
@@ -131,13 +131,21 @@ export default function ClassCard({
           />
         </div>
 
-        {/* Class Name */}
-        <h3 className="text-2xl font-semibold text-gray-800 text-center mb-2">
-          {classItem.name}
-        </h3>
+        {/* Class Name - Flexible with dynamic font sizing */}
+        <div className="flex-1 flex items-center justify-center min-h-0 mb-2 px-2">
+          <h3 
+            className="font-semibold text-gray-800 text-center break-words overflow-hidden w-full"
+            style={{
+              fontSize: `clamp(0.75rem, ${Math.max(0.75, Math.min(1.5, 1.5 - (classItem.name.length - 8) * 0.04))}rem, 1.5rem)`,
+              lineHeight: '1.2'
+            }}
+          >
+            {classItem.name}
+          </h3>
+        </div>
 
-        {/* Student Count */}
-        <p className="text-xs text-gray-400 text-center font-bold">
+        {/* Student Count - Fixed */}
+        <p className="text-xs text-gray-400 text-center font-bold flex-shrink-0">
           {studentCount !== undefined 
             ? `${studentCount} ${studentCount === 1 ? 'Student' : 'Students'}`
             : 'Loading...'
