@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AddStudentsModal from '@/components/modals/AddStudentsModal';
 import AwardPointsModal from '@/components/modals/AwardPointsModal';
@@ -14,11 +14,18 @@ import ErrorState from './ErrorState';
 import EmptyState from './EmptyState';
 import StudentCardsGrid from './StudentCardsGrid';
 import StudentCardsGridMulti from './StudentCardsGridMulti';
+import SeatingChartManager from './SeatingChartManager';
 
 export default function ClassRosterApp() {
   const params = useParams();
   const classId = params.classId as string;
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
   const { sortBy } = useStudentSort();
+  
+  // Get current view mode from URL
+  const currentView = searchParams.get('view') || 'grid';
   const [students, setStudents] = useState<Student[]>([]);
   const [className, setClassName] = useState<string>('');
   const [classIcon, setClassIcon] = useState<string>('/images/dashboard/icons/icon-1.png');
@@ -373,32 +380,40 @@ export default function ClassRosterApp() {
     <>
       <div className="min-h-full bg-[#4A3B8D]">
         <div className="max-w-10xl mx-auto text-white-500">
-          {students.length === 0 ? (
-            <EmptyState
-              title="No students yet"
-              message="Students will appear here once they are added to this class."
-              buttonText="Add Your First Student"
-              onAddClick={() => setAddStudentModalOpen(true)}
-            />
-          ) : isMultiSelectMode ? (
-            <StudentCardsGridMulti
-              students={sortedStudents}
-              selectedStudentIds={selectedStudentIds}
-              onSelectStudent={handleSelectStudent}
-            />
+          {currentView === 'seating' ? (
+            // Seating Chart View
+            <SeatingChartManager classId={classId} />
           ) : (
-            <StudentCardsGrid
-              students={sortedStudents}
-              classIcon={classIcon}
-              totalClassPoints={totalClassPoints}
-              onWholeClassClick={handleWholeClassClick}
-              openDropdownId={openDropdownId}
-              onToggleDropdown={toggleDropdown}
-              onEdit={handleEditStudent}
-              onDelete={handleDeleteStudent}
-              onStudentClick={handleStudentClick}
-              onAddStudent={() => setAddStudentModalOpen(true)}
-            />
+            // Student Grid View (default)
+            <>
+              {students.length === 0 ? (
+                <EmptyState
+                  title="No students yet"
+                  message="Students will appear here once they are added to this class."
+                  buttonText="Add Your First Student"
+                  onAddClick={() => setAddStudentModalOpen(true)}
+                />
+              ) : isMultiSelectMode ? (
+                <StudentCardsGridMulti
+                  students={sortedStudents}
+                  selectedStudentIds={selectedStudentIds}
+                  onSelectStudent={handleSelectStudent}
+                />
+              ) : (
+                <StudentCardsGrid
+                  students={sortedStudents}
+                  classIcon={classIcon}
+                  totalClassPoints={totalClassPoints}
+                  onWholeClassClick={handleWholeClassClick}
+                  openDropdownId={openDropdownId}
+                  onToggleDropdown={toggleDropdown}
+                  onEdit={handleEditStudent}
+                  onDelete={handleDeleteStudent}
+                  onStudentClick={handleStudentClick}
+                  onAddStudent={() => setAddStudentModalOpen(true)}
+                />
+              )}
+            </>
           )}
         </div>
       </div>

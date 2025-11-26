@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useStudentSort } from '@/context/StudentSortContext';
 
@@ -41,7 +41,15 @@ export default function BottomNav({
   const [isSettingsPopupOpen, setIsSettingsPopupOpen] = useState(false);
   const [settingsPopupPosition, setSettingsPopupPosition] = useState({ left: 0, bottom: 0 });
   const settingsButtonRef = useRef<HTMLDivElement>(null);
+  const [isViewPopupOpen, setIsViewPopupOpen] = useState(false);
+  const [viewPopupPosition, setViewPopupPosition] = useState({ left: 0, bottom: 0 });
+  const viewButtonRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  
+  // Get current view mode from URL
+  const currentView = searchParams.get('view') || 'grid';
 
   // Check for recently selected data in localStorage
   const checkRecentlySelected = () => {
@@ -275,6 +283,17 @@ export default function BottomNav({
     }
   }, [isSettingsPopupOpen]);
 
+  // Update view popup position when it opens
+  useEffect(() => {
+    if (isViewPopupOpen && viewButtonRef.current) {
+      const rect = viewButtonRef.current.getBoundingClientRect();
+      setViewPopupPosition({
+        left: rect.left,
+        bottom: window.innerHeight - rect.top + 8, // 8px gap (0.5rem)
+      });
+    }
+  }, [isViewPopupOpen]);
+
   // Close sort popup when clicking outside
   useEffect(() => {
     if (!isSortPopupOpen) return;
@@ -303,6 +322,33 @@ export default function BottomNav({
     return () => document.removeEventListener('click', handleClickOutside, true);
   }, [isSettingsPopupOpen]);
 
+  // Close view popup when clicking outside
+  useEffect(() => {
+    if (!isViewPopupOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (viewButtonRef.current && !viewButtonRef.current.contains(e.target as Node)) {
+        setIsViewPopupOpen(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside, true);
+    return () => document.removeEventListener('click', handleClickOutside, true);
+  }, [isViewPopupOpen]);
+
+  // Handle view mode change
+  const handleViewChange = (view: 'grid' | 'seating') => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (view === 'grid') {
+      params.delete('view');
+    } else {
+      params.set('view', view);
+    }
+    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.push(newUrl);
+    setIsViewPopupOpen(false);
+  };
+
   // Handle logout
   const handleLogout = async () => {
     try {
@@ -329,26 +375,67 @@ export default function BottomNav({
       {!isMultiSelectMode ? (
         // Normal mode buttons
         <>
-          {/* Toolkit Button */}
-          <div className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0">
-            {/* 9 dots grid icon */}
-            <svg 
-              className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-gray-400" 
-              viewBox="0 0 24 24" 
-              fill="currentColor"
-            >
-              <rect x="3" y="3" width="5" height="5" rx="1" />
-              <rect x="9.5" y="3" width="5" height="5" rx="1" />
-              <rect x="16" y="3" width="5" height="5" rx="1" />
-              <rect x="3" y="9.5" width="5" height="5" rx="1" />
-              <rect x="9.5" y="9.5" width="5" height="5" rx="1" />
-              <rect x="16" y="9.5" width="5" height="5" rx="1" />
-              <rect x="3" y="16" width="5" height="5" rx="1" />
-              <rect x="9.5" y="16" width="5" height="5" rx="1" />
-              <rect x="16" y="16" width="5" height="5" rx="1" />
-            </svg>
-            <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Toolkit</h2>
-          </div>
+          {/* View Button - Only show when on a class page */}
+          {currentClassName && (
+            <div className="relative flex-shrink-0" ref={viewButtonRef}>
+              <div 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsViewPopupOpen(!isViewPopupOpen);
+                }}
+                className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2"
+              >
+                {/* 9 dots grid icon */}
+                <svg 
+                  className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-gray-400" 
+                  viewBox="0 0 24 24" 
+                  fill="currentColor"
+                >
+                  <rect x="3" y="3" width="5" height="5" rx="1" />
+                  <rect x="9.5" y="3" width="5" height="5" rx="1" />
+                  <rect x="16" y="3" width="5" height="5" rx="1" />
+                  <rect x="3" y="9.5" width="5" height="5" rx="1" />
+                  <rect x="9.5" y="9.5" width="5" height="5" rx="1" />
+                  <rect x="16" y="9.5" width="5" height="5" rx="1" />
+                  <rect x="3" y="16" width="5" height="5" rx="1" />
+                  <rect x="9.5" y="16" width="5" height="5" rx="1" />
+                  <rect x="16" y="16" width="5" height="5" rx="1" />
+                </svg>
+                <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">View</h2>
+              </div>
+
+              {/* View Popup - opens upward since it's in bottom nav */}
+              {isViewPopupOpen && (
+                <div 
+                  className="fixed bg-blue-100 rounded-lg shadow-lg border-4 border-[#4A3B8D] py-2 z-[100] min-w-[200px]"
+                  style={{ 
+                    left: `${viewPopupPosition.left}px`,
+                    bottom: `${viewPopupPosition.bottom}px`,
+                  }}
+                >
+                  <div className="px-4 py-2 text-sm font-semibold text-gray-700 border-b border-gray-200">
+                    View mode:
+                  </div>
+                  <button
+                    onClick={() => handleViewChange('grid')}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors ${
+                      currentView === 'grid' ? 'bg-purple-50 text-purple-600 font-medium' : 'text-gray-700'
+                    }`}
+                  >
+                    Student Grid
+                  </button>
+                  <button
+                    onClick={() => handleViewChange('seating')}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors ${
+                      currentView === 'seating' ? 'bg-purple-50 text-purple-600 font-medium' : 'text-gray-700'
+                    }`}
+                  >
+                    Seating Chart
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Random Button */}
           <div 
