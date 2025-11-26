@@ -637,7 +637,7 @@ export default function AwardPointsModal({
 
   return (
     <>
-      <Modal isOpen={isOpen} onClose={onClose} className="max-w-4xl">
+      <Modal isOpen={isOpen} onClose={onClose} className="max-w-4xl" fixedTop={true}>
         <div className="relative">
         {/* Header Section */}
         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
@@ -696,45 +696,36 @@ export default function AwardPointsModal({
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex gap-6 mb-6 border-b border-gray-200">
+        <div className="flex gap-2 sm:gap-4 md:gap-6 mb-6">
           <button
             onClick={() => setActiveTab('positive')}
-            className={`pb-3 font-medium text-sm transition-colors relative ${
+            className={`px-4 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 font-semibold text-xs sm:text-sm md:text-base transition-colors flex items-center justify-center ${
               activeTab === 'positive'
-                ? 'text-gray-900'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-purple-500 text-white hover:bg-purple-600 shadow-sm'
+                : 'bg-white text-gray-400 hover:bg-pink-50 hover:shadow-sm'
             }`}
           >
             Positive
-            {activeTab === 'positive' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600"></span>
-            )}
           </button>
           <button
             onClick={() => setActiveTab('negative')}
-            className={`pb-3 font-medium text-sm transition-colors relative ${
+            className={`px-4 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 font-semibold text-xs sm:text-sm md:text-base transition-colors flex items-center justify-center ${
               activeTab === 'negative'
-                ? 'text-gray-900'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-purple-500 text-white hover:bg-purple-600 shadow-sm'
+                : 'bg-white text-gray-400 hover:bg-pink-50 hover:shadow-sm'
             }`}
           >
             Needs work
-            {activeTab === 'negative' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600"></span>
-            )}
           </button>
           <button
             onClick={() => setActiveTab('custom')}
-            className={`pb-3 font-medium text-sm transition-colors relative ${
+            className={`px-4 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 font-semibold text-xs sm:text-sm md:text-base transition-colors flex items-center justify-center ${
               activeTab === 'custom'
-                ? 'text-gray-900'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-purple-500 text-white hover:bg-purple-600 shadow-sm'
+                : 'bg-white text-gray-400 hover:bg-pink-50 hover:shadow-sm'
             }`}
           >
             Custom Points
-            {activeTab === 'custom' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600"></span>
-            )}
           </button>
         </div>
 

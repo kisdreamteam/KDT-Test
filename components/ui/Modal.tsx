@@ -5,13 +5,14 @@ interface ModalProps {
   onClose: () => void;
   children: React.ReactNode;
   className?: string;
+  fixedTop?: boolean; // New prop for fixed top positioning
 }
 
-export default function Modal({ isOpen, onClose, children, className = '' }: ModalProps) {
+export default function Modal({ isOpen, onClose, children, className = '', fixedTop = false }: ModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+    <div className={`fixed inset-0 z-[9999] ${fixedTop ? 'flex items-start justify-center pt-8 sm:pt-12 md:pt-16' : 'flex items-center justify-center'}`}>
       {/* Semi-transparent background overlay */}
       <div 
         className="absolute inset-0 bg-black/50"
@@ -19,7 +20,7 @@ export default function Modal({ isOpen, onClose, children, className = '' }: Mod
       />
       
       {/* Modal content */}
-      <div className={`relative bg-white rounded-lg shadow-xl w-full mx-4 max-h-[90vh] overflow-y-auto ${className || 'max-w-md'}`}>
+      <div className={`relative bg-white rounded-lg shadow-xl w-full mx-4 ${fixedTop ? 'max-h-[calc(100vh-4rem)] sm:max-h-[calc(100vh-6rem)] md:max-h-[calc(100vh-8rem)]' : 'max-h-[90vh]'} overflow-y-auto ${className || 'max-w-md'}`}>
         {/* Close button */}
         <button
           onClick={onClose}
