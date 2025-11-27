@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Image from 'next/image';
-import Modal from '@/components/ui/Modal';
+import Modal from '@/components/modals/Modal';
 import { createClient } from '@/lib/supabase/client';
 import AddSkillModal from '@/components/modals/AddSkillModal';
 import EditSkillsModal from '@/components/modals/EditSkillsModal';

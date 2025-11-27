@@ -1,5 +1,5 @@
-import App from '@/components/dashboard/App';
+import AppViewClasses from '@/components/dashboard/AppViewClasses';
 
 export default function DashboardPage() {
-  return <App />;
+  return <AppViewClasses />;
 }

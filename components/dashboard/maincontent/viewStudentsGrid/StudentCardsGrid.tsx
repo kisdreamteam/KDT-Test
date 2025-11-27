@@ -30,6 +30,7 @@ export default function StudentCardsGrid({
 }: StudentCardsGridProps) {
   return (
     <div 
+      // smaller contained with only the cards (contained in a bigger container)
       className="grid gap-6 mb-8"
       style={{
         gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))'

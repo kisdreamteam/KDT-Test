@@ -1,3 +1,4 @@
+// modal wrapper for all modals (custom modal component)
 import React from 'react';
 
 interface ModalProps {
@@ -49,3 +50,4 @@ export default function Modal({ isOpen, onClose, children, className = '', fixed
     </div>
   );
 }
+

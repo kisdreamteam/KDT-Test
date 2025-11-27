@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import Image from 'next/image';
-import Modal from '@/components/ui/Modal';
+import Modal from '@/components/modals/Modal';
 
 interface PointsAwardedConfirmationModalProps {
   isOpen: boolean;

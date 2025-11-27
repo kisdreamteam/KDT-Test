@@ -3,7 +3,7 @@ import LandingMain from "./LandingMain";
 
 export default function App() {
   return (
-    <div className="flex flex-col min-h-screen w-full bg-[#FDFDFD]">
+    <div className="flex flex-col min-h-screen w-full">
       <main>
         <LandingHeader />
         <LandingMain />

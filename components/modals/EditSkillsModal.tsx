@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import Modal from '@/components/ui/Modal';
+import Modal from '@/components/modals/Modal';
 import { createClient } from '@/lib/supabase/client';
 import EditSkillModal from '@/components/modals/EditSkillModal';
 import { PointCategory } from '@/lib/types';

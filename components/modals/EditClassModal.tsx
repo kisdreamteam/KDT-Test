@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import Modal from '@/components/ui/Modal';
+import Modal from '@/components/modals/Modal';
 import { createClient } from '@/lib/supabase/client';
 import { Student } from '@/lib/types';
 import AddStudentsModal from '@/components/modals/AddStudentsModal';

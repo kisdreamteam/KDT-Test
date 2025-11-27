@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Modal from '@/components/ui/Modal';
+import Modal from '@/components/modals/Modal';
 
 interface CreateLayoutModalProps {
   isOpen: boolean;

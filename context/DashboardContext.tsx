@@ -29,6 +29,8 @@ interface DashboardContextType {
   teacherProfile: TeacherProfile | null;
   isLoadingProfile: boolean;
   refreshClasses: () => void; // A function to refetch classes
+  viewMode: 'active' | 'archived'; // Current view mode
+  setViewMode: (mode: 'active' | 'archived') => void; // Function to change view mode
 }
 
 // Create the context

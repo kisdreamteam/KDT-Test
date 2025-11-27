@@ -9,15 +9,15 @@ import EditStudentModal from '@/components/modals/EditStudentModal';
 import PointsAwardedConfirmationModal from '@/components/modals/PointsAwardedConfirmationModal';
 import { Student } from '@/lib/types';
 import { useStudentSort } from '@/context/StudentSortContext';
-import LoadingState from './LoadingState';
-import ErrorState from './ErrorState';
-import EmptyState from './EmptyState';
+import LoadingState from './maincontent/LoadingState';
+import ErrorState from './maincontent/ErrorState';
+import EmptyState from './maincontent/EmptyState';
 import StudentCardsGrid from './maincontent/viewStudentsGrid/StudentCardsGrid';
 import StudentCardsGridMulti from './maincontent/viewStudentsGrid/StudentCardsGridMulti';
 import SeatingChartView from './maincontent/viewSeatingChart/SeatingChartView';
 import SeatingChartEditor from '@/components/seating-chart/SeatingChartEditor';
 
-export default function ClassRosterApp() {
+export default function AppViewStudents() {
   const params = useParams();
   const classId = params.classId as string;
   const searchParams = useSearchParams();
@@ -399,7 +399,8 @@ export default function ClassRosterApp() {
 
   return (
     <>
-      <div className="min-h-full bg-[#4A3B8D]">
+      {/* Main Content Container for student cards */}
+      <div className="min-h-full">
         <div className="max-w-10xl mx-auto text-white-500">
           {currentView === 'seating' ? (
             // Seating Chart View or Edit Mode

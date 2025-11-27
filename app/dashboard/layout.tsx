@@ -13,7 +13,7 @@ import BottomNavStudents from '@/components/dashboard/navbars/BottomNavStudents'
 import BottomNavMulti from '@/components/dashboard/navbars/BottomNavMulti';
 import BottomNavSeatingView from '@/components/dashboard/navbars/BottomNavSeatingView';
 import BottomNavSeatingEdit from '@/components/dashboard/navbars/BottomNavSeatingEdit';
-import MainContent from '@/components/dashboard/MainContent';
+import MainContent from '@/components/dashboard/maincontent/MainContent';
 import Timer from '@/components/dashboard/tools/Timer';
 import Random from '@/components/dashboard/tools/Random';
 
@@ -50,6 +50,7 @@ function DashboardLayoutContent({
   const [isTimerOpen, setIsTimerOpen] = useState(false);
   const [isRandomOpen, setIsRandomOpen] = useState(false);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
@@ -95,6 +96,11 @@ function DashboardLayoutContent({
       window.removeEventListener('classUpdated', handleClassUpdate);
     };
   }, []);
+
+  // Refetch classes when viewMode changes
+  useEffect(() => {
+    fetchClasses();
+  }, [viewMode]);
 
   const fetchTeacherProfile = async () => {
     try {
@@ -153,14 +159,14 @@ function DashboardLayoutContent({
         return;
       }
 
-      console.log('Fetching classes for sidebar, user:', user.id);
+      console.log('Fetching classes for sidebar, user:', user.id, 'viewMode:', viewMode);
 
-      // Fetch classes for the current teacher
+      // Fetch classes for the current teacher based on viewMode
       const { data, error } = await supabase
         .from('classes')
         .select('*')
         .eq('teacher_id', user.id)
-        .eq('is_archived', false)
+        .eq('is_archived', viewMode === 'archived')
         .order('created_at', { ascending: false });
 
       console.log('Sidebar classes data:', data);
@@ -256,12 +262,14 @@ function DashboardLayoutContent({
             <LeftNav 
               classes={classes}
               isLoadingClasses={isLoadingClasses}
+              viewMode={viewMode}
+              setViewMode={setViewMode}
             />
           )}
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col relative pl-2 pr-2 pt-2 bg-[#4A3B8D]">
+        <div className="flex-1 flex flex-col relative pl-2 pr-2 pt-2">
             <StudentSortProvider>
               {/* Top Bar */}
               <TopNav
@@ -277,7 +285,9 @@ function DashboardLayoutContent({
                 isLoadingClasses, 
                 teacherProfile, 
                 isLoadingProfile,
-                refreshClasses: fetchClasses
+                refreshClasses: fetchClasses,
+                viewMode,
+                setViewMode
               }}>
                 {isTimerOpen ? (
                   <Timer onClose={() => setIsTimerOpen(false)} />
