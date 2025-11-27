@@ -9,7 +9,7 @@ import { useDashboard } from '@/context/DashboardContext';
 import LoadingState from './LoadingState';
 import ErrorState from './ErrorState';
 import EmptyState from './EmptyState';
-import ClassCardsGrid from './ClassCardsGrid';
+import ClassCardsGrid from './maincontent/viewClassesGrid/ClassCardsGrid';
 import { createClient } from '@/lib/supabase/client';
 
 export default function App() {

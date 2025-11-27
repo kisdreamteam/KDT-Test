@@ -6,13 +6,16 @@ import { createClient } from '@/lib/supabase/client';
 import { DashboardProvider } from '@/context/DashboardContext';
 import { StudentSortProvider } from '@/context/StudentSortContext';
 import { SeatingChartProvider } from '@/context/SeatingChartContext';
-import LeftNav from '@/components/dashboard/LeftNav';
+import LeftNav from '@/components/dashboard/navbars/LeftNav';
 import LeftNavSeatingChart from '@/components/seating-chart/LeftNavSeatingChart';
-import TopNav from '@/components/dashboard/TopNav';
-import BottomNav from '@/components/dashboard/BottomNav';
+import TopNav from '@/components/dashboard/navbars/TopNav';
+import BottomNavStudents from '@/components/dashboard/navbars/BottomNavStudents';
+import BottomNavMulti from '@/components/dashboard/navbars/BottomNavMulti';
+import BottomNavSeatingView from '@/components/dashboard/navbars/BottomNavSeatingView';
+import BottomNavSeatingEdit from '@/components/dashboard/navbars/BottomNavSeatingEdit';
 import MainContent from '@/components/dashboard/MainContent';
-import Timer from '@/components/dashboard/Timer';
-import Random from '@/components/dashboard/Random';
+import Timer from '@/components/dashboard/tools/Timer';
+import Random from '@/components/dashboard/tools/Random';
 
 interface TeacherProfile {
   id: string;
@@ -46,15 +49,34 @@ export default function DashboardLayout({
   const [teacherCount, setTeacherCount] = useState<number | null>(null);
   const [isTimerOpen, setIsTimerOpen] = useState(false);
   const [isRandomOpen, setIsRandomOpen] = useState(false);
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
   // Check if we're in seating chart edit mode
   const isEditMode = searchParams.get('mode') === 'edit';
   
+  // Get current view mode from URL
+  const currentView = (searchParams.get('view') || 'grid') as 'grid' | 'seating';
+  const isSeatingView = currentView === 'seating';
+  
   // Extract classId from pathname for seating chart sidebar
   const classDetailMatch = pathname?.match(/\/dashboard\/classes\/([^/]+)/);
   const classId = classDetailMatch ? classDetailMatch[1] : null;
+
+  // Listen for multi-select state changes
+  useEffect(() => {
+    const handleStateChange = (event: CustomEvent) => {
+      setTimeout(() => {
+        setIsMultiSelectMode(event.detail.isMultiSelect);
+      }, 0);
+    };
+
+    window.addEventListener('multiSelectStateChanged', handleStateChange as EventListener);
+    return () => {
+      window.removeEventListener('multiSelectStateChanged', handleStateChange as EventListener);
+    };
+  }, []);
 
   useEffect(() => {
     fetchTeacherProfile();
@@ -277,15 +299,30 @@ export default function DashboardLayout({
 
               {/* Bottom Bar - Only visible when on a class page and not viewing timer/random */}
               {currentClassName && !isTimerOpen && !isRandomOpen && (
-                <BottomNav
-                  isLoadingProfile={isLoadingProfile}
-                  currentClassName={currentClassName}
-                  teacherProfile={teacherProfile}
-                  onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-                  sidebarOpen={sidebarOpen}
-                  onTimerClick={() => setIsTimerOpen(true)}
-                  onRandomClick={() => setIsRandomOpen(true)}
-                />
+                <>
+                  {isSeatingView && isEditMode ? (
+                    <BottomNavSeatingEdit
+                      currentClassName={currentClassName}
+                      sidebarOpen={sidebarOpen}
+                    />
+                  ) : isSeatingView ? (
+                    <BottomNavSeatingView
+                      currentClassName={currentClassName}
+                      sidebarOpen={sidebarOpen}
+                    />
+                  ) : isMultiSelectMode ? (
+                    <BottomNavMulti
+                      sidebarOpen={sidebarOpen}
+                    />
+                  ) : (
+                    <BottomNavStudents
+                      currentClassName={currentClassName}
+                      sidebarOpen={sidebarOpen}
+                      onTimerClick={() => setIsTimerOpen(true)}
+                      onRandomClick={() => setIsRandomOpen(true)}
+                    />
+                  )}
+                </>
               )}
           </StudentSortProvider>
         </div>

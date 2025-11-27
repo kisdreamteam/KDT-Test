@@ -1,7 +1,7 @@
 import { Student } from '@/lib/types';
-import StudentCard from './StudentCard';
-import AddStudentCard from './AddStudentCard';
-import WholeClassCard from './WholeClassCard';
+import StudentCard from '../../cards/StudentCard';
+import AddStudentCard from '../../cards/AddStudentCard';
+import WholeClassCard from '../../cards/WholeClassCard';
 
 interface StudentCardsGridProps {
   students: Student[];

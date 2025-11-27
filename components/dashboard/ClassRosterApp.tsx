@@ -12,9 +12,9 @@ import { useStudentSort } from '@/context/StudentSortContext';
 import LoadingState from './LoadingState';
 import ErrorState from './ErrorState';
 import EmptyState from './EmptyState';
-import StudentCardsGrid from './StudentCardsGrid';
-import StudentCardsGridMulti from './StudentCardsGridMulti';
-import SeatingChartView from './SeatingChartView';
+import StudentCardsGrid from './maincontent/viewStudentsGrid/StudentCardsGrid';
+import StudentCardsGridMulti from './maincontent/viewStudentsGrid/StudentCardsGridMulti';
+import SeatingChartView from './maincontent/viewSeatingChart/SeatingChartView';
 import SeatingChartEditor from '@/components/seating-chart/SeatingChartEditor';
 
 export default function ClassRosterApp() {

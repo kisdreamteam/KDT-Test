@@ -1,5 +1,5 @@
-import ClassCard from './ClassCard';
-import AddClassCard from './AddClassCard';
+import ClassCard from '../../cards/ClassCard';
+import AddClassCard from '../../cards/AddClassCard';
 
 interface Class {
   id: string;

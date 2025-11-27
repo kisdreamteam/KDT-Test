@@ -3,10 +3,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import ConfirmationModal from '@/components/ui/ConfirmationModal';
-import LoadingState from './LoadingState';
-import ErrorState from './ErrorState';
-import EmptyState from './EmptyState';
-import ClassCardsGrid from './ClassCardsGrid';
+import LoadingState from '../LoadingState';
+import ErrorState from '../ErrorState';
+import EmptyState from '../EmptyState';
+import ClassCardsGrid from './viewClassesGrid/ClassCardsGrid';
 
 interface Class {
   id: string;

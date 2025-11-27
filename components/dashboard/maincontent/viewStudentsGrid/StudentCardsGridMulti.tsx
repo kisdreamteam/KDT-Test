@@ -1,5 +1,5 @@
 import { Student } from '@/lib/types';
-import StudentCardMulti from './StudentCardMulti';
+import StudentCardMulti from '../../cards/StudentCardMulti';
 
 interface StudentCardsGridMultiProps {
   students: Student[];
