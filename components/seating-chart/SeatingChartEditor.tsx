@@ -155,7 +155,7 @@ export default function SeatingChartEditor({ classId }: SeatingChartEditorProps)
     });
     
     // Remove from unseated list
-    setUnseatedStudents(prev => prev.filter(s => s.id !== student.id));
+    setUnseatedStudents((prev: Student[]) => prev.filter(s => s.id !== student.id));
     setSelectedStudentForGroup(null);
   }, [setUnseatedStudents, setSelectedStudentForGroup]);
 
@@ -182,7 +182,7 @@ export default function SeatingChartEditor({ classId }: SeatingChartEditorProps)
       if (removedStudent) {
         newMap.set(groupId, groupStudentsList.filter(s => s.id !== studentId));
         // Add back to unseated list
-        setUnseatedStudents(prev => [...prev, removedStudent]);
+        setUnseatedStudents((prev: Student[]) => [...prev, removedStudent]);
       }
       return newMap;
     });
