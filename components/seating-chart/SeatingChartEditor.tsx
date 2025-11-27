@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useSeatingChart } from '@/context/SeatingChartContext';
 import { Student } from '@/lib/types';
 import CreateLayoutModal from '@/components/modals/CreateLayoutModal';
+import Image from 'next/image';
 
 interface SeatingChart {
   id: string;
@@ -22,17 +23,12 @@ interface SeatingGroup {
   created_at: string;
 }
 
-interface GroupStudent {
-  student: Student;
-  groupId: string;
-}
-
 interface SeatingChartEditorProps {
   classId: string;
 }
 
 export default function SeatingChartEditor({ classId }: SeatingChartEditorProps) {
-  const { selectedStudentForGroup, setSelectedStudentForGroup, unseatedStudents, setUnseatedStudents } = useSeatingChart();
+  const { selectedStudentForGroup, setSelectedStudentForGroup, setUnseatedStudents } = useSeatingChart();
   const [layouts, setLayouts] = useState<SeatingChart[]>([]);
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -147,21 +143,7 @@ export default function SeatingChartEditor({ classId }: SeatingChartEditorProps)
   }, [setSelectedStudentForGroup]);
 
   // Listen for add student to group event
-  useEffect(() => {
-    const handleAddStudentToGroup = (event: CustomEvent) => {
-      const { studentId, groupId } = event.detail;
-      if (selectedStudentForGroup && selectedStudentForGroup.id === studentId) {
-        addStudentToGroup(selectedStudentForGroup, groupId);
-      }
-    };
-
-    window.addEventListener('addStudentToGroup', handleAddStudentToGroup as EventListener);
-    return () => {
-      window.removeEventListener('addStudentToGroup', handleAddStudentToGroup as EventListener);
-    };
-  }, [selectedStudentForGroup]);
-
-  const addStudentToGroup = (student: Student, groupId: string) => {
+  const addStudentToGroup = useCallback((student: Student, groupId: string) => {
     setGroupStudents(prev => {
       const newMap = new Map(prev);
       const groupStudentsList = newMap.get(groupId) || [];
@@ -175,7 +157,21 @@ export default function SeatingChartEditor({ classId }: SeatingChartEditorProps)
     // Remove from unseated list
     setUnseatedStudents(prev => prev.filter(s => s.id !== student.id));
     setSelectedStudentForGroup(null);
-  };
+  }, [setUnseatedStudents, setSelectedStudentForGroup]);
+
+  useEffect(() => {
+    const handleAddStudentToGroup = (event: CustomEvent) => {
+      const { studentId, groupId } = event.detail;
+      if (selectedStudentForGroup && selectedStudentForGroup.id === studentId) {
+        addStudentToGroup(selectedStudentForGroup, groupId);
+      }
+    };
+
+    window.addEventListener('addStudentToGroup', handleAddStudentToGroup as EventListener);
+    return () => {
+      window.removeEventListener('addStudentToGroup', handleAddStudentToGroup as EventListener);
+    };
+  }, [selectedStudentForGroup, addStudentToGroup]);
 
   const removeStudentFromGroup = (studentId: string, groupId: string) => {
     setGroupStudents(prev => {
@@ -371,7 +367,7 @@ export default function SeatingChartEditor({ classId }: SeatingChartEditorProps)
             <h3 className="text-white text-xl font-semibold">
               Seating Groups {selectedStudentForGroup && (
                 <span className="text-sm font-normal text-purple-200">
-                  - Click a group to add "{selectedStudentForGroup.first_name} {selectedStudentForGroup.last_name}"
+                  - Click a group to add &quot;{selectedStudentForGroup.first_name} {selectedStudentForGroup.last_name}&quot;
                 </span>
               )}
             </h3>
@@ -464,9 +460,11 @@ export default function SeatingChartEditor({ classId }: SeatingChartEditorProps)
                                       className="flex items-center gap-2 p-2 bg-white rounded border border-gray-200 hover:bg-gray-50"
                                     >
                                       <div className="w-8 h-8 rounded-full overflow-hidden bg-[#FDF2F0] flex-shrink-0">
-                                        <img
+                                        <Image
                                           src={student.avatar || "/images/students/avatars/student_avatar_1.png"}
                                           alt={`${student.first_name} ${student.last_name}`}
+                                          width={32}
+                                          height={32}
                                           className="w-full h-full object-cover"
                                         />
                                       </div>
