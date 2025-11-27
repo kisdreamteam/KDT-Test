@@ -40,12 +40,14 @@ export default function BottomNav({
   const [isViewPopupOpen, setIsViewPopupOpen] = useState(false);
   const [viewPopupPosition, setViewPopupPosition] = useState({ left: 0, bottom: 0 });
   const viewButtonRef = useRef<HTMLDivElement>(null);
+  const [isSeatingEditMode, setIsSeatingEditMode] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   
   // Get current view mode from URL
-  const currentView = searchParams.get('view') || 'grid';
+  const currentView = (searchParams.get('view') || 'grid') as 'grid' | 'seating';
+  const isSeatingView = currentView === 'seating';
 
   // Check for recently selected data in localStorage
   const checkRecentlySelected = () => {
@@ -54,6 +56,20 @@ export default function BottomNav({
     const hasData = !!(lastSelectedClasses || lastSelectedStudents);
     setHasRecentlySelected(hasData);
   };
+
+  // Listen for seating chart edit mode changes
+  useEffect(() => {
+    const handleSeatingEditModeChange = (event: CustomEvent) => {
+      setTimeout(() => {
+        setIsSeatingEditMode(event.detail.isEditMode);
+      }, 0);
+    };
+
+    window.addEventListener('seatingChartEditModeChanged', handleSeatingEditModeChange as EventListener);
+    return () => {
+      window.removeEventListener('seatingChartEditModeChanged', handleSeatingEditModeChange as EventListener);
+    };
+  }, []);
 
   // Listen for multi-select state changes from components
   useEffect(() => {
@@ -337,8 +353,16 @@ export default function BottomNav({
     const params = new URLSearchParams(searchParams.toString());
     if (view === 'grid') {
       params.delete('view');
+      // Reset edit mode when switching away from seating view
+      params.delete('mode'); // Remove mode parameter
+      setIsSeatingEditMode(false);
+      window.dispatchEvent(new CustomEvent('seatingChartEditMode', { detail: { isEditMode: false } }));
     } else {
       params.set('view', view);
+      // Remove mode parameter when switching to seating view (user needs to click Edit again)
+      params.delete('mode');
+      setIsSeatingEditMode(false);
+      window.dispatchEvent(new CustomEvent('seatingChartEditMode', { detail: { isEditMode: false } }));
     }
     const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
     router.push(newUrl);
@@ -362,14 +386,215 @@ export default function BottomNav({
       alert('An unexpected error occurred. Please try again.');
     }
   };
+
+  // Handle seating chart actions
+  const handleEditSeatingChart = () => {
+    setIsSeatingEditMode(true);
+    window.dispatchEvent(new CustomEvent('seatingChartEditMode', { detail: { isEditMode: true } }));
+    // Update URL to include mode=edit parameter
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('mode', 'edit');
+    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : `${pathname}?mode=edit`;
+    router.push(newUrl);
+  };
+
+  const handleRandomizeSeating = () => {
+    window.dispatchEvent(new CustomEvent('seatingChartRandomize'));
+  };
+
+  const handleCancelSeatingEdit = () => {
+    setIsSeatingEditMode(false);
+    window.dispatchEvent(new CustomEvent('seatingChartEditMode', { detail: { isEditMode: false } }));
+    // Remove mode parameter from URL
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('mode');
+    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.push(newUrl);
+  };
+
+  const handleSaveSeatingChanges = () => {
+    window.dispatchEvent(new CustomEvent('seatingChartSave'));
+    setIsSeatingEditMode(false);
+    window.dispatchEvent(new CustomEvent('seatingChartEditMode', { detail: { isEditMode: false } }));
+    // Remove mode parameter from URL
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('mode');
+    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.push(newUrl);
+  };
   
   return (
     // Bottom Nav Container - Fixed at bottom, aligned with TopNav
     <div 
       className="fixed bottom-0 font-spartan bg-white h-12 sm:h-14 md:h-16 lg:h-20 flex items-center justify-start gap-2 sm:gap-4 md:gap-8 lg:gap-15 pr-4 sm:pr-6 md:pr-8 lg:pr-10 z-50 transition-all duration-300 border-t border-[#4A3B8D] overflow-hidden"
       style={{ left: `${leftPosition}px`, right: '0.5rem' }}>
-      {!isMultiSelectMode ? (
-        // Normal mode buttons
+      {isSeatingView ? (
+        // Seating Chart View buttons
+        <div className="flex items-center justify-between w-full">
+          {/* Left side buttons */}
+          <div className="flex flex-row items-center gap-2 sm:gap-4 md:gap-8 lg:gap-15">
+            {/* View Button - Always show */}
+            {currentClassName && (
+              <div className="relative flex-shrink-0" ref={viewButtonRef}>
+                <div 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsViewPopupOpen(!isViewPopupOpen);
+                  }}
+                  className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2"
+                >
+                  {/* 9 dots grid icon */}
+                  <svg 
+                    className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-gray-400" 
+                    viewBox="0 0 24 24" 
+                    fill="currentColor"
+                  >
+                    <rect x="3" y="3" width="5" height="5" rx="1" />
+                    <rect x="9.5" y="3" width="5" height="5" rx="1" />
+                    <rect x="16" y="3" width="5" height="5" rx="1" />
+                    <rect x="3" y="9.5" width="5" height="5" rx="1" />
+                    <rect x="9.5" y="9.5" width="5" height="5" rx="1" />
+                    <rect x="16" y="9.5" width="5" height="5" rx="1" />
+                    <rect x="3" y="16" width="5" height="5" rx="1" />
+                    <rect x="9.5" y="16" width="5" height="5" rx="1" />
+                    <rect x="16" y="16" width="5" height="5" rx="1" />
+                  </svg>
+                  <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">View</h2>
+                </div>
+
+                {/* View Popup - opens upward since it's in bottom nav */}
+                {isViewPopupOpen && (
+                  <div 
+                    className="fixed bg-blue-100 rounded-lg shadow-lg border-4 border-[#4A3B8D] py-2 z-[100] min-w-[200px]"
+                    style={{ 
+                      left: `${viewPopupPosition.left}px`,
+                      bottom: `${viewPopupPosition.bottom}px`,
+                    }}
+                  >
+                    <div className="px-4 py-2 text-sm font-semibold text-gray-700 border-b border-gray-200">
+                      View mode:
+                    </div>
+                    <button
+                      onClick={() => handleViewChange('grid')}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors ${
+                        (currentView as string) === 'grid' ? 'bg-purple-50 text-purple-600 font-medium' : 'text-gray-700'
+                      }`}
+                    >
+                      Student Grid
+                    </button>
+                    <button
+                      onClick={() => handleViewChange('seating')}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors ${
+                        (currentView as string) === 'seating' ? 'bg-purple-50 text-purple-600 font-medium' : 'text-gray-700'
+                      }`}
+                    >
+                      Seating Chart
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Edit Seating Chart Button - Only show when not in edit mode */}
+            {!isSeatingEditMode && (
+              <div 
+                onClick={handleEditSeatingChart}
+                className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
+              >
+                {/* Edit/Pencil icon */}
+                <svg 
+                  className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-gray-400" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+                <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Edit Seating Chart</h2>
+              </div>
+            )}
+
+            {/* Randomize Button - Only show when in edit mode */}
+            {isSeatingEditMode && (
+              <div 
+                onClick={handleRandomizeSeating}
+                className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
+              >
+                {/* Shuffle/Randomize icon */}
+                <svg 
+                  className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-gray-400" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" 
+                  />
+                </svg>
+                <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Randomize</h2>
+              </div>
+            )}
+          </div>
+
+          {/* Right side buttons - Only show when in edit mode */}
+          {isSeatingEditMode && (
+            <div className="flex items-center gap-2 sm:gap-4 md:gap-8 lg:gap-15">
+              {/* Cancel Button */}
+              <div 
+                onClick={handleCancelSeatingEdit}
+                className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-[#dd7f81] rounded-xl text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
+              >
+                {/* X/Cancel icon */}
+                <svg 
+                  className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-white" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M6 18L18 6M6 6l12 12" 
+                  />
+                </svg>
+                <h2 className="font-semibold text-white text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Cancel</h2>
+              </div>
+
+              {/* Save Changes Button */}
+              <div 
+                onClick={handleSaveSeatingChanges}
+                className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-[#4A3B8D] rounded-xl text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
+              >
+                {/* Save/Check icon */}
+                <svg 
+                  className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-white" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M5 13l4 4L19 7" 
+                  />
+                </svg>
+                <h2 className="font-semibold text-white text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Save Changes</h2>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : !isMultiSelectMode ? (
+        // Normal mode buttons (Grid View)
         <>
           {/* View Button - Only show when on a class page */}
           {currentClassName && (
@@ -415,7 +640,7 @@ export default function BottomNav({
                   <button
                     onClick={() => handleViewChange('grid')}
                     className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors ${
-                      currentView === 'grid' ? 'bg-purple-50 text-purple-600 font-medium' : 'text-gray-700'
+                      (currentView as string) === 'grid' ? 'bg-purple-50 text-purple-600 font-medium' : 'text-gray-700'
                     }`}
                   >
                     Student Grid
@@ -423,7 +648,7 @@ export default function BottomNav({
                   <button
                     onClick={() => handleViewChange('seating')}
                     className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors ${
-                      currentView === 'seating' ? 'bg-purple-50 text-purple-600 font-medium' : 'text-gray-700'
+                      (currentView as string) === 'seating' ? 'bg-purple-50 text-purple-600 font-medium' : 'text-gray-700'
                     }`}
                   >
                     Seating Chart

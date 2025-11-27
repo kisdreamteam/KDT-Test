@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { DashboardProvider } from '@/context/DashboardContext';
 import { StudentSortProvider } from '@/context/StudentSortContext';
+import { SeatingChartProvider } from '@/context/SeatingChartContext';
 import LeftNav from '@/components/dashboard/LeftNav';
+import LeftNavSeatingChart from '@/components/seating-chart/LeftNavSeatingChart';
 import TopNav from '@/components/dashboard/TopNav';
 import BottomNav from '@/components/dashboard/BottomNav';
 import MainContent from '@/components/dashboard/MainContent';
@@ -45,6 +47,14 @@ export default function DashboardLayout({
   const [isTimerOpen, setIsTimerOpen] = useState(false);
   const [isRandomOpen, setIsRandomOpen] = useState(false);
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  
+  // Check if we're in seating chart edit mode
+  const isEditMode = searchParams.get('mode') === 'edit';
+  
+  // Extract classId from pathname for seating chart sidebar
+  const classDetailMatch = pathname?.match(/\/dashboard\/classes\/([^/]+)/);
+  const classId = classDetailMatch ? classDetailMatch[1] : null;
 
   useEffect(() => {
     fetchTeacherProfile();
@@ -214,66 +224,72 @@ export default function DashboardLayout({
   return (
     // Outer Container of the left-nav and main content container
     <div className="flex flex-row h-screen bg-[#4A3B8D] pl-2 pb-0 pt-0">
-      {/* Left Sidebar */}
-      <div className={`${sidebarOpen ? 'w-76' : 'w-0'} transition-all duration-300 overflow-hidden bg-white flex flex-col`}>
-        <LeftNav 
-          classes={classes}
-          isLoadingClasses={isLoadingClasses}
-        />
-      </div>
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col relative pl-2 pr-2 pt-2 bg-[#4A3B8D]">
-          <StudentSortProvider>
-            {/* Top Bar */}
-            <TopNav
-              isLoadingProfile={isLoadingProfile}
-              currentClassName={currentClassName}
-              teacherProfile={teacherProfile}
-              onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+      {/* Wrap everything in SeatingChartProvider so sidebar and editor can share state */}
+      <SeatingChartProvider>
+        {/* Left Sidebar */}
+        <div className={`${sidebarOpen ? 'w-76' : 'w-0'} transition-all duration-300 overflow-hidden bg-white flex flex-col`} data-sidebar-container>
+          {isEditMode && classId ? (
+            <LeftNavSeatingChart classId={classId} />
+          ) : (
+            <LeftNav 
+              classes={classes}
+              isLoadingClasses={isLoadingClasses}
             />
+          )}
+        </div>
 
-
-            {/* Main Content */}
-            <DashboardProvider value={{ 
-              classes, 
-              isLoadingClasses, 
-              teacherProfile, 
-              isLoadingProfile,
-              refreshClasses: fetchClasses
-            }}>
-              {isTimerOpen ? (
-                <Timer onClose={() => setIsTimerOpen(false)} />
-              ) : isRandomOpen ? (
-                <Random onClose={() => setIsRandomOpen(false)} />
-              ) : (
-                <div className="flex-1 flex flex-col min-h-0">
-                  <div className="flex-1 overflow-y-auto " style={currentClassName && !isTimerOpen && !isRandomOpen ? { maxHeight: 'calc(100% - 80px)' } : {}}>
-                    <MainContent currentClassName={currentClassName}>
-                      {children}
-                    </MainContent>
-                  </div>
-                  {currentClassName && !isTimerOpen && !isRandomOpen && (
-                    <div className="h-20 flex-shrink-0"></div>
-                  )}
-                </div>
-              )}
-            </DashboardProvider>
-
-            {/* Bottom Bar - Only visible when on a class page and not viewing timer/random */}
-            {currentClassName && !isTimerOpen && !isRandomOpen && (
-              <BottomNav
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col relative pl-2 pr-2 pt-2 bg-[#4A3B8D]">
+            <StudentSortProvider>
+              {/* Top Bar */}
+              <TopNav
                 isLoadingProfile={isLoadingProfile}
                 currentClassName={currentClassName}
                 teacherProfile={teacherProfile}
                 onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-                sidebarOpen={sidebarOpen}
-                onTimerClick={() => setIsTimerOpen(true)}
-                onRandomClick={() => setIsRandomOpen(true)}
               />
-            )}
+
+              {/* Main Content */}
+              <DashboardProvider value={{ 
+                classes, 
+                isLoadingClasses, 
+                teacherProfile, 
+                isLoadingProfile,
+                refreshClasses: fetchClasses
+              }}>
+                {isTimerOpen ? (
+                  <Timer onClose={() => setIsTimerOpen(false)} />
+                ) : isRandomOpen ? (
+                  <Random onClose={() => setIsRandomOpen(false)} />
+                ) : (
+                  <div className="flex-1 flex flex-col min-h-0">
+                    <div className="flex-1 overflow-y-auto " style={currentClassName && !isTimerOpen && !isRandomOpen ? { maxHeight: 'calc(100% - 80px)' } : {}}>
+                      <MainContent currentClassName={currentClassName}>
+                        {children}
+                      </MainContent>
+                    </div>
+                    {currentClassName && !isTimerOpen && !isRandomOpen && (
+                      <div className="h-20 flex-shrink-0"></div>
+                    )}
+                  </div>
+                )}
+              </DashboardProvider>
+
+              {/* Bottom Bar - Only visible when on a class page and not viewing timer/random */}
+              {currentClassName && !isTimerOpen && !isRandomOpen && (
+                <BottomNav
+                  isLoadingProfile={isLoadingProfile}
+                  currentClassName={currentClassName}
+                  teacherProfile={teacherProfile}
+                  onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+                  sidebarOpen={sidebarOpen}
+                  onTimerClick={() => setIsTimerOpen(true)}
+                  onRandomClick={() => setIsRandomOpen(true)}
+                />
+              )}
           </StudentSortProvider>
         </div>
+      </SeatingChartProvider>
     </div>
   );
 }

@@ -14,7 +14,8 @@ import ErrorState from './ErrorState';
 import EmptyState from './EmptyState';
 import StudentCardsGrid from './StudentCardsGrid';
 import StudentCardsGridMulti from './StudentCardsGridMulti';
-import SeatingChartManager from './SeatingChartManager';
+import SeatingChartView from './SeatingChartView';
+import SeatingChartEditor from '@/components/seating-chart/SeatingChartEditor';
 
 export default function ClassRosterApp() {
   const params = useParams();
@@ -24,6 +25,8 @@ export default function ClassRosterApp() {
   
   // Get current view mode from URL
   const currentView = searchParams.get('view') || 'grid';
+  // Check if we're in edit mode from URL (this should match layout's isEditMode)
+  const isEditModeFromURL = searchParams.get('mode') === 'edit';
   const [students, setStudents] = useState<Student[]>([]);
   const [className, setClassName] = useState<string>('');
   const [classIcon, setClassIcon] = useState<string>('/images/dashboard/icons/icon-1.png');
@@ -47,6 +50,7 @@ export default function ClassRosterApp() {
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [isMultiStudentAwardModalOpen, setIsMultiStudentAwardModalOpen] = useState(false);
+  const [isSeatingEditMode, setIsSeatingEditMode] = useState(false);
 
   // Dispatch initial state to BottomNav
   useEffect(() => {
@@ -86,6 +90,25 @@ export default function ClassRosterApp() {
     document.addEventListener('click', handleClickOutside, true);
     return () => document.removeEventListener('click', handleClickOutside, true);
   }, [openDropdownId]);
+
+  // Sync edit mode with URL parameter
+  useEffect(() => {
+    setIsSeatingEditMode(isEditModeFromURL);
+  }, [isEditModeFromURL]);
+
+  // Listen for seating chart edit mode changes (for backwards compatibility)
+  useEffect(() => {
+    const handleEditModeChange = (event: CustomEvent) => {
+      // URL parameter is the source of truth, but we can still listen to events
+      // The URL should already be updated by BottomNav
+      setIsSeatingEditMode(event.detail.isEditMode || isEditModeFromURL);
+    };
+
+    window.addEventListener('seatingChartEditMode', handleEditModeChange as EventListener);
+    return () => {
+      window.removeEventListener('seatingChartEditMode', handleEditModeChange as EventListener);
+    };
+  }, [isEditModeFromURL]);
 
   // Listen for multi-select toggle event from BottomNav
   useEffect(() => {
@@ -379,8 +402,13 @@ export default function ClassRosterApp() {
       <div className="min-h-full bg-[#4A3B8D]">
         <div className="max-w-10xl mx-auto text-white-500">
           {currentView === 'seating' ? (
-            // Seating Chart View
-            <SeatingChartManager classId={classId} />
+            // Seating Chart View or Edit Mode
+            // Use URL parameter as source of truth to match layout's provider
+            (isSeatingEditMode || isEditModeFromURL) ? (
+              <SeatingChartEditor classId={classId} />
+            ) : (
+              <SeatingChartView classId={classId} />
+            )
           ) : (
             // Student Grid View (default)
             <>
