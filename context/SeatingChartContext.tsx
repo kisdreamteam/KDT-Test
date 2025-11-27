@@ -1,13 +1,13 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, Dispatch, SetStateAction } from 'react';
 import { Student } from '@/lib/types';
 
 interface SeatingChartContextType {
   unseatedStudents: Student[];
-  setUnseatedStudents: (students: Student[]) => void;
+  setUnseatedStudents: Dispatch<SetStateAction<Student[]>>;
   selectedStudentForGroup: Student | null;
-  setSelectedStudentForGroup: (student: Student | null) => void;
+  setSelectedStudentForGroup: Dispatch<SetStateAction<Student | null>>;
   addStudentToGroup: (studentId: string, groupId: string) => void;
 }
 
