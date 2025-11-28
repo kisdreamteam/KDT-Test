@@ -146,6 +146,7 @@ export default function TopNav({
           width={160}
           height={80}
           className="object-contain"
+          style={{ width: 'auto', height: 'auto' }}
         />
       </div>
     </div>

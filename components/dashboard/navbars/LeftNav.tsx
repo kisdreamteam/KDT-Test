@@ -44,6 +44,7 @@ export default function LeftNav({ classes, isLoadingClasses, viewMode, setViewMo
             width={250}
             height={250}
             className="mx-auto mb-2"
+            style={{ width: 'auto', height: 'auto' }}
           />
         </div>
       </div>

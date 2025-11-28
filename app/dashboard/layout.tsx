@@ -7,7 +7,7 @@ import { DashboardProvider } from '@/context/DashboardContext';
 import { StudentSortProvider } from '@/context/StudentSortContext';
 import { SeatingChartProvider } from '@/context/SeatingChartContext';
 import LeftNav from '@/components/dashboard/navbars/LeftNav';
-import LeftNavSeatingChart from '@/components/seating-chart/LeftNavSeatingChart';
+import LeftNavSeatingChart from '@/components/dashboard/navbars/LeftNavSeatingChart';
 import TopNav from '@/components/dashboard/navbars/TopNav';
 import BottomNavStudents from '@/components/dashboard/navbars/BottomNavStudents';
 import BottomNavMulti from '@/components/dashboard/navbars/BottomNavMulti';
@@ -65,43 +65,6 @@ function DashboardLayoutContent({
   const classDetailMatch = pathname?.match(/\/dashboard\/classes\/([^/]+)/);
   const classId = classDetailMatch ? classDetailMatch[1] : null;
 
-  // Listen for multi-select state changes
-  useEffect(() => {
-    const handleStateChange = (event: CustomEvent) => {
-      setTimeout(() => {
-        setIsMultiSelectMode(event.detail.isMultiSelect);
-      }, 0);
-    };
-
-    window.addEventListener('multiSelectStateChanged', handleStateChange as EventListener);
-    return () => {
-      window.removeEventListener('multiSelectStateChanged', handleStateChange as EventListener);
-    };
-  }, []);
-
-  useEffect(() => {
-    fetchTeacherProfile();
-    fetchClasses();
-    fetchTeacherCount();
-
-    // Listen for class updates from the main dashboard
-    const handleClassUpdate = () => {
-      console.log('Sidebar: Received class update event, refreshing classes...');
-      fetchClasses();
-    };
-
-    window.addEventListener('classUpdated', handleClassUpdate);
-    
-    return () => {
-      window.removeEventListener('classUpdated', handleClassUpdate);
-    };
-  }, []);
-
-  // Refetch classes when viewMode changes
-  useEffect(() => {
-    fetchClasses();
-  }, [viewMode]);
-
   const fetchTeacherProfile = async () => {
     try {
       setIsLoadingProfile(true);
@@ -146,7 +109,7 @@ function DashboardLayoutContent({
     }
   };
 
-  const fetchClasses = async () => {
+  const fetchClasses = useCallback(async () => {
     try {
       setIsLoadingClasses(true);
       const supabase = createClient();
@@ -183,7 +146,7 @@ function DashboardLayoutContent({
     } finally {
       setIsLoadingClasses(false);
     }
-  };
+  }, [viewMode]);
 
   const fetchTeacherCount = async () => {
     try {
@@ -229,6 +192,43 @@ function DashboardLayoutContent({
       setCurrentClassName(null);
     }
   }, []);
+
+  // Listen for multi-select state changes
+  useEffect(() => {
+    const handleStateChange = (event: CustomEvent) => {
+      setTimeout(() => {
+        setIsMultiSelectMode(event.detail.isMultiSelect);
+      }, 0);
+    };
+
+    window.addEventListener('multiSelectStateChanged', handleStateChange as EventListener);
+    return () => {
+      window.removeEventListener('multiSelectStateChanged', handleStateChange as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    fetchTeacherProfile();
+    fetchClasses();
+    fetchTeacherCount();
+
+    // Listen for class updates from the main dashboard
+    const handleClassUpdate = () => {
+      console.log('Sidebar: Received class update event, refreshing classes...');
+      fetchClasses();
+    };
+
+    window.addEventListener('classUpdated', handleClassUpdate);
+    
+    return () => {
+      window.removeEventListener('classUpdated', handleClassUpdate);
+    };
+  }, [fetchClasses]);
+
+  // Refetch classes when viewMode changes
+  useEffect(() => {
+    fetchClasses();
+  }, [fetchClasses]);
 
   // Detect route changes and update header
   useEffect(() => {

@@ -20,11 +20,11 @@ interface SeatingGroup {
   created_at: string;
 }
 
-interface SeatingChartViewProps {
+interface AppViewSeatingChartProps {
   classId: string;
 }
 
-export default function SeatingChartView({ classId }: SeatingChartViewProps) {
+export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProps) {
   const [layouts, setLayouts] = useState<SeatingChart[]>([]);
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);

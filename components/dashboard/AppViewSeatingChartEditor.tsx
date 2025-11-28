@@ -23,11 +23,11 @@ interface SeatingGroup {
   created_at: string;
 }
 
-interface SeatingChartEditorProps {
+interface AppViewSeatingChartEditorProps {
   classId: string;
 }
 
-export default function SeatingChartEditor({ classId }: SeatingChartEditorProps) {
+export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingChartEditorProps) {
   const { selectedStudentForGroup, setSelectedStudentForGroup, setUnseatedStudents } = useSeatingChart();
   const [layouts, setLayouts] = useState<SeatingChart[]>([]);
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);

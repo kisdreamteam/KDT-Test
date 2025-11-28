@@ -14,8 +14,8 @@ import ErrorState from './maincontent/ErrorState';
 import EmptyState from './maincontent/EmptyState';
 import StudentCardsGrid from './maincontent/viewStudentsGrid/StudentCardsGrid';
 import StudentCardsGridMulti from './maincontent/viewStudentsGrid/StudentCardsGridMulti';
-import SeatingChartView from './maincontent/viewSeatingChart/SeatingChartView';
-import SeatingChartEditor from '@/components/seating-chart/SeatingChartEditor';
+import AppViewSeatingChart from './AppViewSeatingChart';
+import AppViewSeatingChartEditor from './AppViewSeatingChartEditor';
 
 export default function AppViewStudents() {
   const params = useParams();
@@ -406,9 +406,9 @@ export default function AppViewStudents() {
             // Seating Chart View or Edit Mode
             // Use URL parameter as source of truth to match layout's provider
             (isSeatingEditMode || isEditModeFromURL) ? (
-              <SeatingChartEditor classId={classId} />
+              <AppViewSeatingChartEditor classId={classId} />
             ) : (
-              <SeatingChartView classId={classId} />
+              <AppViewSeatingChart classId={classId} />
             )
           ) : (
             // Student Grid View (default)
