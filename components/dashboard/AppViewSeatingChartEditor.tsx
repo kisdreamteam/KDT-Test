@@ -35,7 +35,7 @@ interface AppViewSeatingChartEditorProps {
 }
 
 export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingChartEditorProps) {
-  const { selectedStudentForGroup, setSelectedStudentForGroup, setUnseatedStudents } = useSeatingChart();
+  const { selectedStudentForGroup, setSelectedStudentForGroup, setUnseatedStudents, unseatedStudents } = useSeatingChart();
   const [layouts, setLayouts] = useState<SeatingChart[]>([]);
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,6 +50,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   const [targetGroupId, setTargetGroupId] = useState<string | null>(null);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [openSettingsMenuId, setOpenSettingsMenuId] = useState<string | null>(null);
+  const [selectedStudentForSwap, setSelectedStudentForSwap] = useState<{ studentId: string; groupId: string } | null>(null);
 
   const fetchLayouts = useCallback(async () => {
     try {
@@ -411,10 +412,288 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   };
 
   const handleGroupClick = (groupId: string) => {
+    // Don't handle group click if a student is selected for swapping
+    if (selectedStudentForSwap) {
+      return;
+    }
+    
     if (selectedStudentForGroup) {
       addStudentToGroup(selectedStudentForGroup, groupId);
     } else {
       setTargetGroupId(groupId);
+    }
+  };
+
+  const handleStudentClick = async (e: React.MouseEvent, studentId: string, groupId: string) => {
+    e.stopPropagation(); // Prevent group click handler from firing
+    e.preventDefault();
+    
+    if (!selectedStudentForSwap) {
+      // First student selected - highlight it
+      setSelectedStudentForSwap({ studentId, groupId });
+    } else if (selectedStudentForSwap.studentId === studentId && selectedStudentForSwap.groupId === groupId) {
+      // Clicking the same student - deselect
+      setSelectedStudentForSwap(null);
+    } else {
+      // Second student selected - swap them
+      console.log('Swapping students:', {
+        student1: selectedStudentForSwap.studentId,
+        group1: selectedStudentForSwap.groupId,
+        student2: studentId,
+        group2: groupId
+      });
+      await swapStudents(selectedStudentForSwap.studentId, selectedStudentForSwap.groupId, studentId, groupId);
+      setSelectedStudentForSwap(null);
+    }
+  };
+
+  const swapStudents = async (studentId1: string, groupId1: string, studentId2: string, groupId2: string) => {
+    try {
+      const supabase = createClient();
+      
+      // If students are in the same group, swap their positions in the local state array
+      // This changes their visual order within the group
+      if (groupId1 === groupId2) {
+        console.log('Students are in the same group - swapping positions in local state');
+        
+        // Get the current students array for this group
+        const currentStudents = groupStudents.get(groupId1) || [];
+        const student1Index = currentStudents.findIndex(s => s.id === studentId1);
+        const student2Index = currentStudents.findIndex(s => s.id === studentId2);
+        
+        if (student1Index === -1 || student2Index === -1) {
+          console.error('One or both students not found in group');
+          return;
+        }
+        
+        // Swap the students in the array
+        const newStudents = [...currentStudents];
+        [newStudents[student1Index], newStudents[student2Index]] = [newStudents[student2Index], newStudents[student1Index]];
+        
+        // Update local state
+        setGroupStudents(prev => {
+          const newMap = new Map(prev);
+          newMap.set(groupId1, newStudents);
+          return newMap;
+        });
+        
+        console.log('Same-group swap completed in local state');
+        return;
+      }
+
+      // Verify students are actually in these groups in our local state
+      const studentsInGroup1 = groupStudents.get(groupId1) || [];
+      const studentsInGroup2 = groupStudents.get(groupId2) || [];
+      const student1Exists = studentsInGroup1.some(s => s.id === studentId1);
+      const student2Exists = studentsInGroup2.some(s => s.id === studentId2);
+
+      if (!student1Exists || !student2Exists) {
+        console.error('Students not found in expected groups:', { student1Exists, student2Exists });
+        alert('Failed to swap students. One or both students may not be in their expected groups.');
+        return;
+      }
+
+      // Different groups - swap ONLY these two students' assignments
+      // All other students remain in their exact positions
+      
+      // First, get current assignments to verify they exist
+      // Query without maybeSingle to get array and check length
+      const { data: assignment1Array, error: error1 } = await supabase
+        .from('student_seat_assignments')
+        .select('id')
+        .eq('student_id', studentId1)
+        .eq('seating_group_id', groupId1);
+
+      const { data: assignment2Array, error: error2 } = await supabase
+        .from('student_seat_assignments')
+        .select('id')
+        .eq('student_id', studentId2)
+        .eq('seating_group_id', groupId2);
+
+      const assignment1Data = assignment1Array && assignment1Array.length > 0 ? assignment1Array[0] : null;
+      const assignment2Data = assignment2Array && assignment2Array.length > 0 ? assignment2Array[0] : null;
+
+      if (error1 || error2) {
+        console.error('Error finding assignments:', { error1, error2, studentId1, groupId1, studentId2, groupId2 });
+        alert('Failed to swap students. Please try again.');
+        return;
+      }
+
+      if (!assignment1Data || !assignment2Data) {
+        console.error('One or both assignments not found:', { 
+          assignment1Data, 
+          assignment2Data, 
+          studentId1, 
+          groupId1, 
+          studentId2, 
+          groupId2 
+        });
+        alert('Failed to swap students. One or both students may not be assigned to their groups.');
+        return;
+      }
+
+      // OPTIMISTIC UPDATE: Update local state FIRST for instant UI response
+      // Then update database in the background
+      let rollbackState: Map<string, Student[]> | null = null;
+      
+      setGroupStudents(prev => {
+        // Save current state for potential rollback
+        rollbackState = new Map(prev);
+        
+        const newMap = new Map(prev);
+        const studentsInGroup1 = [...(newMap.get(groupId1) || [])];
+        const studentsInGroup2 = [...(newMap.get(groupId2) || [])];
+        
+        // Find and remove student1 from group1
+        const student1Index = studentsInGroup1.findIndex(s => s.id === studentId1);
+        const student1 = student1Index !== -1 ? studentsInGroup1[student1Index] : null;
+        if (student1) {
+          studentsInGroup1.splice(student1Index, 1);
+        }
+        
+        // Find and remove student2 from group2
+        const student2Index = studentsInGroup2.findIndex(s => s.id === studentId2);
+        const student2 = student2Index !== -1 ? studentsInGroup2[student2Index] : null;
+        if (student2) {
+          studentsInGroup2.splice(student2Index, 1);
+        }
+        
+        // Add student1 to group2 and student2 to group1 (maintaining their relative positions)
+        if (student1) {
+          // Insert student1 at the same position student2 was (or at the end)
+          if (student2Index !== -1 && student2Index < studentsInGroup2.length) {
+            studentsInGroup2.splice(student2Index, 0, student1);
+          } else {
+            studentsInGroup2.push(student1);
+          }
+        }
+        
+        if (student2) {
+          // Insert student2 at the same position student1 was (or at the end)
+          if (student1Index !== -1 && student1Index < studentsInGroup1.length) {
+            studentsInGroup1.splice(student1Index, 0, student2);
+          } else {
+            studentsInGroup1.push(student2);
+          }
+        }
+        
+        newMap.set(groupId1, studentsInGroup1);
+        newMap.set(groupId2, studentsInGroup2);
+        
+        return newMap;
+      });
+
+      // Update database in the background (non-blocking)
+      // If this fails, we'll rollback the optimistic update
+      try {
+        // Delete ONLY the two specific assignments (by their unique IDs)
+        const { error: deleteError1 } = await supabase
+          .from('student_seat_assignments')
+          .delete()
+          .eq('id', assignment1Data.id);
+
+        const { error: deleteError2 } = await supabase
+          .from('student_seat_assignments')
+          .delete()
+          .eq('id', assignment2Data.id);
+
+        if (deleteError1 || deleteError2) {
+          console.error('Error deleting assignments:', deleteError1 || deleteError2);
+          // Rollback optimistic update
+          if (rollbackState) {
+            setGroupStudents(rollbackState);
+          }
+          alert('Failed to swap students. Please try again.');
+          return;
+        }
+
+        // Create ONLY two new assignments with swapped group IDs
+        const { error: insertError } = await supabase
+          .from('student_seat_assignments')
+          .insert([
+            { student_id: studentId1, seating_group_id: groupId2 },
+            { student_id: studentId2, seating_group_id: groupId1 },
+          ]);
+
+        if (insertError) {
+          console.error('Error swapping students:', insertError);
+          // Rollback optimistic update
+          if (rollbackState) {
+            setGroupStudents(rollbackState);
+          }
+          alert('Failed to swap students. Please try again.');
+          return;
+        }
+      } catch (err) {
+        console.error('Unexpected error during database swap:', err);
+        // Rollback optimistic update
+        if (rollbackState) {
+          setGroupStudents(rollbackState);
+        }
+        alert('An unexpected error occurred. The swap has been reverted.');
+      }
+    } catch (err) {
+      console.error('Unexpected error swapping students:', err);
+      alert('An unexpected error occurred. Please try again.');
+    }
+  };
+
+  const handleAssignSeats = async () => {
+    if (groups.length === 0) {
+      alert('Please create at least one group before assigning seats.');
+      return;
+    }
+
+    if (unseatedStudents.length === 0) {
+      alert('No unseated students to assign.');
+      return;
+    }
+
+    try {
+      const supabase = createClient();
+      
+      // Shuffle students randomly
+      const shuffledStudents = [...unseatedStudents].sort(() => Math.random() - 0.5);
+      
+      // Calculate distribution: how many students per group
+      const studentsPerGroup = Math.floor(shuffledStudents.length / groups.length);
+      const remainder = shuffledStudents.length % groups.length;
+      
+      // Distribute students evenly across groups
+      const assignments: Array<{ student_id: string; seating_group_id: string }> = [];
+      let studentIndex = 0;
+      
+      groups.forEach((group, groupIndex) => {
+        // Some groups get one extra student if there's a remainder
+        const studentsForThisGroup = studentsPerGroup + (groupIndex < remainder ? 1 : 0);
+        
+        for (let i = 0; i < studentsForThisGroup && studentIndex < shuffledStudents.length; i++) {
+          assignments.push({
+            student_id: shuffledStudents[studentIndex].id,
+            seating_group_id: group.id,
+          });
+          studentIndex++;
+        }
+      });
+      
+      // Insert all assignments into database
+      if (assignments.length > 0) {
+        const { error: insertError } = await supabase
+          .from('student_seat_assignments')
+          .insert(assignments);
+
+        if (insertError) {
+          console.error('Error assigning seats:', insertError);
+          alert('Failed to assign seats. Please try again.');
+          return;
+        }
+
+        // Refresh groups to update the UI
+        await fetchGroups();
+      }
+    } catch (err) {
+      console.error('Unexpected error assigning seats:', err);
+      alert('An unexpected error occurred. Please try again.');
     }
   };
 
@@ -636,7 +915,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   }
 
   return (
-    <div className="p-1 sm:p-11md:p-2 bg-red-600 h-screen">
+    <div className="p-1 sm:p-11md:p-2 bg-red-600 font-spartan h-screen">
       <div className="space-y-8" >
         {/* Layout Selector */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -672,12 +951,20 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                 </span>
               )}
             </h3>
-            <button
-              onClick={() => setIsAddGroupModalOpen(true)}
-              className="px-6 py-2 bg-purple-400 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors"
-            >
-              Add New Group
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleAssignSeats}
+                className="px-6 py-2 bg-purple-400 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors"
+              >
+                Auto Assign Seats
+              </button>
+              <button
+                onClick={() => setIsAddGroupModalOpen(true)}
+                className="px-6 py-2 bg-purple-400 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors"
+              >
+                Add New Group
+              </button>
+            </div>
           </div>
 
           {isLoadingGroups ? (
@@ -740,7 +1027,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                               {/* Group Header */}
                               <div
                                 {...provided.dragHandleProps}
-                                className="p-4 border-b border-gray-200 bg-purple-50 rounded-t-lg cursor-grab active:cursor-grabbing relative"
+                                className="p-2 border-b border-gray-200 bg-purple-50 rounded-t-lg cursor-grab active:cursor-grabbing relative"
                               >
                                 {/* Settings Icon - Top Right */}
                                 <button
@@ -839,31 +1126,40 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                     {selectedStudentForGroup ? 'Click to add student' : 'No students yet'}
                                   </div>
                                 ) : (
-                                  studentsInGroup.map((student) => (
-                                    <div
-                                      key={student.id}
-                                      className="flex items-center justify-between gap-1 p-1.5 bg-white rounded border border-gray-200 hover:bg-gray-50 w-[120px] h-[32px] flex-shrink-0"
-                                      style={{ width: '120px', height: '32px', minWidth: '120px', maxWidth: '120px' }}
-                                    >
-                                      <div className="flex-1 min-w-0 overflow-hidden">
-                                        <p className="text-xs font-medium text-gray-800 truncate">
-                                          {student.first_name} {student.last_name}
-                                        </p>
-                                      </div>
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          removeStudentFromGroup(student.id, group.id);
-                                        }}
-                                        className="text-red-500 hover:text-red-700 p-0.5 flex-shrink-0"
-                                        title="Remove from group"
+                                  studentsInGroup.map((student) => {
+                                    const isSelected = selectedStudentForSwap?.studentId === student.id && selectedStudentForSwap?.groupId === group.id;
+                                    return (
+                                      <div
+                                        key={student.id}
+                                        onClick={(e) => handleStudentClick(e, student.id, group.id)}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        className={`flex items-center justify-between gap-1 p-1.5 rounded border cursor-pointer w-[120px] h-[32px] flex-shrink-0 transition-colors ${
+                                          isSelected 
+                                            ? 'bg-yellow-300 border-yellow-500 hover:bg-yellow-400' 
+                                            : 'bg-white border-gray-200 hover:bg-gray-50'
+                                        }`}
+                                        style={{ width: '120px', height: '32px', minWidth: '120px', maxWidth: '120px' }}
                                       >
-                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                      </button>
-                                    </div>
-                                  ))
+                                        <div className="flex-1 min-w-0 overflow-hidden">
+                                          <p className="text-xs font-medium text-gray-800 truncate">
+                                            {student.first_name} {student.last_name}
+                                          </p>
+                                        </div>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            removeStudentFromGroup(student.id, group.id);
+                                          }}
+                                          className="text-red-500 hover:text-red-700 p-0.5 flex-shrink-0"
+                                          title="Remove from group"
+                                        >
+                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                          </svg>
+                                        </button>
+                                      </div>
+                                    );
+                                  })
                                 )}
                               </div>
                             </div>
