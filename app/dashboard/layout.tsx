@@ -257,7 +257,7 @@ function DashboardLayoutContent({
         {/* Left Sidebar */}
         <div className={`${sidebarOpen ? 'w-76' : 'w-0'} transition-all duration-300 overflow-hidden bg-white flex flex-col`} data-sidebar-container>
           {isEditMode && classId ? (
-            <LeftNavSeatingChart classId={classId} />
+            <LeftNavSeatingChart />
           ) : (
             <LeftNav 
               classes={classes}

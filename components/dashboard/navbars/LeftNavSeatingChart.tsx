@@ -1,51 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useSeatingChart } from '@/context/SeatingChartContext';
 import { Student } from '@/lib/types';
 
-interface LeftNavSeatingChartProps {
-  classId: string;
-}
-
-export default function LeftNavSeatingChart({ classId }: LeftNavSeatingChartProps) {
-  const { unseatedStudents, setUnseatedStudents, setSelectedStudentForGroup } = useSeatingChart();
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Fetch students for this class
-  useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        setIsLoading(true);
-        const { createClient } = await import('@/lib/supabase/client');
-        const supabase = createClient();
-        
-        const { data, error } = await supabase
-          .from('students')
-          .select('*')
-          .eq('class_id', classId)
-          .order('student_number', { ascending: true });
-
-        if (error) {
-          console.error('Error fetching students:', error);
-          return;
-        }
-
-        if (data) {
-          // For now, all students are unseated (we'll filter by actual seating later)
-          setUnseatedStudents(data as Student[]);
-        }
-      } catch (err) {
-        console.error('Unexpected error fetching students:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (classId) {
-      fetchStudents();
-    }
-  }, [classId, setUnseatedStudents]);
+export default function LeftNavSeatingChart() {
+  const { unseatedStudents, setSelectedStudentForGroup } = useSeatingChart();
 
   const handleStudentClick = (student: Student) => {
     setSelectedStudentForGroup(student);
@@ -67,12 +26,7 @@ export default function LeftNavSeatingChart({ classId }: LeftNavSeatingChartProp
 
       {/* Students List */}
       <div className="space-y-2 flex-1 overflow-y-auto">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-4">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
-            <span className="ml-2 text-sm">Loading students...</span>
-          </div>
-        ) : unseatedStudents.length === 0 ? (
+        {unseatedStudents.length === 0 ? (
           <div className="text-center py-4">
             <p className="text-sm">All students are seated</p>
           </div>

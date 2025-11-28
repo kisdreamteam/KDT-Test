@@ -250,7 +250,7 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
 
   return (
     <div className="relative">
-      {/* Layout Buttons Bar - Fixed under top nav, 50px height */}
+      {/* Layout Buttons Bar - Fixed under top nav, 60px height */}
       {layouts.length > 0 && (
         <div 
           className="fixed top-[120px] h-[60px] py-font-spartan bg-[#fcf1f0] border-[#4A3B8D] border-t-4 z-40 flex items-center justify-start gap-2 sm:gap-4 md:gap-8 lg:gap-4 px-1 sm:px-1 md:px-8 lg:px-2 overflow-x-auto"

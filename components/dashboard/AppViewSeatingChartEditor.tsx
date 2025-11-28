@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useSeatingChart } from '@/context/SeatingChartContext';
 import { Student } from '@/lib/types';
 import CreateLayoutModal from '@/components/modals/CreateLayoutModal';
-import Image from 'next/image';
+import AddGroupModal from '@/components/modals/AddGroupModal';
 
 interface SeatingChart {
   id: string;
@@ -20,6 +20,7 @@ interface SeatingGroup {
   name: string;
   seating_chart_id: string;
   sort_order: number;
+  grid_columns: number;
   created_at: string;
 }
 
@@ -36,8 +37,11 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   const [groups, setGroups] = useState<SeatingGroup[]>([]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isAddGroupModalOpen, setIsAddGroupModalOpen] = useState(false);
   const [groupStudents, setGroupStudents] = useState<Map<string, Student[]>>(new Map());
   const [targetGroupId, setTargetGroupId] = useState<string | null>(null);
+  const [allStudents, setAllStudents] = useState<Student[]>([]);
+  const [openSettingsMenuId, setOpenSettingsMenuId] = useState<string | null>(null);
 
   const fetchLayouts = useCallback(async () => {
     try {
@@ -81,6 +85,36 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     }
   }, [classId, fetchLayouts]);
 
+  // Fetch all students for the class
+  const fetchAllStudents = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .eq('class_id', classId)
+        .order('student_number', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching students:', error);
+        return;
+      }
+
+      if (data) {
+        setAllStudents(data as Student[]);
+      }
+    } catch (err) {
+      console.error('Unexpected error fetching students:', err);
+    }
+  }, [classId]);
+
+  // Fetch all students on mount
+  useEffect(() => {
+    if (classId) {
+      fetchAllStudents();
+    }
+  }, [classId, fetchAllStudents]);
+
   const fetchGroups = useCallback(async () => {
     if (!selectedLayoutId) return;
 
@@ -88,45 +122,88 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       setIsLoadingGroups(true);
       const supabase = createClient();
       
-      const { data, error: fetchError } = await supabase
+      // Fetch groups
+      const { data: groupsData, error: groupsError } = await supabase
         .from('seating_groups')
         .select('*')
         .eq('seating_chart_id', selectedLayoutId)
         .order('sort_order', { ascending: true });
 
-      if (fetchError) {
-        console.error('Error fetching seating groups:', fetchError);
+      if (groupsError) {
+        console.error('Error fetching seating groups:', groupsError);
         return;
       }
 
-      if (data) {
-        setGroups(data);
-        // Initialize empty student arrays for each group
-        const newGroupStudents = new Map<string, Student[]>();
-        data.forEach(group => {
-          newGroupStudents.set(group.id, []);
-        });
-        setGroupStudents(newGroupStudents);
+      if (groupsData) {
+        setGroups(groupsData);
+        
+        // Fetch student seat assignments for all groups
+        const groupIds = groupsData.map(g => g.id);
+        if (groupIds.length > 0) {
+          const { data: assignmentsData, error: assignmentsError } = await supabase
+            .from('student_seat_assignments')
+            .select('*, students(*)')
+            .in('seating_group_id', groupIds);
+
+          if (assignmentsError) {
+            console.error('Error fetching student seat assignments:', assignmentsError);
+            // Continue with empty assignments
+          }
+
+          // Organize students by group
+          const newGroupStudents = new Map<string, Student[]>();
+          groupsData.forEach(group => {
+            newGroupStudents.set(group.id, []);
+          });
+
+          if (assignmentsData) {
+            assignmentsData.forEach((assignment: any) => {
+              const groupId = assignment.seating_group_id;
+              const student = assignment.students;
+              if (student && newGroupStudents.has(groupId)) {
+                const currentStudents = newGroupStudents.get(groupId) || [];
+                // Check for duplicates before adding
+                if (!currentStudents.find(s => s.id === student.id)) {
+                  newGroupStudents.set(groupId, [...currentStudents, student as Student]);
+                }
+              }
+            });
+          }
+
+          setGroupStudents(newGroupStudents);
+
+          // Calculate unseated students: all students minus assigned students
+          const assignedStudentIds = new Set(
+            assignmentsData?.map((a: any) => a.students?.id).filter(Boolean) || []
+          );
+          const unseated = allStudents.filter(student => !assignedStudentIds.has(student.id));
+          setUnseatedStudents(unseated);
+        } else {
+          // No groups, all students are unseated
+          setGroupStudents(new Map());
+          setUnseatedStudents(allStudents);
+        }
       } else {
         setGroups([]);
         setGroupStudents(new Map());
+        setUnseatedStudents(allStudents);
       }
     } catch (err) {
       console.error('Unexpected error fetching seating groups:', err);
     } finally {
       setIsLoadingGroups(false);
     }
-  }, [selectedLayoutId]);
+  }, [selectedLayoutId, allStudents, setUnseatedStudents]);
 
-  // Fetch groups when layout is selected
+  // Fetch groups when layout is selected or when allStudents changes
   useEffect(() => {
-    if (selectedLayoutId) {
+    if (selectedLayoutId && allStudents.length > 0) {
       fetchGroups();
-    } else {
+    } else if (!selectedLayoutId) {
       setGroups([]);
       setGroupStudents(new Map());
     }
-  }, [selectedLayoutId, fetchGroups]);
+  }, [selectedLayoutId, fetchGroups, allStudents.length]);
 
   // Listen for student selection from sidebar
   useEffect(() => {
@@ -143,20 +220,42 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   }, [setSelectedStudentForGroup]);
 
   // Listen for add student to group event
-  const addStudentToGroup = useCallback((student: Student, groupId: string) => {
-    setGroupStudents(prev => {
-      const newMap = new Map(prev);
-      const groupStudentsList = newMap.get(groupId) || [];
-      // Check if student is already in this group
-      if (!groupStudentsList.find(s => s.id === student.id)) {
-        newMap.set(groupId, [...groupStudentsList, student]);
+  const addStudentToGroup = useCallback(async (student: Student, groupId: string) => {
+    try {
+      const supabase = createClient();
+      
+      // Insert assignment into database
+      const { error: insertError } = await supabase
+        .from('student_seat_assignments')
+        .insert({
+          student_id: student.id,
+          seating_group_id: groupId,
+        });
+
+      if (insertError) {
+        console.error('Error assigning student to group:', insertError);
+        alert('Failed to assign student. Please try again.');
+        return;
       }
-      return newMap;
-    });
-    
-    // Remove from unseated list
-    setUnseatedStudents((prev: Student[]) => prev.filter(s => s.id !== student.id));
-    setSelectedStudentForGroup(null);
+
+      // Update local state
+      setGroupStudents(prev => {
+        const newMap = new Map(prev);
+        const groupStudentsList = newMap.get(groupId) || [];
+        // Check if student is already in this group
+        if (!groupStudentsList.find(s => s.id === student.id)) {
+          newMap.set(groupId, [...groupStudentsList, student]);
+        }
+        return newMap;
+      });
+      
+      // Remove from unseated list
+      setUnseatedStudents((prev: Student[]) => prev.filter(s => s.id !== student.id));
+      setSelectedStudentForGroup(null);
+    } catch (err) {
+      console.error('Unexpected error assigning student:', err);
+      alert('An unexpected error occurred. Please try again.');
+    }
   }, [setUnseatedStudents, setSelectedStudentForGroup]);
 
   useEffect(() => {
@@ -173,30 +272,53 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     };
   }, [selectedStudentForGroup, addStudentToGroup]);
 
-  const removeStudentFromGroup = (studentId: string, groupId: string) => {
-    setGroupStudents(prev => {
-      const newMap = new Map(prev);
-      const groupStudentsList = newMap.get(groupId) || [];
-      const removedStudent = groupStudentsList.find(s => s.id === studentId);
+  const removeStudentFromGroup = async (studentId: string, groupId: string) => {
+    try {
+      const supabase = createClient();
       
-      if (removedStudent) {
-        newMap.set(groupId, groupStudentsList.filter(s => s.id !== studentId));
-        // Add back to unseated list
-        setUnseatedStudents((prev: Student[]) => [...prev, removedStudent]);
+      // Delete assignment from database
+      const { error: deleteError } = await supabase
+        .from('student_seat_assignments')
+        .delete()
+        .eq('student_id', studentId)
+        .eq('seating_group_id', groupId);
+
+      if (deleteError) {
+        console.error('Error removing student from group:', deleteError);
+        alert('Failed to remove student. Please try again.');
+        return;
       }
-      return newMap;
-    });
+
+      // Update local state
+      setGroupStudents(prev => {
+        const newMap = new Map(prev);
+        const groupStudentsList = newMap.get(groupId) || [];
+        const removedStudent = groupStudentsList.find(s => s.id === studentId);
+        
+        if (removedStudent) {
+          newMap.set(groupId, groupStudentsList.filter(s => s.id !== studentId));
+          // Add back to unseated list (check for duplicates first)
+          setUnseatedStudents((prev: Student[]) => {
+            // Check if student is already in the list
+            if (!prev.find(s => s.id === removedStudent.id)) {
+              return [...prev, removedStudent];
+            }
+            return prev;
+          });
+        }
+        return newMap;
+      });
+    } catch (err) {
+      console.error('Unexpected error removing student:', err);
+      alert('An unexpected error occurred. Please try again.');
+    }
   };
 
-  const handleCreateGroup = async () => {
+  const handleCreateGroup = async (groupName: string, columns: number) => {
     if (!selectedLayoutId) return;
 
     try {
       const supabase = createClient();
-      
-      // Get the next group number
-      const nextGroupNumber = groups.length + 1;
-      const groupName = `Group ${nextGroupNumber}`;
       
       // Get the max sort_order to place new group at the end
       const maxSortOrder = groups.length > 0 
@@ -209,6 +331,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
           name: groupName,
           seating_chart_id: selectedLayoutId,
           sort_order: maxSortOrder + 1,
+          grid_columns: columns,
         })
         .select()
         .single();
@@ -222,6 +345,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       if (data) {
         // Refresh groups
         await fetchGroups();
+        setIsAddGroupModalOpen(false);
       }
     } catch (err) {
       console.error('Unexpected error creating seating group:', err);
@@ -285,6 +409,146 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       setTargetGroupId(groupId);
     }
   };
+
+  const handleColumnChange = async (groupId: string, newColumns: number) => {
+    // Clamp to 1, 2, or 3
+    const clampedColumns = Math.max(1, Math.min(3, newColumns));
+    
+    try {
+      const supabase = createClient();
+      
+      // Update in database
+      const { error: updateError } = await supabase
+        .from('seating_groups')
+        .update({ grid_columns: clampedColumns })
+        .eq('id', groupId);
+
+      if (updateError) {
+        console.error('Error updating group columns:', updateError);
+        alert('Failed to update columns. Please try again.');
+        return;
+      }
+
+      // Update local state immediately
+      setGroups(prev => prev.map(g => 
+        g.id === groupId ? { ...g, grid_columns: clampedColumns } : g
+      ));
+    } catch (err) {
+      console.error('Unexpected error updating columns:', err);
+      alert('An unexpected error occurred. Please try again.');
+    }
+  };
+
+  const handleEditTeam = (groupId: string) => {
+    // TODO: Implement edit team name functionality
+    setOpenSettingsMenuId(null);
+    alert('Edit team functionality coming soon');
+  };
+
+  const handleClearTeam = async (groupId: string) => {
+    if (!confirm('Are you sure you want to clear all students from this team?')) {
+      return;
+    }
+
+    try {
+      const supabase = createClient();
+      
+      // Delete all student assignments for this group
+      const { error: deleteError } = await supabase
+        .from('student_seat_assignments')
+        .delete()
+        .eq('seating_group_id', groupId);
+
+      if (deleteError) {
+        console.error('Error clearing team:', deleteError);
+        alert('Failed to clear team. Please try again.');
+        return;
+      }
+
+      // Update local state - move all students back to unseated
+      const studentsToUnseat = groupStudents.get(groupId) || [];
+      setGroupStudents(prev => {
+        const newMap = new Map(prev);
+        newMap.set(groupId, []);
+        return newMap;
+      });
+      
+      // Add students back to unseated list (filter out duplicates)
+      setUnseatedStudents((prev: Student[]) => {
+        const existingIds = new Set(prev.map(s => s.id));
+        const newStudents = studentsToUnseat.filter(s => !existingIds.has(s.id));
+        return [...prev, ...newStudents];
+      });
+      setOpenSettingsMenuId(null);
+    } catch (err) {
+      console.error('Unexpected error clearing team:', err);
+      alert('An unexpected error occurred. Please try again.');
+    }
+  };
+
+  const handleDeleteTeam = async (groupId: string) => {
+    if (!confirm('Are you sure you want to delete this team? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const supabase = createClient();
+      
+      // First, delete all student assignments for this group
+      await supabase
+        .from('student_seat_assignments')
+        .delete()
+        .eq('seating_group_id', groupId);
+
+      // Then delete the group itself
+      const { error: deleteError } = await supabase
+        .from('seating_groups')
+        .delete()
+        .eq('id', groupId);
+
+      if (deleteError) {
+        console.error('Error deleting team:', deleteError);
+        alert('Failed to delete team. Please try again.');
+        return;
+      }
+
+      // Update local state - move students back to unseated
+      const studentsToUnseat = groupStudents.get(groupId) || [];
+      setGroupStudents(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(groupId);
+        return newMap;
+      });
+      
+      setGroups(prev => prev.filter(g => g.id !== groupId));
+      // Add students back to unseated list (filter out duplicates)
+      setUnseatedStudents((prev: Student[]) => {
+        const existingIds = new Set(prev.map(s => s.id));
+        const newStudents = studentsToUnseat.filter(s => !existingIds.has(s.id));
+        return [...prev, ...newStudents];
+      });
+      setOpenSettingsMenuId(null);
+    } catch (err) {
+      console.error('Unexpected error deleting team:', err);
+      alert('An unexpected error occurred. Please try again.');
+    }
+  };
+
+  // Close settings menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openSettingsMenuId) {
+        setOpenSettingsMenuId(null);
+      }
+    };
+
+    if (openSettingsMenuId) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [openSettingsMenuId]);
 
   if (isLoading) {
     return (
@@ -372,7 +636,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
               )}
             </h3>
             <button
-              onClick={handleCreateGroup}
+              onClick={() => setIsAddGroupModalOpen(true)}
               className="px-6 py-2 bg-purple-400 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors"
             >
               Add New Group
@@ -387,7 +651,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
             <div className="p-8 bg-white/10 rounded-lg border border-white/20 text-center">
               <p className="text-white/80 mb-4">No groups yet. Create your first group to get started.</p>
               <button
-                onClick={handleCreateGroup}
+                onClick={() => setIsAddGroupModalOpen(true)}
                 className="px-6 py-2 bg-purple-400 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors"
               >
                 Create First Group
@@ -403,8 +667,20 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                     className="flex flex-wrap gap-4 min-h-[200px]"
                   >
                     {groups.map((group, index) => {
-                      const studentsInGroup = groupStudents.get(group.id) || [];
+                      const studentsInGroupRaw = groupStudents.get(group.id) || [];
+                      // Filter out duplicates by student ID to prevent React key errors
+                      const studentsInGroup = studentsInGroupRaw.filter((student, idx, self) => 
+                        self.findIndex(s => s.id === student.id) === idx
+                      );
                       const isTarget = selectedStudentForGroup && targetGroupId === group.id;
+                      // Clamp grid_columns to valid range (1-3)
+                      const validColumns = Math.max(1, Math.min(3, group.grid_columns || 2));
+                      // Calculate width based on columns: 120px per card + 8px gap between + 24px padding
+                      const groupWidth = validColumns === 1 
+                        ? 160 // 120px card + 24px padding + 16px extra for header
+                        : validColumns === 2 
+                        ? 272 // 120px * 2 + 8px gap + 24px padding
+                        : 400; // 120px * 3 + 16px (2 gaps) + 24px padding
                       
                       return (
                         <Draggable key={group.id} draggableId={group.id} index={index}>
@@ -413,24 +689,32 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               onClick={() => handleGroupClick(group.id)}
-                              className={`bg-white rounded-lg border-2 shadow-lg min-w-[300px] flex flex-col transition-all ${
+                              className={`bg-white rounded-lg border-2 shadow-lg flex flex-col transition-all ${
                                 snapshot.isDragging ? 'shadow-2xl rotate-2 border-purple-600' : 
                                 isTarget ? 'border-purple-500 ring-4 ring-purple-300' :
                                 selectedStudentForGroup ? 'border-purple-400 hover:border-purple-500 cursor-pointer' :
                                 'border-gray-300'
                               }`}
-                              style={provided.draggableProps.style}
+                              style={{
+                                ...provided.draggableProps.style,
+                                width: `${groupWidth}px`
+                              }}
                             >
                               {/* Group Header */}
                               <div
                                 {...provided.dragHandleProps}
-                                className="flex items-center justify-between p-4 border-b border-gray-200 bg-purple-50 rounded-t-lg cursor-grab active:cursor-grabbing"
+                                className="p-4 border-b border-gray-200 bg-purple-50 rounded-t-lg cursor-grab active:cursor-grabbing relative"
                               >
-                                <h4 className="font-semibold text-gray-800">{group.name}</h4>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs text-gray-500">
-                                    {studentsInGroup.length} student{studentsInGroup.length !== 1 ? 's' : ''}
-                                  </span>
+                                {/* Settings Icon - Top Right */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenSettingsMenuId(openSettingsMenuId === group.id ? null : group.id);
+                                  }}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  className="absolute top-2 right-2 p-1 hover:bg-purple-100 rounded transition-colors"
+                                  title="Settings"
+                                >
                                   <svg
                                     className="w-5 h-5 text-gray-600"
                                     fill="none"
@@ -441,35 +725,106 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                       strokeLinecap="round"
                                       strokeLinejoin="round"
                                       strokeWidth={2}
-                                      d="M4 8h16M4 16h16"
+                                      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                                    />
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
                                     />
                                   </svg>
+                                </button>
+
+                                {/* Settings Dropdown Menu */}
+                                {openSettingsMenuId === group.id && (
+                                  <div
+                                    className="absolute top-10 right-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[140px]"
+                                    onClick={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                  >
+                                    <button
+                                      onClick={() => handleEditTeam(group.id)}
+                                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 first:rounded-t-lg"
+                                    >
+                                      Edit Team
+                                    </button>
+                                    <button
+                                      onClick={() => handleClearTeam(group.id)}
+                                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    >
+                                      Clear Team
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteTeam(group.id)}
+                                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 last:rounded-b-lg"
+                                    >
+                                      Delete Team
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* First Line: Team Name */}
+                                <div className="mb-2 pr-8">
+                                  <h4 className="font-semibold text-gray-800">{group.name}</h4>
+                                </div>
+                                {/* Second Line: Columns Label and Radio Buttons */}
+                                <div 
+                                  className="flex items-center gap-2" 
+                                  onClick={(e) => e.stopPropagation()}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                >
+                                  <span className="text-xs text-gray-600 font-medium">Columns:</span>
+                                  <div className="flex items-center gap-1">
+                                    {[1, 2, 3].map((num) => (
+                                      <label
+                                        key={num}
+                                        className="flex items-center gap-1 cursor-pointer"
+                                      >
+                                        <input
+                                          type="radio"
+                                          name={`columns-${group.id}`}
+                                          value={num}
+                                          checked={validColumns === num}
+                                          onChange={(e) => {
+                                            e.stopPropagation();
+                                            handleColumnChange(group.id, num);
+                                          }}
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="cursor-pointer"
+                                        />
+                                        <span className="text-xs text-gray-600 font-medium">{num}</span>
+                                      </label>
+                                    ))}
+                                  </div>
                                 </div>
                               </div>
 
                               {/* Group Content Area - Students */}
-                              <div className="p-4 min-h-[150px] bg-gray-50 flex flex-col gap-2">
+                              <div 
+                                className="p-3 min-h-[120px] bg-gray-50"
+                                style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: `repeat(${validColumns}, 120px)`,
+                                  gap: '0.5rem',
+                                  justifyContent: 'start'
+                                }}
+                              >
                                 {studentsInGroup.length === 0 ? (
-                                  <p className="text-gray-500 text-sm text-center py-4">
+                                  <div 
+                                    className="col-span-full text-gray-500 text-sm text-center py-4"
+                                    style={{ gridColumn: `1 / ${validColumns + 1}` }}
+                                  >
                                     {selectedStudentForGroup ? 'Click to add student' : 'No students yet'}
-                                  </p>
+                                  </div>
                                 ) : (
                                   studentsInGroup.map((student) => (
                                     <div
                                       key={student.id}
-                                      className="flex items-center gap-2 p-2 bg-white rounded border border-gray-200 hover:bg-gray-50"
+                                      className="flex items-center justify-between gap-1 p-1.5 bg-white rounded border border-gray-200 hover:bg-gray-50 w-[120px]"
                                     >
-                                      <div className="w-8 h-8 rounded-full overflow-hidden bg-[#FDF2F0] flex-shrink-0">
-                                        <Image
-                                          src={student.avatar || "/images/students/avatars/student_avatar_1.png"}
-                                          alt={`${student.first_name} ${student.last_name}`}
-                                          width={32}
-                                          height={32}
-                                          className="w-full h-full object-cover"
-                                        />
-                                      </div>
                                       <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-gray-800 truncate">
+                                        <p className="text-xs font-medium text-gray-800 truncate">
                                           {student.first_name} {student.last_name}
                                         </p>
                                       </div>
@@ -478,10 +833,10 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                           e.stopPropagation();
                                           removeStudentFromGroup(student.id, group.id);
                                         }}
-                                        className="text-red-500 hover:text-red-700 p-1"
+                                        className="text-red-500 hover:text-red-700 p-0.5 flex-shrink-0"
                                         title="Remove from group"
                                       >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                         </svg>
                                       </button>
@@ -508,6 +863,13 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onCreateLayout={handleCreateLayout}
+      />
+
+      {/* Add Group Modal */}
+      <AddGroupModal
+        isOpen={isAddGroupModalOpen}
+        onClose={() => setIsAddGroupModalOpen(false)}
+        onCreateGroup={handleCreateGroup}
       />
     </div>
   );

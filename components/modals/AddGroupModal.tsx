@@ -36,8 +36,8 @@ export default function AddGroupModal({
       return;
     }
 
-    if (columns < 1 || columns > 10) {
-      alert('Columns must be between 1 and 10.');
+    if (columns < 1 || columns > 3) {
+      alert('Columns must be between 1 and 3.');
       return;
     }
 
@@ -91,17 +91,27 @@ export default function AddGroupModal({
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Columns
             </label>
-            <input
-              type="number"
-              min="1"
-              max="10"
-              value={columns}
-              onChange={(e) => setColumns(parseInt(e.target.value) || 2)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              disabled={isLoading}
-            />
+            <div className="flex items-center gap-4">
+              {[1, 2, 3].map((num) => (
+                <label
+                  key={num}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <input
+                    type="radio"
+                    name="columns"
+                    value={num}
+                    checked={columns === num}
+                    onChange={() => setColumns(num)}
+                    disabled={isLoading}
+                    className="cursor-pointer"
+                  />
+                  <span className="text-sm text-gray-700 font-medium">{num}</span>
+                </label>
+              ))}
+            </div>
             <p className="text-sm text-gray-500 mt-1">
-              Number of columns for the grid layout (1-10)
+              Select the number of columns for the grid layout
             </p>
           </div>
 
