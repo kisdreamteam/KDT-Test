@@ -25,6 +25,11 @@ interface SeatingGroup {
   created_at: string;
 }
 
+interface StudentSeatAssignment {
+  seating_group_id: string;
+  students: Student | null;
+}
+
 interface AppViewSeatingChartEditorProps {
   classId: string;
 }
@@ -160,14 +165,14 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
           });
 
           if (assignmentsData) {
-            assignmentsData.forEach((assignment: any) => {
+            assignmentsData.forEach((assignment: StudentSeatAssignment) => {
               const groupId = assignment.seating_group_id;
               const student = assignment.students;
               if (student && newGroupStudents.has(groupId)) {
                 const currentStudents = newGroupStudents.get(groupId) || [];
                 // Check for duplicates before adding
                 if (!currentStudents.find(s => s.id === student.id)) {
-                  newGroupStudents.set(groupId, [...currentStudents, student as Student]);
+                  newGroupStudents.set(groupId, [...currentStudents, student]);
                 }
               }
             });
@@ -177,7 +182,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
 
           // Calculate unseated students: all students minus assigned students
           const assignedStudentIds = new Set(
-            assignmentsData?.map((a: any) => a.students?.id).filter(Boolean) || []
+            assignmentsData?.map((a: StudentSeatAssignment) => a.students?.id).filter(Boolean) || []
           );
           const unseated = allStudents.filter(student => !assignedStudentIds.has(student.id));
           setUnseatedStudents(unseated);
@@ -413,34 +418,6 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     }
   };
 
-  const handleColumnChange = async (groupId: string, newColumns: number) => {
-    // Clamp to 1, 2, or 3
-    const clampedColumns = Math.max(1, Math.min(3, newColumns));
-    
-    try {
-      const supabase = createClient();
-      
-      // Update in database
-      const { error: updateError } = await supabase
-        .from('seating_groups')
-        .update({ grid_columns: clampedColumns })
-        .eq('id', groupId);
-
-      if (updateError) {
-        console.error('Error updating group columns:', updateError);
-        alert('Failed to update columns. Please try again.');
-        return;
-      }
-
-      // Update local state immediately
-      setGroups(prev => prev.map(g => 
-        g.id === groupId ? { ...g, grid_columns: clampedColumns } : g
-      ));
-    } catch (err) {
-      console.error('Unexpected error updating columns:', err);
-      alert('An unexpected error occurred. Please try again.');
-    }
-  };
 
   const handleEditTeam = (groupId: string) => {
     const groupToEdit = groups.find(g => g.id === groupId);
