@@ -724,7 +724,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                   <div
                     {...provided.droppableProps}
                     ref={provided.innerRef}
-                    className="flex flex-wrap gap-4 min-h-[200px]"
+                    className="flex flex-wrap items-start gap-4 min-h-[200px]"
                   >
                     {groups.map((group, index) => {
                       const studentsInGroupRaw = groupStudents.get(group.id) || [];
@@ -749,7 +749,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               onClick={() => handleGroupClick(group.id)}
-                              className={`bg-white rounded-lg border-2 shadow-lg flex flex-col transition-all ${
+                              className={`bg-white rounded-lg border-2 shadow-lg flex flex-col self-start transition-all ${
                                 snapshot.isDragging ? 'shadow-2xl rotate-2 border-purple-600' : 
                                 isTarget ? 'border-purple-500 ring-4 ring-purple-300' :
                                 selectedStudentForGroup ? 'border-purple-400 hover:border-purple-500 cursor-pointer' :
@@ -844,18 +844,20 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
 
                               {/* Group Content Area - Students */}
                               <div 
-                                className="p-3 min-h-[120px] bg-gray-50"
+                                className="p-3 bg-gray-50"
                                 style={{
                                   display: 'grid',
                                   gridTemplateColumns: `repeat(${validColumns}, 120px)`,
                                   gap: '0.5rem',
-                                  justifyContent: 'start'
+                                  justifyContent: 'start',
+                                  alignItems: 'start',
+                                  gridAutoRows: 'min-content'
                                 }}
                               >
                                 {studentsInGroup.length === 0 ? (
                                   <div 
-                                    className="col-span-full text-gray-500 text-sm text-center py-4"
-                                    style={{ gridColumn: `1 / ${validColumns + 1}` }}
+                                    className="col-span-full text-gray-500 text-sm text-center py-2"
+                                    style={{ gridColumn: `1 / ${validColumns + 1}`, minHeight: '32px' }}
                                   >
                                     {selectedStudentForGroup ? 'Click to add student' : 'No students yet'}
                                   </div>
@@ -863,9 +865,10 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                   studentsInGroup.map((student) => (
                                     <div
                                       key={student.id}
-                                      className="flex items-center justify-between gap-1 p-1.5 bg-white rounded border border-gray-200 hover:bg-gray-50 w-[120px]"
+                                      className="flex items-center justify-between gap-1 p-1.5 bg-white rounded border border-gray-200 hover:bg-gray-50 w-[120px] h-[32px] flex-shrink-0"
+                                      style={{ width: '120px', height: '32px', minWidth: '120px', maxWidth: '120px' }}
                                     >
-                                      <div className="flex-1 min-w-0">
+                                      <div className="flex-1 min-w-0 overflow-hidden">
                                         <p className="text-xs font-medium text-gray-800 truncate">
                                           {student.first_name} {student.last_name}
                                         </p>
