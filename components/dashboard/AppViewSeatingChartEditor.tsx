@@ -7,6 +7,7 @@ import { useSeatingChart } from '@/context/SeatingChartContext';
 import { Student } from '@/lib/types';
 import CreateLayoutModal from '@/components/modals/CreateLayoutModal';
 import AddGroupModal from '@/components/modals/AddGroupModal';
+import EditGroupModal from '@/components/modals/EditGroupModal';
 
 interface SeatingChart {
   id: string;
@@ -38,6 +39,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAddGroupModalOpen, setIsAddGroupModalOpen] = useState(false);
+  const [isEditGroupModalOpen, setIsEditGroupModalOpen] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<SeatingGroup | null>(null);
   const [groupStudents, setGroupStudents] = useState<Map<string, Student[]>>(new Map());
   const [targetGroupId, setTargetGroupId] = useState<string | null>(null);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
@@ -440,9 +443,51 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   };
 
   const handleEditTeam = (groupId: string) => {
-    // TODO: Implement edit team name functionality
-    setOpenSettingsMenuId(null);
-    alert('Edit team functionality coming soon');
+    const groupToEdit = groups.find(g => g.id === groupId);
+    if (groupToEdit) {
+      console.log('Opening edit modal for group:', groupToEdit);
+      setEditingGroup(groupToEdit);
+      setIsEditGroupModalOpen(true);
+      setOpenSettingsMenuId(null);
+    } else {
+      console.error('Group not found:', groupId);
+    }
+  };
+
+  const handleUpdateGroup = async (groupName: string, columns: number) => {
+    if (!editingGroup) return;
+
+    try {
+      const supabase = createClient();
+      
+      // Update in database
+      const { error: updateError } = await supabase
+        .from('seating_groups')
+        .update({
+          name: groupName,
+          grid_columns: columns,
+        })
+        .eq('id', editingGroup.id);
+
+      if (updateError) {
+        console.error('Error updating group:', updateError);
+        alert('Failed to update team. Please try again.');
+        return;
+      }
+
+      // Update local state
+      setGroups(prev => prev.map(g => 
+        g.id === editingGroup.id 
+          ? { ...g, name: groupName, grid_columns: columns }
+          : g
+      ));
+
+      setIsEditGroupModalOpen(false);
+      setEditingGroup(null);
+    } catch (err) {
+      console.error('Unexpected error updating group:', err);
+      alert('An unexpected error occurred. Please try again.');
+    }
   };
 
   const handleClearTeam = async (groupId: string) => {
@@ -538,12 +583,27 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (openSettingsMenuId) {
+        // Check if the click is inside the settings menu or settings button
+        const target = event.target as HTMLElement;
+        const settingsMenu = document.querySelector('[data-settings-menu]');
+        const settingsButton = document.querySelector(`[data-settings-button="${openSettingsMenuId}"]`);
+        
+        if (settingsMenu && settingsMenu.contains(target)) {
+          return; // Click is inside the menu, don't close
+        }
+        if (settingsButton && settingsButton.contains(target)) {
+          return; // Click is on the settings button, don't close (it will toggle)
+        }
+        
         setOpenSettingsMenuId(null);
       }
     };
 
     if (openSettingsMenuId) {
-      document.addEventListener('mousedown', handleClickOutside);
+      // Use a small delay to allow button clicks to fire first
+      setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+      }, 0);
       return () => {
         document.removeEventListener('mousedown', handleClickOutside);
       };
@@ -599,8 +659,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   }
 
   return (
-    <div className="p-1 sm:p-11md:p-2 bg-red-600">
-      <div className="space-y-8">
+    <div className="p-1 sm:p-11md:p-2 bg-red-600 h-screen">
+      <div className="space-y-8" >
         {/* Layout Selector */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <label className="text-white font-semibold text-lg whitespace-nowrap">
@@ -707,6 +767,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                               >
                                 {/* Settings Icon - Top Right */}
                                 <button
+                                  data-settings-button={group.id}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setOpenSettingsMenuId(openSettingsMenuId === group.id ? null : group.id);
@@ -739,24 +800,35 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                 {/* Settings Dropdown Menu */}
                                 {openSettingsMenuId === group.id && (
                                   <div
+                                    data-settings-menu
                                     className="absolute top-10 right-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[140px]"
                                     onClick={(e) => e.stopPropagation()}
                                     onMouseDown={(e) => e.stopPropagation()}
                                   >
                                     <button
-                                      onClick={() => handleEditTeam(group.id)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        console.log('Edit Team button clicked for group:', group.id);
+                                        handleEditTeam(group.id);
+                                      }}
                                       className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 first:rounded-t-lg"
                                     >
                                       Edit Team
                                     </button>
                                     <button
-                                      onClick={() => handleClearTeam(group.id)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleClearTeam(group.id);
+                                      }}
                                       className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                     >
                                       Clear Team
                                     </button>
                                     <button
-                                      onClick={() => handleDeleteTeam(group.id)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteTeam(group.id);
+                                      }}
                                       className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 last:rounded-b-lg"
                                     >
                                       Delete Team
@@ -764,39 +836,9 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                   </div>
                                 )}
 
-                                {/* First Line: Team Name */}
-                                <div className="mb-2 pr-8">
+                                {/* Team Name */}
+                                <div className="pr-8">
                                   <h4 className="font-semibold text-gray-800">{group.name}</h4>
-                                </div>
-                                {/* Second Line: Columns Label and Radio Buttons */}
-                                <div 
-                                  className="flex items-center gap-2" 
-                                  onClick={(e) => e.stopPropagation()}
-                                  onMouseDown={(e) => e.stopPropagation()}
-                                >
-                                  <span className="text-xs text-gray-600 font-medium">Columns:</span>
-                                  <div className="flex items-center gap-1">
-                                    {[1, 2, 3].map((num) => (
-                                      <label
-                                        key={num}
-                                        className="flex items-center gap-1 cursor-pointer"
-                                      >
-                                        <input
-                                          type="radio"
-                                          name={`columns-${group.id}`}
-                                          value={num}
-                                          checked={validColumns === num}
-                                          onChange={(e) => {
-                                            e.stopPropagation();
-                                            handleColumnChange(group.id, num);
-                                          }}
-                                          onClick={(e) => e.stopPropagation()}
-                                          className="cursor-pointer"
-                                        />
-                                        <span className="text-xs text-gray-600 font-medium">{num}</span>
-                                      </label>
-                                    ))}
-                                  </div>
                                 </div>
                               </div>
 
@@ -870,6 +912,18 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         isOpen={isAddGroupModalOpen}
         onClose={() => setIsAddGroupModalOpen(false)}
         onCreateGroup={handleCreateGroup}
+      />
+
+      {/* Edit Group Modal */}
+      <EditGroupModal
+        isOpen={isEditGroupModalOpen && editingGroup !== null}
+        onClose={() => {
+          setIsEditGroupModalOpen(false);
+          setEditingGroup(null);
+        }}
+        onUpdateGroup={handleUpdateGroup}
+        initialName={editingGroup?.name || ''}
+        initialColumns={editingGroup?.grid_columns || 2}
       />
     </div>
   );
