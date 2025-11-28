@@ -32,6 +32,7 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [groups, setGroups] = useState<SeatingGroup[]>([]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
+  const [leftPosition, setLeftPosition] = useState(0);
 
   const fetchLayouts = useCallback(async () => {
     try {
@@ -113,6 +114,27 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
       setGroups([]);
     }
   }, [selectedLayoutId, fetchGroups]);
+
+  // Calculate left position based on top nav position
+  useEffect(() => {
+    const updateLeftPosition = () => {
+      const topNav = document.querySelector('[data-top-nav]') as HTMLElement;
+      if (topNav) {
+        const rect = topNav.getBoundingClientRect();
+        setLeftPosition(rect.left);
+      }
+    };
+
+    updateLeftPosition();
+    window.addEventListener('resize', updateLeftPosition);
+    // Also update when sidebar might toggle (check periodically)
+    const interval = setInterval(updateLeftPosition, 100);
+
+    return () => {
+      window.removeEventListener('resize', updateLeftPosition);
+      clearInterval(interval);
+    };
+  }, []);
 
   const handleCreateLayout = async (layoutName: string) => {
     try {
@@ -227,56 +249,64 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
   }
 
   return (
-    <div className="p-6 sm:p-8 md:p-10">
-      {layouts.length === 0 ? (
-        // Empty state - No layouts exist
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
-          <div className="text-center">
-            <h2 className="text-white text-2xl font-semibold mb-2">No seating charts yet</h2>
-            <p className="text-white/80 text-lg">
-              Create your first seating chart layout to get started.
-            </p>
-          </div>
+    <div className="relative">
+      {/* Layout Buttons Bar - Fixed under top nav, 50px height */}
+      {layouts.length > 0 && (
+        <div 
+          className="fixed top-[120px] h-[60px] py-font-spartan bg-[#fcf1f0] border-[#4A3B8D] border-t-4 z-40 flex items-center justify-start gap-2 sm:gap-4 md:gap-8 lg:gap-4 px-1 sm:px-1 md:px-8 lg:px-2 overflow-x-auto"
+          style={{ left: `${leftPosition}px`, right: '0.5rem' }}
+        >
+          {layouts.map((layout) => (
+            <button
+              key={layout.id}
+              onClick={() => setSelectedLayoutId(layout.id)}
+              className={`flex-shrink-0 w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 ${
+                selectedLayoutId === layout.id ? 'bg-pink-50 shadow-sm' : ''
+              }`}
+            >
+              <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base truncate">
+                {layout.name}
+              </h2>
+            </button>
+          ))}
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="px-8 py-3 bg-purple-400 text-white rounded-lg font-semibold text-lg hover:bg-purple-500 transition-colors shadow-lg"
+            className="flex-shrink-0 w-16 sm:w-24 md:w-32 lg:w-[200px] bg-blue-100 p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-blue-200 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 border-2 border-blue-200"
           >
-            Create New Layout
+            <div className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="text-white text-xs sm:text-sm md:text-base font-bold">+</span>
+            </div>
+            <h2 className="font-semibold text-gray-700 text-xs sm:text-sm md:text-base lg:text-base">
+              Add a Layout
+            </h2>
           </button>
         </div>
-      ) : (
-        // Layouts exist - Show selector and create button
-        <div className="space-y-6">
-          {/* Layout Selector */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <label className="text-white font-semibold text-lg whitespace-nowrap">
-              Select Layout:
-            </label>
-            <select
-              value={selectedLayoutId || ''}
-              onChange={(e) => setSelectedLayoutId(e.target.value)}
-              className="flex-1 max-w-md px-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-700"
-            >
-              {layouts.map((layout) => (
-                <option key={layout.id} value={layout.id}>
-                  {layout.name}
-                </option>
-              ))}
-            </select>
-          </div>
+      )}
 
-          {/* Create New Layout Button */}
-          <div>
+      {/* Main Content - Add top padding to account for the fixed bar */}
+      <div className={`${layouts.length > 0 ? 'pt-[60px]' : ''} p-6 sm:p-8 md:p-10`}>
+        {layouts.length === 0 ? (
+          // Empty state - No layouts exist
+          <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+            <div className="text-center">
+              <h2 className="text-white text-2xl font-semibold mb-2">No seating charts yet</h2>
+              <p className="text-white/80 text-lg">
+                Create your first seating chart layout to get started.
+              </p>
+            </div>
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="px-6 py-2 bg-purple-400 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors"
+              className="px-8 py-3 bg-purple-400 text-white rounded-lg font-semibold text-lg hover:bg-purple-500 transition-colors shadow-lg"
             >
               Create New Layout
             </button>
           </div>
+        ) : (
+          // Layouts exist - Show groups
+          <div className="space-y-6">
 
-          {/* Seating Groups Drag-and-Drop Canvas */}
-          <div className="mt-8">
+            {/* Seating Groups Drag-and-Drop Canvas */}
+            <div className="mt-8">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-white text-xl font-semibold">Seating Groups</h3>
               <button
@@ -374,15 +404,16 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
               </DragDropContext>
             )}
           </div>
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* Create Layout Modal */}
-      <CreateLayoutModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onCreateLayout={handleCreateLayout}
-      />
+        {/* Create Layout Modal */}
+        <CreateLayoutModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onCreateLayout={handleCreateLayout}
+        />
+      </div>
     </div>
   );
 }

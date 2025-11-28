@@ -335,8 +335,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   }
 
   return (
-    <div className="p-6 sm:p-8 md:p-10">
-      <div className="space-y-6">
+    <div className="p-1 sm:p-11md:p-2 bg-red-600">
+      <div className="space-y-8">
         {/* Layout Selector */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <label className="text-white font-semibold text-lg whitespace-nowrap">
