@@ -8,6 +8,7 @@ import { Student } from '@/lib/types';
 import CreateLayoutModal from '@/components/modals/CreateLayoutModal';
 import AddGroupModal from '@/components/modals/AddGroupModal';
 import EditGroupModal from '@/components/modals/EditGroupModal';
+import LeftNavSeatingChart from '@/components/dashboard/navbars/LeftNavSeatingChart';
 
 interface SeatingChart {
   id: string;
@@ -652,29 +653,62 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     try {
       const supabase = createClient();
       
-      // Shuffle students randomly
+      // Calculate total students (seated + unseated)
+      const totalSeatedStudents = Array.from(groupStudents.values()).reduce(
+        (sum, students) => sum + students.length,
+        0
+      );
+      const totalStudents = totalSeatedStudents + unseatedStudents.length;
+      
+      // Calculate target students per group (allowing ±1 difference)
+      const targetPerGroup = Math.floor(totalStudents / groups.length);
+      const remainder = totalStudents % groups.length;
+      
+      // Calculate how many students each group currently has
+      const groupCurrentCounts = groups.map(group => ({
+        groupId: group.id,
+        currentCount: groupStudents.get(group.id)?.length || 0
+      }));
+      
+      // Calculate how many students each group needs to reach target
+      // Groups with index < remainder should have targetPerGroup + 1, others should have targetPerGroup
+      const groupTargets = groups.map((group, index) => ({
+        groupId: group.id,
+        target: targetPerGroup + (index < remainder ? 1 : 0)
+      }));
+      
+      // Calculate how many more students each group needs
+      const groupNeeds = groupTargets.map((target, index) => {
+        const current = groupCurrentCounts[index].currentCount;
+        const needed = Math.max(0, target.target - current);
+        return {
+          groupId: target.groupId,
+          needed: needed,
+          target: target.target,
+          current: current
+        };
+      });
+      
+      // Shuffle unseated students randomly
       const shuffledStudents = [...unseatedStudents].sort(() => Math.random() - 0.5);
       
-      // Calculate distribution: how many students per group
-      const studentsPerGroup = Math.floor(shuffledStudents.length / groups.length);
-      const remainder = shuffledStudents.length % groups.length;
-      
-      // Distribute students evenly across groups
+      // Distribute unseated students to fill groups up to their target size
       const assignments: Array<{ student_id: string; seating_group_id: string }> = [];
       let studentIndex = 0;
       
-      groups.forEach((group, groupIndex) => {
-        // Some groups get one extra student if there's a remainder
-        const studentsForThisGroup = studentsPerGroup + (groupIndex < remainder ? 1 : 0);
-        
-        for (let i = 0; i < studentsForThisGroup && studentIndex < shuffledStudents.length; i++) {
+      // Sort groups by how many students they need (most needed first)
+      const sortedGroupNeeds = [...groupNeeds].sort((a, b) => b.needed - a.needed);
+      
+      for (const groupNeed of sortedGroupNeeds) {
+        // Assign students to this group until it reaches its target
+        for (let i = 0; i < groupNeed.needed && studentIndex < shuffledStudents.length; i++) {
           assignments.push({
             student_id: shuffledStudents[studentIndex].id,
-            seating_group_id: group.id,
+            seating_group_id: groupNeed.groupId,
           });
           studentIndex++;
         }
-      });
+      }
       
       // Insert all assignments into database
       if (assignments.length > 0) {
@@ -915,8 +949,16 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   }
 
   return (
-    <div className="p-1 sm:p-11md:p-2 bg-red-600 font-spartan h-screen">
-      <div className="space-y-8" >
+    <div 
+      className="flex flex-row bg-red-600 font-spartan relative w-full" 
+      style={{ 
+        minHeight: 'calc(100vh - 200px)', // Full viewport minus top nav (120px) and bottom nav (80px)
+        height: '100%'
+      }}
+    >
+      {/* Main Content Area - Add right padding to account for right sidebar (w-76 = 304px) + spacing (8px) */}
+      <div className="flex-1 p-1 sm:p-11md:p-2 overflow-y-auto" style={{ paddingRight: '312px', minHeight: '100%' }}>
+        <div className="space-y-8" >
         {/* Layout Selector */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <label className="text-white font-semibold text-lg whitespace-nowrap">
@@ -1174,6 +1216,20 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
             </DragDropContext>
           )}
         </div>
+        </div>
+      </div>
+
+      {/* Right Sidebar - Unseated Students - Positioned to span from top nav to bottom nav with matching spacing */}
+      <div 
+        className="fixed w-76 bg-white flex flex-col overflow-y-auto z-40" 
+        style={{ 
+          right: '8px', // Match the pr-2 (8px) padding from main content area, same as left side spacing
+          top: '128px', // TopNav height (h-30 = 120px) + main content padding (pt-2 = 8px)
+          bottom: '80px', // BottomNav height (h-20 on large screens = 80px)
+          height: 'calc(100vh - 208px)' // 100vh - TopNav (120px) - padding (8px) - BottomNav (80px)
+        }}
+      >
+        <LeftNavSeatingChart />
       </div>
 
       {/* Create Layout Modal */}

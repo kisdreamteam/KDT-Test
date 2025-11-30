@@ -7,7 +7,6 @@ import { DashboardProvider } from '@/context/DashboardContext';
 import { StudentSortProvider } from '@/context/StudentSortContext';
 import { SeatingChartProvider } from '@/context/SeatingChartContext';
 import LeftNav from '@/components/dashboard/navbars/LeftNav';
-import LeftNavSeatingChart from '@/components/dashboard/navbars/LeftNavSeatingChart';
 import TopNav from '@/components/dashboard/navbars/TopNav';
 import BottomNavStudents from '@/components/dashboard/navbars/BottomNavStudents';
 import BottomNavMulti from '@/components/dashboard/navbars/BottomNavMulti';
@@ -254,18 +253,14 @@ function DashboardLayoutContent({
     <div className="flex flex-row h-screen bg-[#4A3B8D] pl-2 pb-0 pt-0">
       {/* Wrap everything in SeatingChartProvider so sidebar and editor can share state */}
       <SeatingChartProvider>
-        {/* Left Sidebar */}
+        {/* Left Sidebar - Always show LeftNav with classes */}
         <div className={`${sidebarOpen ? 'w-76' : 'w-0'} transition-all duration-300 overflow-hidden bg-white flex flex-col`} data-sidebar-container>
-          {isEditMode && classId ? (
-            <LeftNavSeatingChart />
-          ) : (
-            <LeftNav 
-              classes={classes}
-              isLoadingClasses={isLoadingClasses}
-              viewMode={viewMode}
-              setViewMode={setViewMode}
-            />
-          )}
+          <LeftNav 
+            classes={classes}
+            isLoadingClasses={isLoadingClasses}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+          />
         </div>
 
         {/* Main Content Area */}

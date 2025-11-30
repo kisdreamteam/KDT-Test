@@ -36,7 +36,7 @@ export default function ClassCardsGrid({
 }: ClassCardsGridProps) {
   return (
     <div 
-      className="grid gap-6 bg-[#fcf1f0]"
+      className="grid gap-6"
       style={{
         gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))'
       }}
