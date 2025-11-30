@@ -52,6 +52,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [openSettingsMenuId, setOpenSettingsMenuId] = useState<string | null>(null);
   const [selectedStudentForSwap, setSelectedStudentForSwap] = useState<{ studentId: string; groupId: string } | null>(null);
+  const [gridColumns, setGridColumns] = useState(6); // Number of columns in the grid (default: 6)
 
   const fetchLayouts = useCallback(async () => {
     try {
@@ -489,8 +490,19 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       const student2Exists = studentsInGroup2.some(s => s.id === studentId2);
 
       if (!student1Exists || !student2Exists) {
-        console.error('Students not found in expected groups:', { student1Exists, student2Exists });
-        alert('Failed to swap students. One or both students may not be in their expected groups.');
+        console.error('Students not found in expected groups:', { 
+          student1Exists, 
+          student2Exists,
+          studentId1,
+          studentId2,
+          groupId1,
+          groupId2,
+          studentsInGroup1: studentsInGroup1.map(s => ({ id: s.id, name: `${s.first_name} ${s.last_name}` })),
+          studentsInGroup2: studentsInGroup2.map(s => ({ id: s.id, name: `${s.first_name} ${s.last_name}` }))
+        });
+        alert('Failed to swap students. The student data may be out of sync. Please refresh the page and try again.');
+        // Refresh groups to sync state
+        await fetchGroups();
         return;
       }
 
@@ -957,7 +969,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       }}
     >
       {/* Main Content Area - Add right padding to account for right sidebar (w-76 = 304px) + spacing (8px) */}
-      <div className="flex-1 p-1 sm:p-11md:p-2 overflow-y-auto" style={{ paddingRight: '312px', minHeight: '100%' }}>
+      {/* Note: Removed overflow-y-auto from this container to avoid nested scroll container warning with drag-and-drop */}
+      <div className="flex-1 p-1 sm:p-11md:p-2" style={{ paddingRight: '312px', minHeight: '100%', overflow: 'visible' }}>
         <div className="space-y-8" >
         {/* Layout Selector */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -993,7 +1006,30 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                 </span>
               )}
             </h3>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-6">
+              {/* Columns Radio Buttons */}
+              <div className="flex items-center gap-3">
+                <label className="text-white font-semibold text-sm">Columns:</label>
+                <div className="flex items-center gap-3">
+                  {[2, 4, 6, 8].map((cols) => (
+                    <label
+                      key={cols}
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
+                      <input
+                        type="radio"
+                        name="gridColumns"
+                        value={cols}
+                        checked={gridColumns === cols}
+                        onChange={(e) => setGridColumns(Number(e.target.value))}
+                        className="w-4 h-4 text-purple-600 bg-white border-gray-300 focus:ring-purple-500 focus:ring-2"
+                      />
+                      <span className="text-white text-sm">{cols}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              
               <button
                 onClick={handleAssignSeats}
                 className="px-6 py-2 bg-purple-400 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors"
@@ -1030,7 +1066,11 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                   <div
                     {...provided.droppableProps}
                     ref={provided.innerRef}
-                    className="flex flex-wrap items-start gap-4 min-h-[200px]"
+                    className="grid gap-4 min-h-[200px]"
+                    style={{
+                      gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
+                      gridAutoRows: 'min-content'
+                    }}
                   >
                     {groups.map((group, index) => {
                       const studentsInGroupRaw = groupStudents.get(group.id) || [];
@@ -1039,14 +1079,12 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                         self.findIndex(s => s.id === student.id) === idx
                       );
                       const isTarget = selectedStudentForGroup && targetGroupId === group.id;
-                      // Clamp grid_columns to valid range (1-3)
+                      // Clamp grid_columns to valid range (1-3) - this is the internal columns for student cards
                       const validColumns = Math.max(1, Math.min(3, group.grid_columns || 2));
-                      // Calculate width based on columns: 120px per card + 8px gap between + 24px padding
-                      const groupWidth = validColumns === 1 
-                        ? 160 // 120px card + 24px padding + 16px extra for header
-                        : validColumns === 2 
-                        ? 272 // 120px * 2 + 8px gap + 24px padding
-                        : 400; // 120px * 3 + 16px (2 gaps) + 24px padding
+                      // Each group's internal column count directly maps to grid column span
+                      // A group with 2 internal columns takes up 2 grid columns, etc.
+                      // Clamp to not exceed the total available grid columns
+                      const gridColumnSpan = Math.min(validColumns, gridColumns);
                       
                       return (
                         <Draggable key={group.id} draggableId={group.id} index={index}>
@@ -1061,10 +1099,12 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                 selectedStudentForGroup ? 'border-purple-400 hover:border-purple-500 cursor-pointer' :
                                 'border-gray-300'
                               }`}
-                              style={{
-                                ...provided.draggableProps.style,
-                                width: `${groupWidth}px`
-                              }}
+                                  style={{
+                                    ...provided.draggableProps.style,
+                                    gridColumn: `span ${gridColumnSpan}`,
+                                    width: '100%',
+                                    maxWidth: '100%'
+                                  }}
                             >
                               {/* Group Header */}
                               <div
@@ -1148,18 +1188,18 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                 </div>
                               </div>
 
-                              {/* Group Content Area - Students */}
-                              <div 
-                                className="p-3 bg-gray-50"
-                                style={{
-                                  display: 'grid',
-                                  gridTemplateColumns: `repeat(${validColumns}, 120px)`,
-                                  gap: '0.5rem',
-                                  justifyContent: 'start',
-                                  alignItems: 'start',
-                                  gridAutoRows: 'min-content'
-                                }}
-                              >
+                                  {/* Group Content Area - Students */}
+                                  <div 
+                                    className="p-3 bg-gray-50"
+                                    style={{
+                                      display: 'grid',
+                                      gridTemplateColumns: `repeat(${validColumns}, 1fr)`,
+                                      gap: '0.5rem',
+                                      justifyContent: 'stretch',
+                                      alignItems: 'start',
+                                      gridAutoRows: 'min-content'
+                                    }}
+                                  >
                                 {studentsInGroup.length === 0 ? (
                                   <div 
                                     className="col-span-full text-gray-500 text-sm text-center py-2"
@@ -1168,40 +1208,50 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                     {selectedStudentForGroup ? 'Click to add student' : 'No students yet'}
                                   </div>
                                 ) : (
-                                  studentsInGroup.map((student) => {
-                                    const isSelected = selectedStudentForSwap?.studentId === student.id && selectedStudentForSwap?.groupId === group.id;
-                                    return (
-                                      <div
-                                        key={student.id}
-                                        onClick={(e) => handleStudentClick(e, student.id, group.id)}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                        className={`flex items-center justify-between gap-1 p-1.5 rounded border cursor-pointer w-[120px] h-[32px] flex-shrink-0 transition-colors ${
-                                          isSelected 
-                                            ? 'bg-yellow-300 border-yellow-500 hover:bg-yellow-400' 
-                                            : 'bg-white border-gray-200 hover:bg-gray-50'
-                                        }`}
-                                        style={{ width: '120px', height: '32px', minWidth: '120px', maxWidth: '120px' }}
-                                      >
-                                        <div className="flex-1 min-w-0 overflow-hidden">
-                                          <p className="text-xs font-medium text-gray-800 truncate">
-                                            {student.first_name} {student.last_name}
-                                          </p>
-                                        </div>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            removeStudentFromGroup(student.id, group.id);
-                                          }}
-                                          className="text-red-500 hover:text-red-700 p-0.5 flex-shrink-0"
-                                          title="Remove from group"
-                                        >
-                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                          </svg>
-                                        </button>
-                                      </div>
-                                    );
-                                  })
+                                      studentsInGroup.map((student) => {
+                                        const isSelected = selectedStudentForSwap?.studentId === student.id && selectedStudentForSwap?.groupId === group.id;
+                                        return (
+                                          <div
+                                            key={student.id}
+                                            onClick={(e) => handleStudentClick(e, student.id, group.id)}
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                            className={`flex items-center justify-between gap-1 p-1.5 rounded border cursor-pointer transition-colors ${
+                                              isSelected 
+                                                ? 'bg-yellow-300 border-yellow-500 hover:bg-yellow-400' 
+                                                : 'bg-white border-gray-200 hover:bg-gray-50'
+                                            }`}
+                                            style={{ 
+                                              width: '100%',
+                                              minHeight: '32px',
+                                              height: 'auto'
+                                            }}
+                                          >
+                                            <div className="flex-1 min-w-0 overflow-hidden">
+                                              <p 
+                                                className="font-medium text-gray-800 truncate"
+                                                style={{
+                                                  fontSize: `clamp(0.875rem, ${120 / validColumns}%, 1.5rem)`,
+                                                  lineHeight: '1.2'
+                                                }}
+                                              >
+                                                {student.first_name} {student.last_name}
+                                              </p>
+                                            </div>
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                removeStudentFromGroup(student.id, group.id);
+                                              }}
+                                              className="text-red-500 hover:text-red-700 p-0.5 flex-shrink-0"
+                                              title="Remove from group"
+                                            >
+                                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                              </svg>
+                                            </button>
+                                          </div>
+                                        );
+                                      })
                                 )}
                               </div>
                             </div>
