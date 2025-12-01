@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { createClient } from '@/lib/supabase/client';
 import { useSeatingChart } from '@/context/SeatingChartContext';
@@ -53,6 +53,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   const [openSettingsMenuId, setOpenSettingsMenuId] = useState<string | null>(null);
   const [selectedStudentForSwap, setSelectedStudentForSwap] = useState<{ studentId: string; groupId: string } | null>(null);
   const [gridColumns, setGridColumns] = useState(6); // Number of columns in the grid (default: 6)
+  // Store dimensions and position for each group to preserve during drag
+  const groupDimensionsRef = useRef<Map<string, { width: number; height: number; x: number; y: number }>>(new Map());
 
   const fetchLayouts = useCallback(async () => {
     try {
@@ -1060,7 +1062,29 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
               </button>
             </div>
           ) : (
-            <DragDropContext onDragEnd={handleDragEnd}>
+            <DragDropContext 
+              onDragStart={(start) => {
+                // Capture dimensions right before drag starts
+                // Use a small delay to ensure the element is still in its original position
+                requestAnimationFrame(() => {
+                  // Try to find the element - @hello-pangea/dnd uses data-rbd-draggable-id
+                  const draggedElement = document.querySelector(
+                    `[data-rbd-draggable-id="${start.draggableId}"]`
+                  ) as HTMLElement;
+                  
+                  if (draggedElement) {
+                    const rect = draggedElement.getBoundingClientRect();
+                    groupDimensionsRef.current.set(start.draggableId, {
+                      width: rect.width,
+                      height: rect.height,
+                      x: rect.x,
+                      y: rect.y
+                    });
+                  }
+                });
+              }}
+              onDragEnd={handleDragEnd}
+            >
               <Droppable droppableId="groups" direction="horizontal">
                 {(provided) => (
                   <div
@@ -1088,23 +1112,52 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                       
                       return (
                         <Draggable key={group.id} draggableId={group.id} index={index}>
-                          {(provided, snapshot) => (
+                          {(provided, snapshot) => {
+                            // Extract only transform and position from drag style, preserve our own sizing
+                            const dragStyle = provided.draggableProps.style || {};
+                            const { transform, position, width, height, ...restDragStyle } = dragStyle;
+                            
+                            // Ref callback - just pass through to the drag library
+                            const setRef = (element: HTMLElement | null) => {
+                              // Call the original ref
+                              if (typeof provided.innerRef === 'function') {
+                                provided.innerRef(element);
+                              } else if (provided.innerRef) {
+                                (provided.innerRef as React.MutableRefObject<HTMLElement | null>).current = element;
+                              }
+                            };
+                            
+                            // Get stored dimensions for this group
+                            const storedDimensions = groupDimensionsRef.current.get(group.id);
+                            
+                            return (
                             <div
-                              ref={provided.innerRef}
+                              ref={setRef}
                               {...provided.draggableProps}
                               onClick={() => handleGroupClick(group.id)}
-                              className={`bg-white rounded-lg border-2 shadow-lg flex flex-col self-start transition-all ${
+                              className={`bg-white rounded-lg border-2 shadow-lg flex flex-col self-start ${
                                 snapshot.isDragging ? 'shadow-2xl rotate-2 border-purple-600' : 
                                 isTarget ? 'border-purple-500 ring-4 ring-purple-300' :
                                 selectedStudentForGroup ? 'border-purple-400 hover:border-purple-500 cursor-pointer' :
                                 'border-gray-300'
                               }`}
-                                  style={{
-                                    ...provided.draggableProps.style,
-                                    gridColumn: `span ${gridColumnSpan}`,
-                                    width: '100%',
-                                    maxWidth: '100%'
-                                  }}
+                              style={{
+                                // Use the drag library's transform and position exactly as provided
+                                ...provided.draggableProps.style,
+                                // Only override width/height during drag to prevent size changes
+                                // Don't touch transform or position - let the library handle positioning
+                                ...(snapshot.isDragging && storedDimensions ? {
+                                  width: `${storedDimensions.width}px`,
+                                  height: `${storedDimensions.height}px`,
+                                  minWidth: `${storedDimensions.width}px`,
+                                  maxWidth: `${storedDimensions.width}px`,
+                                } : !snapshot.isDragging ? {
+                                  // When not dragging, use grid layout
+                                  gridColumn: `span ${gridColumnSpan}`,
+                                  width: '100%',
+                                  maxWidth: '100%'
+                                } : {})
+                              }}
                             >
                               {/* Group Header */}
                               <div
@@ -1255,7 +1308,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                 )}
                               </div>
                             </div>
-                          )}
+                            );
+                          }}
                         </Draggable>
                       );
                     })}
