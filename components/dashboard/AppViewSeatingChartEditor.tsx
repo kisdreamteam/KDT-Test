@@ -972,8 +972,38 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     >
       {/* Main Content Area - Add right padding to account for right sidebar (w-76 = 304px) + spacing (8px) */}
       {/* Note: Removed overflow-y-auto from this container to avoid nested scroll container warning with drag-and-drop */}
-      <div className="flex-1 p-1 sm:p-11md:p-2" style={{ paddingRight: '312px', minHeight: '100%', overflow: 'visible' }}>
-        <div className="space-y-8" >
+      <div className="flex-1 p-1 sm:p-11md:p-2 relative" style={{ paddingRight: '312px', minHeight: '100%', overflow: 'visible' }}>
+        {/* Vertical grid lines - positioned to span full height of red container to bottom nav */}
+        <div 
+          className="absolute pointer-events-none" 
+          style={{ 
+            zIndex: 0, 
+            top: 0, 
+            bottom: 0,
+            left: '8px', // Match padding
+            right: '320px', // Match padding + sidebar width
+            height: 'calc(100vh - 200px)' // Full viewport minus top nav (120px) and bottom nav (80px)
+          }}
+        >
+          {Array.from({ length: gridColumns + 1 }).map((_, index) => {
+            const leftPercent = (index / gridColumns) * 100;
+            return (
+              <div
+                key={index}
+                className="absolute bg-gray-400"
+                style={{
+                  left: `${leftPercent}%`,
+                  width: '1px',
+                  top: 0,
+                  bottom: 0,
+                  height: '100%',
+                  opacity: 0.3
+                }}
+              />
+            );
+          })}
+        </div>
+        <div className="space-y-8 relative" style={{ zIndex: 1 }}>
         {/* Layout Selector */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <label className="text-white font-semibold text-lg whitespace-nowrap">
@@ -999,7 +1029,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         </div>
 
         {/* Seating Groups Canvas */}
-        <div className="mt-8">
+        <div className="mt-8 flex-1 flex flex-col">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-white text-xl font-semibold">
               Seating Groups {selectedStudentForGroup && (
@@ -1090,10 +1120,11 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                   <div
                     {...provided.droppableProps}
                     ref={provided.innerRef}
-                    className="grid gap-4 min-h-[200px]"
+                    className="grid gap-4 flex-1 relative"
                     style={{
                       gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
-                      gridAutoRows: 'min-content'
+                      gridAutoRows: 'min-content',
+                      minHeight: '100%'
                     }}
                   >
                     {groups.map((group, index) => {
@@ -1143,20 +1174,21 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                               }`}
                               style={{
                                 // Use the drag library's transform and position exactly as provided
+                                // Don't override anything during drag - let the library handle it completely
                                 ...provided.draggableProps.style,
-                                // Only override width/height during drag to prevent size changes
-                                // Don't touch transform or position - let the library handle positioning
-                                ...(snapshot.isDragging && storedDimensions ? {
-                                  width: `${storedDimensions.width}px`,
-                                  height: `${storedDimensions.height}px`,
-                                  minWidth: `${storedDimensions.width}px`,
-                                  maxWidth: `${storedDimensions.width}px`,
-                                } : !snapshot.isDragging ? {
+                                // Ensure groups appear above grid lines
+                                position: snapshot.isDragging ? 'fixed' : 'relative',
+                                zIndex: snapshot.isDragging ? 9999 : 1,
+                                // Only set width/height when NOT dragging to prevent size changes
+                                ...(snapshot.isDragging ? {
+                                  // During drag, let the library handle everything
+                                  // Don't override width/height as it can cause cursor offset issues
+                                } : {
                                   // When not dragging, use grid layout
                                   gridColumn: `span ${gridColumnSpan}`,
                                   width: '100%',
                                   maxWidth: '100%'
-                                } : {})
+                                })
                               }}
                             >
                               {/* Group Header */}
