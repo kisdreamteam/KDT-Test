@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
-import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useSeatingChart } from '@/context/SeatingChartContext';
 import { Student } from '@/lib/types';
@@ -22,7 +21,10 @@ interface SeatingGroup {
   name: string;
   seating_chart_id: string;
   sort_order: number;
-  grid_columns: number;
+  group_columns: number; // Number of columns for the group (renamed from grid_columns)
+  group_rows?: number;  // Number of rows for the group (1 header + student rows, min 2)
+  grid_column?: number; // Column position on the pink canvas (1-indexed)
+  grid_row?: number;    // Row position on the pink canvas (1-indexed)
   created_at: string;
 }
 
@@ -55,11 +57,9 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   const [gridColumns, setGridColumns] = useState(6); // Number of columns in the grid (default: 6)
   // Store grid positions for each group (column and row)
   const [groupPositions, setGroupPositions] = useState<Map<string, { column: number; row: number }>>(new Map());
-  // Store dimensions and position for each group to preserve during drag
-  const groupDimensionsRef = useRef<Map<string, { width: number; height: number; x: number; y: number }>>(new Map());
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
-  // Store the last mouse position during drag to calculate drop position
-  const lastMousePositionRef = useRef<{ x: number; y: number } | null>(null);
+  // Track which group is being dragged
+  const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null);
 
   const fetchLayouts = useCallback(async () => {
     try {
@@ -155,12 +155,18 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       if (groupsData) {
         setGroups(groupsData);
         
-        // Initialize grid positions for groups (default to column 1, row based on index)
+        // Initialize grid positions for groups from database or default
         setGroupPositions(prev => {
           const newPositions = new Map(prev);
           groupsData.forEach((group, index) => {
-            // Check if position already exists, otherwise default to col-1, row based on index
-            if (!newPositions.has(group.id)) {
+            // Use saved position from database if available, otherwise default
+            if (group.grid_column && group.grid_row) {
+              newPositions.set(group.id, { 
+                column: group.grid_column, 
+                row: group.grid_row 
+              });
+            } else if (!newPositions.has(group.id)) {
+              // Default to col-1, row based on index
               newPositions.set(group.id, { column: 1, row: index + 1 });
             }
           });
@@ -249,6 +255,63 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     };
   }, [setSelectedStudentForGroup]);
 
+  // Function to save all group_rows and group_columns to database
+  // Called when user clicks "Save Changes" button
+  const saveAllGroupSizes = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      
+      // Calculate and prepare updates for all groups
+      const updates = groups.map(group => {
+        const studentsInGroup = groupStudents.get(group.id) || [];
+        const studentsPerRow = group.group_columns || 2;
+        
+        // Calculate student rows needed (always at least 1)
+        const studentRowCount = studentsInGroup.length === 0 
+          ? 1  // Empty group: 1 student row
+          : Math.ceil(studentsInGroup.length / studentsPerRow);
+        
+        // Total rows = 1 header + student rows (minimum 2)
+        const totalRowCount = Math.max(2, 1 + studentRowCount);
+        
+        return {
+          id: group.id,
+          group_rows: totalRowCount,
+          group_columns: group.group_columns || 2,
+        };
+      });
+      
+      // Update all groups in database
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('seating_groups')
+          .update({
+            group_rows: update.group_rows,
+            group_columns: update.group_columns,
+          })
+          .eq('id', update.id);
+        
+        if (error) {
+          console.error(`Error updating group ${update.id}:`, error);
+        }
+      }
+      
+      // Update local state with calculated values
+      setGroups(prev => prev.map(g => {
+        const update = updates.find(u => u.id === g.id);
+        if (update) {
+          return { ...g, group_rows: update.group_rows, group_columns: update.group_columns };
+        }
+        return g;
+      }));
+      
+      console.log('All group sizes saved to database');
+    } catch (err) {
+      console.error('Unexpected error saving group sizes:', err);
+      alert('Failed to save changes. Please try again.');
+    }
+  }, [groups, groupStudents]);
+
   // Listen for add student to group event
   const addStudentToGroup = useCallback(async (student: Student, groupId: string) => {
     try {
@@ -282,6 +345,9 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       // Remove from unseated list
       setUnseatedStudents((prev: Student[]) => prev.filter(s => s.id !== student.id));
       setSelectedStudentForGroup(null);
+      
+      // Note: group_rows is calculated on the fly for responsiveness
+      // Database will be updated when user clicks "Save Changes" button
     } catch (err) {
       console.error('Unexpected error assigning student:', err);
       alert('An unexpected error occurred. Please try again.');
@@ -301,6 +367,18 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       window.removeEventListener('addStudentToGroup', handleAddStudentToGroup as EventListener);
     };
   }, [selectedStudentForGroup, addStudentToGroup]);
+
+  // Listen for save changes event from bottom nav
+  useEffect(() => {
+    const handleSaveSeatingChart = () => {
+      saveAllGroupSizes();
+    };
+
+    window.addEventListener('seatingChartSave', handleSaveSeatingChart);
+    return () => {
+      window.removeEventListener('seatingChartSave', handleSaveSeatingChart);
+    };
+  }, [saveAllGroupSizes]);
 
   const removeStudentFromGroup = async (studentId: string, groupId: string) => {
     try {
@@ -338,6 +416,9 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         }
         return newMap;
       });
+      
+      // Note: group_rows is calculated on the fly for responsiveness
+      // Database will be updated when user clicks "Save Changes" button
     } catch (err) {
       console.error('Unexpected error removing student:', err);
       alert('An unexpected error occurred. Please try again.');
@@ -355,13 +436,32 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         ? Math.max(...groups.map(g => g.sort_order))
         : -1;
 
+      // Calculate initial position (column 1, next available row)
+      // Find the highest row number from existing groups
+      let maxRow = 0;
+      groupPositions.forEach(pos => {
+        if (pos.row > maxRow) maxRow = pos.row;
+      });
+      // Also check groups that might have positions in database but not in state yet
+      groups.forEach(group => {
+        if (group.grid_row && group.grid_row > maxRow) {
+          maxRow = group.grid_row;
+        }
+      });
+      const initialColumn = 1;
+      const initialRow = maxRow + 1;
+
+      // Insert group with all parameters in a single operation
+      // Note: group_rows is calculated dynamically and saved on "Save Changes", so we don't include it here
       const { data, error: insertError } = await supabase
         .from('seating_groups')
         .insert({
           name: groupName,
           seating_chart_id: selectedLayoutId,
           sort_order: maxSortOrder + 1,
-          grid_columns: columns,
+          group_columns: columns,
+          grid_column: initialColumn,
+          grid_row: initialRow,
         })
         .select()
         .single();
@@ -373,19 +473,15 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       }
 
       if (data) {
-        // Refresh groups
-        await fetchGroups();
-        // Set initial position for the new group (column 1, next available row)
+        // Update local state with the new group position
         setGroupPositions(prev => {
           const newPositions = new Map(prev);
-          // Find the highest row number
-          let maxRow = 0;
-          prev.forEach(pos => {
-            if (pos.row > maxRow) maxRow = pos.row;
-          });
-          newPositions.set(data.id, { column: 1, row: maxRow + 1 });
+          newPositions.set(data.id, { column: initialColumn, row: initialRow });
           return newPositions;
         });
+        
+        // Refresh groups to get the latest data
+        await fetchGroups();
         setIsAddGroupModalOpen(false);
       }
     } catch (err) {
@@ -425,35 +521,53 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     }
   };
 
-  const handleDragEnd = (result: DropResult) => {
-    if (!result.destination || !gridContainerRef.current) {
+  // Native HTML5 drag handlers
+  const handleDragStart = (e: React.DragEvent, groupId: string) => {
+    setDraggedGroupId(groupId);
+    // Set drag image to be the element itself
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', groupId);
+    
+    // Make the drag image semi-transparent
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '0.5';
+    }
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    // Reset opacity
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '1';
+    }
+    setDraggedGroupId(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    // Prevent default to allow drop
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    
+    if (!gridContainerRef.current || !draggedGroupId) {
       return;
     }
 
-    // Extract group ID from draggableId
-    const groupId = result.draggableId;
     const container = gridContainerRef.current;
-    
-    // Use the last known mouse position to calculate where the user dropped
-    const mousePos = lastMousePositionRef.current;
-    if (!mousePos || !container) {
-      return;
-    }
-    
     const containerRect = container.getBoundingClientRect();
     
-    // Calculate relative position within the grid container using mouse coordinates
-    const relativeX = mousePos.x - containerRect.left;
-    const relativeY = mousePos.y - containerRect.top;
+    // Get drop coordinates relative to the grid container
+    const relativeX = e.clientX - containerRect.left;
+    const relativeY = e.clientY - containerRect.top;
     
     // Account for gap between grid items (gap-4 = 1rem = 16px)
     const gap = 16;
     const totalGapWidth = gap * (gridColumns - 1);
     const cellWidth = (containerRect.width - totalGapWidth) / gridColumns;
     
-    // Calculate which column (1-indexed) based on mouse X position
-    // Each column takes up cellWidth + gap, except the last column which only takes cellWidth
-    // We need to find which column the mouse is over
+    // Calculate which column (1-indexed) based on drop X position
     let column = 1;
     for (let i = 0; i < gridColumns; i++) {
       const columnStart = i * (cellWidth + gap);
@@ -463,29 +577,55 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         break;
       }
     }
-    // Clamp to valid range (shouldn't be needed, but just in case)
     column = Math.max(1, Math.min(gridColumns, column));
     
-    // Calculate which actual grid row (1-9) based on Y position
-    // Each row is 50px tall with 16px gap between rows
+    // Calculate which grid row (1-9) based on Y position
     const rowHeight = 50;
     const rowGap = 16;
-    const totalRowHeight = rowHeight + rowGap; // Height of one row including gap
     
-    // Calculate which row the mouse is over (1-indexed)
-    let row = Math.floor(relativeY / totalRowHeight) + 1;
-    // Clamp to valid range (1-9 for the pink canvas)
+    let row = 1;
+    for (let i = 0; i < 9; i++) {
+      const rowStart = i * rowHeight + i * rowGap;
+      const rowEnd = rowStart + rowHeight;
+      if (relativeY >= rowStart && relativeY <= rowEnd) {
+        row = i + 1;
+        break;
+      }
+    }
+    if (relativeY > 8 * rowHeight + 8 * rowGap + rowHeight) {
+      row = 9;
+    }
     row = Math.max(1, Math.min(9, row));
     
-    // Update the position for this group immediately
+    // Update the position immediately - no animations, no jumping
     setGroupPositions(prev => {
       const newPositions = new Map(prev);
-      newPositions.set(groupId, { column, row });
+      newPositions.set(draggedGroupId, { column, row });
       return newPositions;
     });
     
-    // Reset mouse position
-    lastMousePositionRef.current = null;
+    // Save position to database
+    const savePositionToDatabase = async () => {
+      try {
+        const supabase = createClient();
+        const { error } = await supabase
+          .from('seating_groups')
+          .update({
+            grid_column: column,
+            grid_row: row,
+          })
+          .eq('id', draggedGroupId);
+        
+        if (error) {
+          console.error('Error saving group position:', error);
+        }
+      } catch (err) {
+        console.error('Unexpected error saving group position:', err);
+      }
+    };
+    
+    savePositionToDatabase();
+    setDraggedGroupId(null);
   };
 
   const handleGroupClick = (groupId: string) => {
@@ -712,6 +852,9 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
           alert('Failed to swap students. Please try again.');
           return;
         }
+        
+        // Note: group_rows is calculated on the fly for responsiveness
+        // Database will be updated when user clicks "Save Changes" button
       } catch (err) {
         console.error('Unexpected error during database swap:', err);
         // Rollback optimistic update
@@ -811,6 +954,9 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
 
         // Refresh groups to update the UI
         await fetchGroups();
+        
+        // Note: group_rows is calculated on the fly for responsiveness
+        // Database will be updated when user clicks "Save Changes" button
       }
     } catch (err) {
       console.error('Unexpected error assigning seats:', err);
@@ -842,7 +988,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         .from('seating_groups')
         .update({
           name: groupName,
-          grid_columns: columns,
+          group_columns: columns,
         })
         .eq('id', editingGroup.id);
 
@@ -855,7 +1001,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       // Update local state
       setGroups(prev => prev.map(g => 
         g.id === editingGroup.id 
-          ? { ...g, name: groupName, grid_columns: columns }
+          ? { ...g, name: groupName, group_columns: columns }
           : g
       ));
 
@@ -901,6 +1047,10 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         const newStudents = studentsToUnseat.filter(s => !existingIds.has(s.id));
         return [...prev, ...newStudents];
       });
+      
+      // Note: group_rows is calculated on the fly for responsiveness
+      // Database will be updated when user clicks "Save Changes" button
+      
       setOpenSettingsMenuId(null);
     } catch (err) {
       console.error('Unexpected error clearing team:', err);
@@ -1193,69 +1343,19 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
               <p className="text-white/80">Loading groups...</p>
             </div>
           ) : groups.length > 0 && (
-            <DragDropContext 
-              onDragStart={(start) => {
-                // Capture dimensions right before drag starts
-                // Use a small delay to ensure the element is still in its original position
-                requestAnimationFrame(() => {
-                  // Try to find the element - @hello-pangea/dnd uses data-rbd-draggable-id
-                  const draggedElement = document.querySelector(
-                    `[data-rbd-draggable-id="${start.draggableId}"]`
-                  ) as HTMLElement;
-                  
-                  if (draggedElement) {
-                    const rect = draggedElement.getBoundingClientRect();
-                    groupDimensionsRef.current.set(start.draggableId, {
-                      width: rect.width,
-                      height: rect.height,
-                      x: rect.x,
-                      y: rect.y
-                    });
-                  }
-                });
-                
-                // Track mouse position during drag
-                const handleMouseMove = (e: MouseEvent) => {
-                  lastMousePositionRef.current = { x: e.clientX, y: e.clientY };
-                };
-                
-                document.addEventListener('mousemove', handleMouseMove);
-                
-                // Clean up on drag end
-                const handleDragEnd = () => {
-                  document.removeEventListener('mousemove', handleMouseMove);
-                };
-                
-                // Store cleanup function
-                (window as any).__dragCleanup = handleDragEnd;
-              }}
-              onDragEnd={(result) => {
-                // Clean up mouse tracking
-                if ((window as any).__dragCleanup) {
-                  (window as any).__dragCleanup();
-                  delete (window as any).__dragCleanup;
-                }
-                
-                handleDragEnd(result);
+            <div
+              ref={gridContainerRef}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              className="grid gap-4 relative"
+              style={{
+                gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
+                gridTemplateRows: 'repeat(9, 50px)', // Match group row height exactly (50px)
+                height: '578px', // 9 rows × 50px + 8 gaps × 16px = 450px + 128px
+                zIndex: 1,
+                alignContent: 'start' // Align content to start to prevent extra spacing
               }}
             >
-              <Droppable droppableId="groups" direction="horizontal">
-                {(provided) => (
-                  <div
-                    {...provided.droppableProps}
-                    ref={(el) => {
-                      provided.innerRef(el);
-                      gridContainerRef.current = el;
-                    }}
-                    className="grid gap-4 relative"
-                    style={{
-                      gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
-                      gridTemplateRows: 'repeat(9, 50px)', // Match group row height exactly (50px)
-                      height: '578px', // 9 rows × 50px + 8 gaps × 16px = 450px + 128px
-                      zIndex: 1,
-                      alignContent: 'start' // Align content to start to prevent extra spacing
-                    }}
-                  >
                     {groups.map((group, index) => {
                       const studentsInGroupRaw = groupStudents.get(group.id) || [];
                       // Filter out duplicates by student ID to prevent React key errors
@@ -1263,8 +1363,9 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                         self.findIndex(s => s.id === student.id) === idx
                       );
                       const isTarget = selectedStudentForGroup && targetGroupId === group.id;
-                      // Clamp grid_columns to valid range (1-3) - this is the internal columns for student cards
-                      const validColumns = Math.max(1, Math.min(3, group.grid_columns || 2));
+                      // Use group_columns from database (stored value)
+                      // Clamp to valid range (1-3) - this is the internal columns for student cards
+                      const validColumns = Math.max(1, Math.min(3, group.group_columns || 2));
                       // Each group's internal column count directly maps to grid column span
                       // A group with 2 internal columns takes up 2 grid columns, etc.
                       // Clamp to not exceed the total available grid columns
@@ -1276,7 +1377,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                       // Use actual grid row directly (1-9), not logical rows
                       const gridRow = position.row;
                       
-                      // Calculate number of rows needed (1 header + student rows)
+                      // Calculate number of rows needed dynamically (on the fly) for responsiveness
                       // Default: at least 2 rows (1 header + 1 student row)
                       // Add more rows only when students exceed the capacity of existing rows
                       const studentsPerRow = validColumns;
@@ -1285,7 +1386,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                       const studentRowCount = studentsInGroup.length === 0 
                         ? 1  // Empty group: 1 student row
                         : Math.ceil(studentsInGroup.length / studentsPerRow); // Calculate based on student count
-                      const totalRowCount = 1 + studentRowCount; // 1 header + student rows
+                      const totalRowCount = Math.max(2, 1 + studentRowCount); // 1 header + student rows (minimum 2)
                       // Ensure group doesn't exceed row 9
                       const maxRow = Math.min(9, gridRow + totalRowCount - 1);
                       const actualRowSpan = maxRow - gridRow + 1;
@@ -1345,56 +1446,39 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                       };
                       
                       return (
-                        <Draggable key={group.id} draggableId={group.id} index={index}>
-                          {(provided, snapshot) => {
-                            const setRef = (element: HTMLElement | null) => {
-                              if (typeof provided.innerRef === 'function') {
-                                provided.innerRef(element);
-                              } else if (provided.innerRef) {
-                                (provided.innerRef as React.MutableRefObject<HTMLElement | null>).current = element;
-                              }
-                            };
-                            
-                            return (
-                              <div
-                                ref={setRef}
-                                {...provided.draggableProps}
-                                onClick={() => handleGroupClick(group.id)}
-                                className={`bg-white rounded-lg border-2 shadow-lg flex flex-col ${
-                                  snapshot.isDragging ? 'shadow-2xl rotate-2 border-purple-600' : 
-                                  isTarget ? 'border-purple-500 ring-4 ring-purple-300' :
-                                  selectedStudentForGroup ? 'border-purple-400 hover:border-purple-500 cursor-pointer' :
-                                  'border-gray-300'
-                                }`}
-                                style={{
-                                  position: snapshot.isDragging ? 'fixed' : 'relative',
-                                  zIndex: snapshot.isDragging ? 9999 : 1,
-                                  boxSizing: 'border-box', // Include border in height calculation
-                                  gap: 0, // No gap between internal rows - they should stack exactly
-                                  ...(snapshot.isDragging ? {
-                                    ...provided.draggableProps.style,
-                                  } : {
-                                    // Span dynamic rows and the appropriate columns
-                                    gridColumn: `${gridColumn} / span ${gridColumnSpan}`,
-                                    gridRow: `${gridRow} / span ${actualRowSpan}`,
-                                    width: '100%',
-                                    maxWidth: '100%',
-                                    // Height must exactly match grid allocation: rows × 50px + gaps × 16px
-                                    // This ensures the group container matches the grid rows exactly
-                                    height: `calc(${actualRowSpan} * 50px + ${actualRowSpan - 1} * 16px)`,
-                                    minHeight: `calc(${actualRowSpan} * 50px + ${actualRowSpan - 1} * 16px)`,
-                                    maxHeight: `calc(${actualRowSpan} * 50px + ${actualRowSpan - 1} * 16px)`,
-                                    transform: 'none',
-                                    left: 'auto',
-                                    top: 'auto',
-                                    overflow: 'hidden'
-                                  })
-                                }}
-                              >
-                                {/* Group Header - Row 1 */}
-                                <div
-                                  {...provided.dragHandleProps}
-                                  className="border-b border-gray-200 bg-purple-50 rounded-t-lg cursor-grab active:cursor-grabbing relative"
+                        <div
+                          key={group.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, group.id)}
+                          onDragEnd={handleDragEnd}
+                          onClick={() => handleGroupClick(group.id)}
+                          className={`bg-white rounded-lg border-2 shadow-lg flex flex-col ${
+                            draggedGroupId === group.id ? 'shadow-2xl border-purple-600 opacity-50' : 
+                            isTarget ? 'border-purple-500 ring-4 ring-purple-300' :
+                            selectedStudentForGroup ? 'border-purple-400 hover:border-purple-500 cursor-pointer' :
+                            'border-gray-300'
+                          }`}
+                          style={{
+                            position: 'relative',
+                            zIndex: draggedGroupId === group.id ? 9999 : 1,
+                            boxSizing: 'border-box',
+                            gap: 0,
+                            // Span dynamic rows and the appropriate columns
+                            gridColumn: `${gridColumn} / span ${gridColumnSpan}`,
+                            gridRow: `${gridRow} / span ${actualRowSpan}`,
+                            width: '100%',
+                            maxWidth: '100%',
+                            // Height must exactly match grid allocation: rows × 50px + gaps × 16px
+                            height: `calc(${actualRowSpan} * 50px + ${actualRowSpan - 1} * 16px)`,
+                            minHeight: `calc(${actualRowSpan} * 50px + ${actualRowSpan - 1} * 16px)`,
+                            maxHeight: `calc(${actualRowSpan} * 50px + ${actualRowSpan - 1} * 16px)`,
+                            overflow: 'hidden',
+                            transition: 'none' // No transitions - instant snap
+                          }}
+                        >
+                          {/* Group Header - Row 1 */}
+                          <div
+                            className="border-b border-gray-200 bg-purple-50 rounded-t-lg cursor-grab active:cursor-grabbing relative"
                                   style={{
                                     height: '50px',
                                     minHeight: '50px',
@@ -1517,17 +1601,10 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                     )}
                                   </div>
                                 ))}
-                              </div>
-                            );
-                          }}
-                        </Draggable>
+                        </div>
                       );
                     })}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            </DragDropContext>
+            </div>
           )}
           </div>
         </div>
@@ -1570,7 +1647,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         }}
         onUpdateGroup={handleUpdateGroup}
         initialName={editingGroup?.name || ''}
-        initialColumns={editingGroup?.grid_columns || 2}
+        initialColumns={editingGroup?.group_columns || 2}
       />
     </div>
   );
