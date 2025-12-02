@@ -53,8 +53,13 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   const [openSettingsMenuId, setOpenSettingsMenuId] = useState<string | null>(null);
   const [selectedStudentForSwap, setSelectedStudentForSwap] = useState<{ studentId: string; groupId: string } | null>(null);
   const [gridColumns, setGridColumns] = useState(6); // Number of columns in the grid (default: 6)
+  // Store grid positions for each group (column and row)
+  const [groupPositions, setGroupPositions] = useState<Map<string, { column: number; row: number }>>(new Map());
   // Store dimensions and position for each group to preserve during drag
   const groupDimensionsRef = useRef<Map<string, { width: number; height: number; x: number; y: number }>>(new Map());
+  const gridContainerRef = useRef<HTMLDivElement | null>(null);
+  // Store the last mouse position during drag to calculate drop position
+  const lastMousePositionRef = useRef<{ x: number; y: number } | null>(null);
 
   const fetchLayouts = useCallback(async () => {
     try {
@@ -149,6 +154,18 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
 
       if (groupsData) {
         setGroups(groupsData);
+        
+        // Initialize grid positions for groups (default to column 1, row based on index)
+        setGroupPositions(prev => {
+          const newPositions = new Map(prev);
+          groupsData.forEach((group, index) => {
+            // Check if position already exists, otherwise default to col-1, row based on index
+            if (!newPositions.has(group.id)) {
+              newPositions.set(group.id, { column: 1, row: index + 1 });
+            }
+          });
+          return newPositions;
+        });
         
         // Fetch student seat assignments for all groups
         const groupIds = groupsData.map(g => g.id);
@@ -358,6 +375,17 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       if (data) {
         // Refresh groups
         await fetchGroups();
+        // Set initial position for the new group (column 1, next available row)
+        setGroupPositions(prev => {
+          const newPositions = new Map(prev);
+          // Find the highest row number
+          let maxRow = 0;
+          prev.forEach(pos => {
+            if (pos.row > maxRow) maxRow = pos.row;
+          });
+          newPositions.set(data.id, { column: 1, row: maxRow + 1 });
+          return newPositions;
+        });
         setIsAddGroupModalOpen(false);
       }
     } catch (err) {
@@ -398,21 +426,61 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   };
 
   const handleDragEnd = (result: DropResult) => {
-    if (!result.destination) {
+    if (!result.destination || !gridContainerRef.current) {
       return;
     }
 
-    const items = Array.from(groups);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-
-    // Update sort_order for all items
-    const updatedGroups = items.map((group, index) => ({
-      ...group,
-      sort_order: index,
-    }));
-
-    setGroups(updatedGroups);
+    const groupId = result.draggableId;
+    const container = gridContainerRef.current;
+    
+    // Use the last known mouse position to calculate where the user dropped
+    const mousePos = lastMousePositionRef.current;
+    if (!mousePos || !container) {
+      return;
+    }
+    
+    const containerRect = container.getBoundingClientRect();
+    
+    // Calculate relative position within the grid container using mouse coordinates
+    const relativeX = mousePos.x - containerRect.left;
+    const relativeY = mousePos.y - containerRect.top;
+    
+    // Account for gap between grid items (gap-4 = 1rem = 16px)
+    const gap = 16;
+    const totalGapWidth = gap * (gridColumns - 1);
+    const cellWidth = (containerRect.width - totalGapWidth) / gridColumns;
+    
+    // Calculate which column (1-indexed) based on mouse X position
+    // Each column takes up cellWidth + gap, except the last column which only takes cellWidth
+    // We need to find which column the mouse is over
+    let column = 1;
+    for (let i = 0; i < gridColumns; i++) {
+      const columnStart = i * (cellWidth + gap);
+      const columnEnd = columnStart + cellWidth;
+      if (relativeX >= columnStart && relativeX <= columnEnd) {
+        column = i + 1;
+        break;
+      }
+    }
+    // Clamp to valid range (shouldn't be needed, but just in case)
+    column = Math.max(1, Math.min(gridColumns, column));
+    
+    // For row calculation, use a simpler approach
+    // Calculate row based on Y position (assuming minimum row height with gap)
+    const minRowHeight = 150; // Approximate minimum height for a group
+    const rowGap = 16; // Same gap for rows
+    let row = Math.floor(relativeY / (minRowHeight + rowGap)) + 1;
+    row = Math.max(1, row);
+    
+    // Update the position for this group immediately
+    setGroupPositions(prev => {
+      const newPositions = new Map(prev);
+      newPositions.set(groupId, { column, row });
+      return newPositions;
+    });
+    
+    // Reset mouse position
+    lastMousePositionRef.current = null;
   };
 
   const handleGroupClick = (groupId: string) => {
@@ -972,37 +1040,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     >
       {/* Main Content Area - Add right padding to account for right sidebar (w-76 = 304px) + spacing (8px) */}
       {/* Note: Removed overflow-y-auto from this container to avoid nested scroll container warning with drag-and-drop */}
-      <div className="flex-1 p-1 sm:p-11md:p-2 relative" style={{ paddingRight: '312px', minHeight: '100%', overflow: 'visible' }}>
-        {/* Vertical grid lines - positioned to span full height of red container to bottom nav */}
-        <div 
-          className="absolute pointer-events-none" 
-          style={{ 
-            zIndex: 0, 
-            top: 0, 
-            bottom: 0,
-            left: '8px', // Match padding
-            right: '320px', // Match padding + sidebar width
-            height: 'calc(100vh - 200px)' // Full viewport minus top nav (120px) and bottom nav (80px)
-          }}
-        >
-          {Array.from({ length: gridColumns + 1 }).map((_, index) => {
-            const leftPercent = (index / gridColumns) * 100;
-            return (
-              <div
-                key={index}
-                className="absolute bg-gray-400"
-                style={{
-                  left: `${leftPercent}%`,
-                  width: '1px',
-                  top: 0,
-                  bottom: 0,
-                  height: '100%',
-                  opacity: 0.3
-                }}
-              />
-            );
-          })}
-        </div>
+      <div className="flex-1 p-1 bg-red-500 sm:p-11md:p-2 relative" style={{ paddingRight: '312px', minHeight: '100%', overflow: 'visible' }}>
         <div className="space-y-8 relative" style={{ zIndex: 1 }}>
         {/* Layout Selector */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -1077,21 +1115,43 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
             </div>
           </div>
 
+          {/* Canvas for groups display */}
+          <div 
+            className="bg-pink-500 w-full flex-1 relative"
+            style={{
+              minHeight: 0 // Allow flex item to shrink below content size
+            }}
+          >
+            {/* Vertical grid lines - positioned to span full height of pink canvas */}
+            <div 
+              className="absolute pointer-events-none inset-0"
+              style={{ 
+                zIndex: 0
+              }}
+            >
+              {Array.from({ length: gridColumns + 1 }).map((_, index) => {
+                const leftPercent = (index / gridColumns) * 100;
+                return (
+                  <div
+                    key={index}
+                    className="absolute bg-gray-400"
+                    style={{
+                      left: `${leftPercent}%`,
+                      width: '1px',
+                      top: 0,
+                      bottom: 0,
+                      height: '100%',
+                      opacity: 0.3
+                    }}
+                  />
+                );
+              })}
+            </div>
           {isLoadingGroups ? (
-            <div className="flex items-center justify-center p-8">
+            <div className="flex items-center justify-center p-8 relative" style={{ zIndex: 1 }}>
               <p className="text-white/80">Loading groups...</p>
             </div>
-          ) : groups.length === 0 ? (
-            <div className="p-8 bg-white/10 rounded-lg border border-white/20 text-center">
-              <p className="text-white/80 mb-4">No groups yet. Create your first group to get started.</p>
-              <button
-                onClick={() => setIsAddGroupModalOpen(true)}
-                className="px-6 py-2 bg-purple-400 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors"
-              >
-                Create First Group
-              </button>
-            </div>
-          ) : (
+          ) : groups.length > 0 && (
             <DragDropContext 
               onDragStart={(start) => {
                 // Capture dimensions right before drag starts
@@ -1112,19 +1172,46 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                     });
                   }
                 });
+                
+                // Track mouse position during drag
+                const handleMouseMove = (e: MouseEvent) => {
+                  lastMousePositionRef.current = { x: e.clientX, y: e.clientY };
+                };
+                
+                document.addEventListener('mousemove', handleMouseMove);
+                
+                // Clean up on drag end
+                const handleDragEnd = () => {
+                  document.removeEventListener('mousemove', handleMouseMove);
+                };
+                
+                // Store cleanup function
+                (window as any).__dragCleanup = handleDragEnd;
               }}
-              onDragEnd={handleDragEnd}
+              onDragEnd={(result) => {
+                // Clean up mouse tracking
+                if ((window as any).__dragCleanup) {
+                  (window as any).__dragCleanup();
+                  delete (window as any).__dragCleanup;
+                }
+                
+                handleDragEnd(result);
+              }}
             >
               <Droppable droppableId="groups" direction="horizontal">
                 {(provided) => (
                   <div
                     {...provided.droppableProps}
-                    ref={provided.innerRef}
+                    ref={(el) => {
+                      provided.innerRef(el);
+                      gridContainerRef.current = el;
+                    }}
                     className="grid gap-4 flex-1 relative"
                     style={{
                       gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
                       gridAutoRows: 'min-content',
-                      minHeight: '100%'
+                      minHeight: '100%',
+                      zIndex: 1
                     }}
                   >
                     {groups.map((group, index) => {
@@ -1140,6 +1227,11 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                       // A group with 2 internal columns takes up 2 grid columns, etc.
                       // Clamp to not exceed the total available grid columns
                       const gridColumnSpan = Math.min(validColumns, gridColumns);
+                      
+                      // Get the stored grid position for this group
+                      const position = groupPositions.get(group.id) || { column: 1, row: index + 1 };
+                      const gridColumn = position.column;
+                      const gridRow = position.row;
                       
                       return (
                         <Draggable key={group.id} draggableId={group.id} index={index}>
@@ -1173,21 +1265,23 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                 'border-gray-300'
                               }`}
                               style={{
-                                // Use the drag library's transform and position exactly as provided
-                                // Don't override anything during drag - let the library handle it completely
-                                ...provided.draggableProps.style,
                                 // Ensure groups appear above grid lines
                                 position: snapshot.isDragging ? 'fixed' : 'relative',
                                 zIndex: snapshot.isDragging ? 9999 : 1,
-                                // Only set width/height when NOT dragging to prevent size changes
+                                // Apply drag library styles first, then override with our grid positioning
                                 ...(snapshot.isDragging ? {
-                                  // During drag, let the library handle everything
-                                  // Don't override width/height as it can cause cursor offset issues
+                                  // During drag, use drag library's transform and position
+                                  ...provided.draggableProps.style,
                                 } : {
-                                  // When not dragging, use grid layout
-                                  gridColumn: `span ${gridColumnSpan}`,
+                                  // When not dragging, use explicit grid positioning (this overrides any drag library positioning)
+                                  gridColumn: `${gridColumn} / span ${gridColumnSpan}`,
+                                  gridRow: `${gridRow}`,
                                   width: '100%',
-                                  maxWidth: '100%'
+                                  maxWidth: '100%',
+                                  // Reset any transform/position from drag library
+                                  transform: 'none',
+                                  left: 'auto',
+                                  top: 'auto'
                                 })
                               }}
                             >
@@ -1351,6 +1445,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
               </Droppable>
             </DragDropContext>
           )}
+          </div>
         </div>
         </div>
       </div>
