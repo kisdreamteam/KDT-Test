@@ -430,6 +430,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       return;
     }
 
+    // Extract group ID from draggableId
     const groupId = result.draggableId;
     const container = gridContainerRef.current;
     
@@ -465,12 +466,16 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     // Clamp to valid range (shouldn't be needed, but just in case)
     column = Math.max(1, Math.min(gridColumns, column));
     
-    // For row calculation, use a simpler approach
-    // Calculate row based on Y position (assuming minimum row height with gap)
-    const minRowHeight = 150; // Approximate minimum height for a group
-    const rowGap = 16; // Same gap for rows
-    let row = Math.floor(relativeY / (minRowHeight + rowGap)) + 1;
-    row = Math.max(1, row);
+    // Calculate which actual grid row (1-9) based on Y position
+    // Each row is 50px tall with 16px gap between rows
+    const rowHeight = 50;
+    const rowGap = 16;
+    const totalRowHeight = rowHeight + rowGap; // Height of one row including gap
+    
+    // Calculate which row the mouse is over (1-indexed)
+    let row = Math.floor(relativeY / totalRowHeight) + 1;
+    // Clamp to valid range (1-9 for the pink canvas)
+    row = Math.max(1, Math.min(9, row));
     
     // Update the position for this group immediately
     setGroupPositions(prev => {
@@ -1117,23 +1122,27 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
 
           {/* Canvas for groups display */}
           <div 
-            className="bg-pink-500 w-full flex-1 relative"
+            className="bg-pink-500 w-full relative"
             style={{
-              minHeight: 0 // Allow flex item to shrink below content size
+              height: '578px', // Fixed height: 9 rows × 50px + 8 gaps × 16px = 450px + 128px
+              minHeight: '578px',
+              maxHeight: '578px',
+              overflow: 'hidden'
             }}
           >
-            {/* Vertical grid lines - positioned to span full height of pink canvas */}
+            {/* Grid lines - vertical and horizontal to create Excel-like grid */}
             <div 
               className="absolute pointer-events-none inset-0"
               style={{ 
                 zIndex: 0
               }}
             >
+              {/* Vertical grid lines */}
               {Array.from({ length: gridColumns + 1 }).map((_, index) => {
                 const leftPercent = (index / gridColumns) * 100;
                 return (
                   <div
-                    key={index}
+                    key={`v-${index}`}
                     className="absolute bg-gray-400"
                     style={{
                       left: `${leftPercent}%`,
@@ -1142,6 +1151,38 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                       bottom: 0,
                       height: '100%',
                       opacity: 0.3
+                    }}
+                  />
+                );
+              })}
+              
+              {/* Horizontal grid lines - exactly 10 lines (9 row boundaries + 1 bottom) */}
+              {/* Grid lines should align with row boundaries: 0, 50, 66, 116, 132, 182, etc. */}
+              {Array.from({ length: 10 }).map((_, index) => {
+                // Grid line positions: each row is 50px, gap is 16px between rows
+                // Line 0: 0px (top)
+                // Line 1: 50px (end of row 1)
+                // Line 2: 66px (50 + 16, start of row 2)
+                // Line 3: 116px (50 + 16 + 50, end of row 2)
+                // Formula: index * 50px + (index > 0 ? (index - 1) * 16px : 0)
+                const rowHeight = 50;
+                const gap = 16;
+                const topPosition = index === 0 
+                  ? 0 
+                  : index * rowHeight + (index - 1) * gap;
+                
+                return (
+                  <div
+                    key={`h-${index}`}
+                    className="absolute bg-gray-400"
+                    style={{
+                      top: `${topPosition}px`,
+                      left: 0,
+                      right: 0,
+                      width: '100%',
+                      height: '1px',
+                      opacity: 0.3,
+                      zIndex: 0
                     }}
                   />
                 );
@@ -1206,12 +1247,13 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                       provided.innerRef(el);
                       gridContainerRef.current = el;
                     }}
-                    className="grid gap-4 flex-1 relative"
+                    className="grid gap-4 relative"
                     style={{
                       gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
-                      gridAutoRows: 'min-content',
-                      minHeight: '100%',
-                      zIndex: 1
+                      gridTemplateRows: 'repeat(9, 50px)', // Match group row height exactly (50px)
+                      height: '578px', // 9 rows × 50px + 8 gaps × 16px = 450px + 128px
+                      zIndex: 1,
+                      alignContent: 'start' // Align content to start to prevent extra spacing
                     }}
                   >
                     {groups.map((group, index) => {
@@ -1231,18 +1273,81 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                       // Get the stored grid position for this group
                       const position = groupPositions.get(group.id) || { column: 1, row: index + 1 };
                       const gridColumn = position.column;
+                      // Use actual grid row directly (1-9), not logical rows
                       const gridRow = position.row;
+                      
+                      // Calculate number of rows needed (1 header + student rows)
+                      // Default: at least 2 rows (1 header + 1 student row)
+                      // Add more rows only when students exceed the capacity of existing rows
+                      const studentsPerRow = validColumns;
+                      // Calculate how many student rows are needed based on actual student count
+                      // Always have at least 1 student row (even if empty)
+                      const studentRowCount = studentsInGroup.length === 0 
+                        ? 1  // Empty group: 1 student row
+                        : Math.ceil(studentsInGroup.length / studentsPerRow); // Calculate based on student count
+                      const totalRowCount = 1 + studentRowCount; // 1 header + student rows
+                      // Ensure group doesn't exceed row 9
+                      const maxRow = Math.min(9, gridRow + totalRowCount - 1);
+                      const actualRowSpan = maxRow - gridRow + 1;
+                      
+                      // Distribute students across rows dynamically
+                      const studentRows: Student[][] = [];
+                      for (let i = 0; i < studentRowCount; i++) {
+                        const startIndex = i * studentsPerRow;
+                        const endIndex = startIndex + studentsPerRow;
+                        studentRows.push(studentsInGroup.slice(startIndex, endIndex));
+                      }
+                      
+                      // Render student card component
+                      const renderStudentCard = (student: Student) => {
+                        const isSelected = selectedStudentForSwap?.studentId === student.id && selectedStudentForSwap?.groupId === group.id;
+                        return (
+                          <div
+                            key={student.id}
+                            onClick={(e) => handleStudentClick(e, student.id, group.id)}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            className={`flex items-center justify-between gap-1 p-1.5 rounded border cursor-pointer transition-colors ${
+                              isSelected 
+                                ? 'bg-yellow-300 border-yellow-500 hover:bg-yellow-400' 
+                                : 'bg-white border-gray-200 hover:bg-gray-50'
+                            }`}
+                            style={{ 
+                              width: '100%',
+                              minHeight: '32px',
+                              height: 'auto'
+                            }}
+                          >
+                            <div className="flex-1 min-w-0 overflow-hidden">
+                              <p 
+                                className="font-medium text-gray-800 truncate"
+                                style={{
+                                  fontSize: `clamp(0.875rem, ${120 / validColumns}%, 1.5rem)`,
+                                  lineHeight: '1.2'
+                                }}
+                              >
+                                {student.first_name} {student.last_name}
+                              </p>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeStudentFromGroup(student.id, group.id);
+                              }}
+                              className="text-red-500 hover:text-red-700 p-0.5 flex-shrink-0"
+                              title="Remove from group"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        );
+                      };
                       
                       return (
                         <Draggable key={group.id} draggableId={group.id} index={index}>
                           {(provided, snapshot) => {
-                            // Extract only transform and position from drag style, preserve our own sizing
-                            const dragStyle = provided.draggableProps.style || {};
-                            const { transform, position, width, height, ...restDragStyle } = dragStyle;
-                            
-                            // Ref callback - just pass through to the drag library
                             const setRef = (element: HTMLElement | null) => {
-                              // Call the original ref
                               if (typeof provided.innerRef === 'function') {
                                 provided.innerRef(element);
                               } else if (provided.innerRef) {
@@ -1250,46 +1355,56 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                               }
                             };
                             
-                            // Get stored dimensions for this group
-                            const storedDimensions = groupDimensionsRef.current.get(group.id);
-                            
                             return (
-                            <div
-                              ref={setRef}
-                              {...provided.draggableProps}
-                              onClick={() => handleGroupClick(group.id)}
-                              className={`bg-white rounded-lg border-2 shadow-lg flex flex-col self-start ${
-                                snapshot.isDragging ? 'shadow-2xl rotate-2 border-purple-600' : 
-                                isTarget ? 'border-purple-500 ring-4 ring-purple-300' :
-                                selectedStudentForGroup ? 'border-purple-400 hover:border-purple-500 cursor-pointer' :
-                                'border-gray-300'
-                              }`}
-                              style={{
-                                // Ensure groups appear above grid lines
-                                position: snapshot.isDragging ? 'fixed' : 'relative',
-                                zIndex: snapshot.isDragging ? 9999 : 1,
-                                // Apply drag library styles first, then override with our grid positioning
-                                ...(snapshot.isDragging ? {
-                                  // During drag, use drag library's transform and position
-                                  ...provided.draggableProps.style,
-                                } : {
-                                  // When not dragging, use explicit grid positioning (this overrides any drag library positioning)
-                                  gridColumn: `${gridColumn} / span ${gridColumnSpan}`,
-                                  gridRow: `${gridRow}`,
-                                  width: '100%',
-                                  maxWidth: '100%',
-                                  // Reset any transform/position from drag library
-                                  transform: 'none',
-                                  left: 'auto',
-                                  top: 'auto'
-                                })
-                              }}
-                            >
-                              {/* Group Header */}
                               <div
-                                {...provided.dragHandleProps}
-                                className="p-2 border-b border-gray-200 bg-purple-50 rounded-t-lg cursor-grab active:cursor-grabbing relative"
+                                ref={setRef}
+                                {...provided.draggableProps}
+                                onClick={() => handleGroupClick(group.id)}
+                                className={`bg-white rounded-lg border-2 shadow-lg flex flex-col ${
+                                  snapshot.isDragging ? 'shadow-2xl rotate-2 border-purple-600' : 
+                                  isTarget ? 'border-purple-500 ring-4 ring-purple-300' :
+                                  selectedStudentForGroup ? 'border-purple-400 hover:border-purple-500 cursor-pointer' :
+                                  'border-gray-300'
+                                }`}
+                                style={{
+                                  position: snapshot.isDragging ? 'fixed' : 'relative',
+                                  zIndex: snapshot.isDragging ? 9999 : 1,
+                                  boxSizing: 'border-box', // Include border in height calculation
+                                  gap: 0, // No gap between internal rows - they should stack exactly
+                                  ...(snapshot.isDragging ? {
+                                    ...provided.draggableProps.style,
+                                  } : {
+                                    // Span dynamic rows and the appropriate columns
+                                    gridColumn: `${gridColumn} / span ${gridColumnSpan}`,
+                                    gridRow: `${gridRow} / span ${actualRowSpan}`,
+                                    width: '100%',
+                                    maxWidth: '100%',
+                                    // Height must exactly match grid allocation: rows × 50px + gaps × 16px
+                                    // This ensures the group container matches the grid rows exactly
+                                    height: `calc(${actualRowSpan} * 50px + ${actualRowSpan - 1} * 16px)`,
+                                    minHeight: `calc(${actualRowSpan} * 50px + ${actualRowSpan - 1} * 16px)`,
+                                    maxHeight: `calc(${actualRowSpan} * 50px + ${actualRowSpan - 1} * 16px)`,
+                                    transform: 'none',
+                                    left: 'auto',
+                                    top: 'auto',
+                                    overflow: 'hidden'
+                                  })
+                                }}
                               >
+                                {/* Group Header - Row 1 */}
+                                <div
+                                  {...provided.dragHandleProps}
+                                  className="border-b border-gray-200 bg-purple-50 rounded-t-lg cursor-grab active:cursor-grabbing relative"
+                                  style={{
+                                    height: '50px',
+                                    minHeight: '50px',
+                                    maxHeight: '50px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    padding: '0 0.5rem', // p-2 equivalent but more controlled
+                                    boxSizing: 'border-box'
+                                  }}
+                                >
                                 {/* Settings Icon - Top Right */}
                                 <button
                                   data-settings-button={group.id}
@@ -1361,79 +1476,48 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                   </div>
                                 )}
 
-                                {/* Team Name */}
-                                <div className="pr-8">
-                                  <h4 className="font-semibold text-gray-800">{group.name}</h4>
+                                  {/* Team Name */}
+                                  <div className="pr-8">
+                                    <h4 className="font-semibold text-gray-800">{group.name}</h4>
+                                  </div>
                                 </div>
-                              </div>
-
-                                  {/* Group Content Area - Students */}
-                                  <div 
-                                    className="p-3 bg-gray-50"
+                                
+                                {/* Dynamic Student Rows */}
+                                {studentRows.map((rowStudents, rowIndex) => (
+                                  <div
+                                    key={`${group.id}-row-${rowIndex}`}
+                                    onClick={() => handleGroupClick(group.id)}
                                     style={{
                                       display: 'grid',
                                       gridTemplateColumns: `repeat(${validColumns}, 1fr)`,
                                       gap: '0.5rem',
-                                      justifyContent: 'stretch',
-                                      alignItems: 'start',
-                                      gridAutoRows: 'min-content'
+                                      padding: '0 0.5rem', // Reduced padding to fit within 50px
+                                      backgroundColor: '#f9fafb',
+                                      cursor: selectedStudentForGroup ? 'pointer' : 'default',
+                                      height: '50px',
+                                      minHeight: '50px',
+                                      maxHeight: '50px',
+                                      overflow: 'hidden',
+                                      boxSizing: 'border-box',
+                                      alignItems: 'center'
                                     }}
                                   >
-                                {studentsInGroup.length === 0 ? (
-                                  <div 
-                                    className="col-span-full text-gray-500 text-sm text-center py-2"
-                                    style={{ gridColumn: `1 / ${validColumns + 1}`, minHeight: '32px' }}
-                                  >
-                                    {selectedStudentForGroup ? 'Click to add student' : 'No students yet'}
+                                    {rowStudents.length === 0 ? (
+                                      <div className="col-span-full text-gray-500 text-sm text-center py-2" style={{ gridColumn: `1 / ${validColumns + 1}` }}>
+                                        {selectedStudentForGroup ? 'Click to add student' : 'No students yet'}
+                                      </div>
+                                    ) : (
+                                      <>
+                                        {rowStudents.map(student => renderStudentCard(student))}
+                                        {/* Fill empty slots in the row if needed */}
+                                        {Array.from({ length: validColumns - rowStudents.length }).map((_, emptyIndex) => (
+                                          <div key={`empty-${emptyIndex}`} style={{ minHeight: '32px' }} />
+                                        ))}
+                                      </>
+                                    )}
                                   </div>
-                                ) : (
-                                      studentsInGroup.map((student) => {
-                                        const isSelected = selectedStudentForSwap?.studentId === student.id && selectedStudentForSwap?.groupId === group.id;
-                                        return (
-                                          <div
-                                            key={student.id}
-                                            onClick={(e) => handleStudentClick(e, student.id, group.id)}
-                                            onMouseDown={(e) => e.stopPropagation()}
-                                            className={`flex items-center justify-between gap-1 p-1.5 rounded border cursor-pointer transition-colors ${
-                                              isSelected 
-                                                ? 'bg-yellow-300 border-yellow-500 hover:bg-yellow-400' 
-                                                : 'bg-white border-gray-200 hover:bg-gray-50'
-                                            }`}
-                                            style={{ 
-                                              width: '100%',
-                                              minHeight: '32px',
-                                              height: 'auto'
-                                            }}
-                                          >
-                                            <div className="flex-1 min-w-0 overflow-hidden">
-                                              <p 
-                                                className="font-medium text-gray-800 truncate"
-                                                style={{
-                                                  fontSize: `clamp(0.875rem, ${120 / validColumns}%, 1.5rem)`,
-                                                  lineHeight: '1.2'
-                                                }}
-                                              >
-                                                {student.first_name} {student.last_name}
-                                              </p>
-                                            </div>
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                removeStudentFromGroup(student.id, group.id);
-                                              }}
-                                              className="text-red-500 hover:text-red-700 p-0.5 flex-shrink-0"
-                                              title="Remove from group"
-                                            >
-                                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                              </svg>
-                                            </button>
-                                          </div>
-                                        );
-                                      })
-                                )}
+                                ))}
                               </div>
-                            </div>
                             );
                           }}
                         </Draggable>
