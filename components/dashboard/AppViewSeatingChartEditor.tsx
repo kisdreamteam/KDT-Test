@@ -54,7 +54,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [openSettingsMenuId, setOpenSettingsMenuId] = useState<string | null>(null);
   const [selectedStudentForSwap, setSelectedStudentForSwap] = useState<{ studentId: string; groupId: string } | null>(null);
-  const [gridColumns, setGridColumns] = useState(6); // Number of columns in the grid (default: 6)
+  const gridColumns = 16; // Fixed number of columns in the grid
   // Store grid positions for each group (column and row)
   const [groupPositions, setGroupPositions] = useState<Map<string, { column: number; row: number }>>(new Map());
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
@@ -1013,6 +1013,36 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     }
   };
 
+  const handleUpdateGroupColumns = async (groupId: string, columns: number) => {
+    try {
+      const supabase = createClient();
+      
+      // Update in database
+      const { error: updateError } = await supabase
+        .from('seating_groups')
+        .update({
+          group_columns: columns,
+        })
+        .eq('id', groupId);
+
+      if (updateError) {
+        console.error('Error updating group columns:', updateError);
+        alert('Failed to update group columns. Please try again.');
+        return;
+      }
+
+      // Update local state
+      setGroups(prev => prev.map(g => 
+        g.id === groupId 
+          ? { ...g, group_columns: columns }
+          : g
+      ));
+    } catch (err) {
+      console.error('Unexpected error updating group columns:', err);
+      alert('An unexpected error occurred. Please try again.');
+    }
+  };
+
   const handleClearTeam = async (groupId: string) => {
     if (!confirm('Are you sure you want to clear all students from this team?')) {
       return;
@@ -1106,6 +1136,160 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     }
   };
 
+  const handleClearAllGroups = async () => {
+    if (!confirm('Are you sure you want to clear all students from all groups? This will remove all student assignments but keep the groups.')) {
+      return;
+    }
+
+    if (!selectedLayoutId) {
+      alert('No layout selected.');
+      return;
+    }
+
+    try {
+      const supabase = createClient();
+      
+      // Get all group IDs for the current layout
+      const groupIds = groups.map(g => g.id);
+      
+      if (groupIds.length === 0) {
+        alert('No groups to clear.');
+        return;
+      }
+
+      // Delete all student assignments for all groups in this layout
+      // Delete each group's assignments
+      let hasError = false;
+      for (const groupId of groupIds) {
+        const { error: deleteError } = await supabase
+          .from('student_seat_assignments')
+          .delete()
+          .eq('seating_group_id', groupId);
+        
+        if (deleteError) {
+          console.error(`Error clearing assignments for group ${groupId}:`, deleteError);
+          hasError = true;
+        }
+      }
+
+      if (hasError) {
+        alert('Some errors occurred while clearing groups. Please check the console.');
+        return;
+      }
+
+      // Collect all students from all groups to add back to unseated
+      const allStudentsToUnseat: Student[] = [];
+      groupStudents.forEach((students) => {
+        allStudentsToUnseat.push(...students);
+      });
+
+      // Clear all groups in local state
+      setGroupStudents(prev => {
+        const newMap = new Map(prev);
+        groupIds.forEach(groupId => {
+          newMap.set(groupId, []);
+        });
+        return newMap;
+      });
+
+      // Add all students back to unseated list (filter out duplicates)
+      setUnseatedStudents((prev: Student[]) => {
+        const existingIds = new Set(prev.map(s => s.id));
+        const newStudents = allStudentsToUnseat.filter(s => !existingIds.has(s.id));
+        return [...prev, ...newStudents];
+      });
+
+      alert('All groups have been cleared successfully.');
+    } catch (err) {
+      console.error('Unexpected error clearing all groups:', err);
+      alert('An unexpected error occurred. Please try again.');
+    }
+  };
+
+  const handleDeleteAllGroups = async () => {
+    if (!confirm('Are you sure you want to delete ALL groups? This action cannot be undone and will remove all groups and their student assignments.')) {
+      return;
+    }
+
+    if (!selectedLayoutId) {
+      alert('No layout selected.');
+      return;
+    }
+
+    try {
+      const supabase = createClient();
+      
+      // Get all group IDs for the current layout
+      const groupIds = groups.map(g => g.id);
+      
+      if (groupIds.length === 0) {
+        alert('No groups to delete.');
+        return;
+      }
+
+      // First, delete all student assignments for all groups
+      let hasAssignmentError = false;
+      for (const groupId of groupIds) {
+        const { error: assignmentError } = await supabase
+          .from('student_seat_assignments')
+          .delete()
+          .eq('seating_group_id', groupId);
+        
+        if (assignmentError) {
+          console.error(`Error deleting assignments for group ${groupId}:`, assignmentError);
+          hasAssignmentError = true;
+        }
+      }
+
+      if (hasAssignmentError) {
+        alert('Some errors occurred while deleting student assignments. Please check the console.');
+        return;
+      }
+
+      // Then delete all groups
+      let hasGroupError = false;
+      for (const groupId of groupIds) {
+        const { error: groupError } = await supabase
+          .from('seating_groups')
+          .delete()
+          .eq('id', groupId);
+        
+        if (groupError) {
+          console.error(`Error deleting group ${groupId}:`, groupError);
+          hasGroupError = true;
+        }
+      }
+
+      if (hasGroupError) {
+        alert('Some errors occurred while deleting groups. Please check the console.');
+        return;
+      }
+
+      // Collect all students from all groups to add back to unseated
+      const allStudentsToUnseat: Student[] = [];
+      groupStudents.forEach((students) => {
+        allStudentsToUnseat.push(...students);
+      });
+
+      // Clear all local state
+      setGroups([]);
+      setGroupStudents(new Map());
+      setGroupPositions(new Map());
+
+      // Add all students back to unseated list (filter out duplicates)
+      setUnseatedStudents((prev: Student[]) => {
+        const existingIds = new Set(prev.map(s => s.id));
+        const newStudents = allStudentsToUnseat.filter(s => !existingIds.has(s.id));
+        return [...prev, ...newStudents];
+      });
+
+      alert('All groups have been deleted successfully.');
+    } catch (err) {
+      console.error('Unexpected error deleting all groups:', err);
+      alert('An unexpected error occurred. Please try again.');
+    }
+  };
+
   // Close settings menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -1187,10 +1371,13 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
 
   return (
     <div 
-      className="flex flex-row bg-red-600 font-spartan relative w-full" 
+      className="flex flex-row bg-red-600 font-spartan relative w-full h-screen" 
       style={{ 
-        minHeight: 'calc(100vh - 200px)', // Full viewport minus top nav (120px) and bottom nav (80px)
-        height: '100%'
+        height: '100vh',
+        width: '100vw',
+        position: 'fixed',
+        top: 0,
+        left: 0
       }}
     >
       {/* Main Content Area - Add right padding to account for right sidebar (w-76 = 304px) + spacing (8px) */}
@@ -1224,59 +1411,42 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         {/* Seating Groups Canvas */}
         <div className="mt-8 flex-1 flex flex-col">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-white text-xl font-semibold">
-              Seating Groups {selectedStudentForGroup && (
-                <span className="text-sm font-normal text-purple-200">
-                  - Click a group to add &quot;{selectedStudentForGroup.first_name} {selectedStudentForGroup.last_name}&quot;
-                </span>
-              )}
-            </h3>
             <div className="flex items-center gap-6">
-              {/* Columns Radio Buttons */}
-              <div className="flex items-center gap-3">
-                <label className="text-white font-semibold text-sm">Columns:</label>
-                <div className="flex items-center gap-3">
-                  {[2, 4, 6, 8].map((cols) => (
-                    <label
-                      key={cols}
-                      className="flex items-center gap-2 cursor-pointer"
-                    >
-                      <input
-                        type="radio"
-                        name="gridColumns"
-                        value={cols}
-                        checked={gridColumns === cols}
-                        onChange={(e) => setGridColumns(Number(e.target.value))}
-                        className="w-4 h-4 text-purple-600 bg-white border-gray-300 focus:ring-purple-500 focus:ring-2"
-                      />
-                      <span className="text-white text-sm">{cols}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              
-              <button
-                onClick={handleAssignSeats}
-                className="px-6 py-2 bg-purple-400 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors"
-              >
-                Auto Assign Seats
-              </button>
               <button
                 onClick={() => setIsAddGroupModalOpen(true)}
                 className="px-6 py-2 bg-purple-400 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors"
               >
                 Add New Group
               </button>
+              <button
+                onClick={handleAssignSeats}
+                className="px-6 py-2 bg-purple-400 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors"
+              >
+                Auto Assign Seats
+              </button>
+            </div>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleClearAllGroups}
+                className="px-6 py-2 bg-orange-400 text-white rounded-lg font-medium hover:bg-orange-500 transition-colors"
+              >
+                Clear All
+              </button>
+              <button
+                onClick={handleDeleteAllGroups}
+                className="px-6 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors"
+              >
+                Delete All
+              </button>
             </div>
           </div>
 
           {/* Canvas for groups display */}
           <div 
-            className="bg-pink-500 w-full relative"
+            className="bg-pink-500 w-full relative flex-1"
             style={{
-              height: '578px', // Fixed height: 9 rows × 50px + 8 gaps × 16px = 450px + 128px
-              minHeight: '578px',
-              maxHeight: '578px',
+              minHeight: '578px', // Minimum height: 9 rows × 50px + 8 gaps × 16px = 450px + 128px
+              height: 'calc(100vh - 200px)', // Stretch to fill available space minus header controls
               overflow: 'hidden'
             }}
           >
@@ -1351,7 +1521,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
               style={{
                 gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
                 gridTemplateRows: 'repeat(9, 50px)', // Match group row height exactly (50px)
-                height: '578px', // 9 rows × 50px + 8 gaps × 16px = 450px + 128px
+                height: '100%', // Fill parent container
+                minHeight: '578px', // Minimum height: 9 rows × 50px + 8 gaps × 16px = 450px + 128px
                 zIndex: 1,
                 alignContent: 'start' // Align content to start to prevent extra spacing
               }}
@@ -1366,10 +1537,12 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                       // Use group_columns from database (stored value)
                       // Clamp to valid range (1-3) - this is the internal columns for student cards
                       const validColumns = Math.max(1, Math.min(3, group.group_columns || 2));
-                      // Each group's internal column count directly maps to grid column span
-                      // A group with 2 internal columns takes up 2 grid columns, etc.
-                      // Clamp to not exceed the total available grid columns
-                      const gridColumnSpan = Math.min(validColumns, gridColumns);
+                      // Each group column = 2 grid columns
+                      // A group with 1 internal column takes up 2 grid columns
+                      // A group with 2 internal columns takes up 4 grid columns
+                      // A group with 3 internal columns takes up 6 grid columns
+                      // Clamp to not exceed the total available grid columns (16)
+                      const gridColumnSpan = Math.min(validColumns * 2, gridColumns);
                       
                       // Get the stored grid position for this group
                       const position = groupPositions.get(group.id) || { column: 1, row: index + 1 };
@@ -1489,6 +1662,35 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                     boxSizing: 'border-box'
                                   }}
                                 >
+                                {/* Team Name */}
+                                  <div className="flex-1">
+                                    <h4 className="font-semibold text-gray-800">{group.name}</h4>
+                                  </div>
+
+                                  {/* Column Radio Buttons */}
+                                  <div className="flex items-center gap-2 mr-8" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+                                    {[1, 2, 3].map((cols) => (
+                                      <label
+                                        key={cols}
+                                        className="flex items-center gap-1 cursor-pointer"
+                                        title={`${cols} column${cols > 1 ? 's' : ''}`}
+                                      >
+                                        <input
+                                          type="radio"
+                                          name={`group-columns-${group.id}`}
+                                          value={cols}
+                                          checked={validColumns === cols}
+                                          onChange={(e) => {
+                                            e.stopPropagation();
+                                            handleUpdateGroupColumns(group.id, cols);
+                                          }}
+                                          className="w-3 h-3 text-purple-600 bg-white border-gray-300 focus:ring-purple-500 focus:ring-1 cursor-pointer"
+                                        />
+                                        <span className="text-xs text-gray-600 font-medium">{cols}</span>
+                                      </label>
+                                    ))}
+                                  </div>
+
                                 {/* Settings Icon - Top Right */}
                                 <button
                                   data-settings-button={group.id}
@@ -1559,11 +1761,6 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                     </button>
                                   </div>
                                 )}
-
-                                  {/* Team Name */}
-                                  <div className="pr-8">
-                                    <h4 className="font-semibold text-gray-800">{group.name}</h4>
-                                  </div>
                                 </div>
                                 
                                 {/* Dynamic Student Rows */}
@@ -1611,14 +1808,14 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         </div>
       </div>
 
-      {/* Right Sidebar - Unseated Students - Positioned to span from top nav to bottom nav with matching spacing */}
+      {/* Right Sidebar - Unseated Students - Full height without top/bottom navs */}
       <div 
         className="fixed w-76 bg-white flex flex-col overflow-y-auto z-40" 
         style={{ 
-          right: '8px', // Match the pr-2 (8px) padding from main content area, same as left side spacing
-          top: '128px', // TopNav height (h-30 = 120px) + main content padding (pt-2 = 8px)
-          bottom: '80px', // BottomNav height (h-20 on large screens = 80px)
-          height: 'calc(100vh - 208px)' // 100vh - TopNav (120px) - padding (8px) - BottomNav (80px)
+          right: '8px',
+          top: '8px', // Small padding from top
+          bottom: '8px', // Small padding from bottom
+          height: 'calc(100vh - 16px)' // Full viewport minus small padding
         }}
       >
         <LeftNavSeatingChart />
