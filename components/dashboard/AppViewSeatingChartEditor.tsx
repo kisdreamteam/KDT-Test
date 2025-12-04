@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useSeatingChart } from '@/context/SeatingChartContext';
 import { Student } from '@/lib/types';
@@ -55,11 +55,16 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   const [openSettingsMenuId, setOpenSettingsMenuId] = useState<string | null>(null);
   const [selectedStudentForSwap, setSelectedStudentForSwap] = useState<{ studentId: string; groupId: string } | null>(null);
   const gridColumns = 16; // Fixed number of columns in the grid
+  const gridRows = 11; // Fixed number of rows in the grid
   // Store grid positions for each group (column and row)
   const [groupPositions, setGroupPositions] = useState<Map<string, { column: number; row: number }>>(new Map());
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
+  // Track container dimensions for coordinate calculations
+  const [containerDimensions, setContainerDimensions] = useState<{ width: number; height: number } | null>(null);
   // Track which group is being dragged
   const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null);
+  // Track the offset from where the user clicked to the group's top-left corner
+  const dragOffsetRef = useRef<{ x: number; y: number } | null>(null);
 
   const fetchLayouts = useCallback(async () => {
     try {
@@ -528,8 +533,19 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', groupId);
     
-    // Make the drag image semi-transparent
+    // Calculate offset from where user clicked to the group's top-left corner
     if (e.currentTarget instanceof HTMLElement) {
+      const groupRect = e.currentTarget.getBoundingClientRect();
+      const clickX = e.clientX;
+      const clickY = e.clientY;
+      
+      // Store the offset from click position to group's top-left corner
+      dragOffsetRef.current = {
+        x: clickX - groupRect.left,
+        y: clickY - groupRect.top
+      };
+      
+      // Make the drag image semi-transparent
       e.currentTarget.style.opacity = '0.5';
     }
   };
@@ -540,6 +556,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       e.currentTarget.style.opacity = '1';
     }
     setDraggedGroupId(null);
+    dragOffsetRef.current = null; // Clear drag offset
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -548,59 +565,93 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     e.dataTransfer.dropEffect = 'move';
   };
 
+  // Track container dimensions for coordinate calculations
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (gridContainerRef.current) {
+        const rect = gridContainerRef.current.getBoundingClientRect();
+        setContainerDimensions({ width: rect.width, height: rect.height });
+      }
+    };
+
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, []);
+
+  // Pre-calculate coordinate map for all grid cells
+  const cellPositions = useMemo(() => {
+    if (!containerDimensions) return new Map<string, { x: number; y: number; width: number; height: number }>();
+    
+    const gap = 16; // gap-4 = 1rem = 16px
+    const rowHeight = 50; // Each row is 50px
+    const cellWidth = (containerDimensions.width - (gap * (gridColumns - 1))) / gridColumns;
+    
+    const positions = new Map<string, { x: number; y: number; width: number; height: number }>();
+    
+    for (let row = 0; row < gridRows; row++) {
+      for (let col = 0; col < gridColumns; col++) {
+        const key = `${col + 1}-${row + 1}`;
+        positions.set(key, {
+          x: col * (cellWidth + gap),
+          y: row * (rowHeight + gap),
+          width: cellWidth,
+          height: rowHeight
+        });
+      }
+    }
+    
+    return positions;
+  }, [containerDimensions, gridColumns, gridRows]);
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     
-    if (!gridContainerRef.current || !draggedGroupId) {
+    if (!gridContainerRef.current || !draggedGroupId || !dragOffsetRef.current || !containerDimensions) {
       return;
     }
 
     const container = gridContainerRef.current;
     const containerRect = container.getBoundingClientRect();
     
-    // Get drop coordinates relative to the grid container
-    const relativeX = e.clientX - containerRect.left;
-    const relativeY = e.clientY - containerRect.top;
+    // Calculate where the group's top-left corner should be based on mouse position and offset
+    const groupTopLeftX = e.clientX - dragOffsetRef.current.x;
+    const groupTopLeftY = e.clientY - dragOffsetRef.current.y;
     
-    // Account for gap between grid items (gap-4 = 1rem = 16px)
-    const gap = 16;
-    const totalGapWidth = gap * (gridColumns - 1);
-    const cellWidth = (containerRect.width - totalGapWidth) / gridColumns;
+    // Get coordinates relative to the grid container
+    const relativeX = groupTopLeftX - containerRect.left;
+    const relativeY = groupTopLeftY - containerRect.top;
     
-    // Calculate which column (1-indexed) based on drop X position
-    let column = 1;
-    for (let i = 0; i < gridColumns; i++) {
-      const columnStart = i * (cellWidth + gap);
-      const columnEnd = columnStart + cellWidth;
-      if (relativeX >= columnStart && relativeX <= columnEnd) {
-        column = i + 1;
-        break;
+    // Find the nearest grid cell using the coordinate map
+    let nearestCell: { column: number; row: number; distance: number } | null = null;
+    
+    cellPositions.forEach((pos, key) => {
+      const [col, row] = key.split('-').map(Number);
+      // Calculate distance from group's top-left corner to cell's center
+      const cellCenterX = pos.x + pos.width / 2;
+      const cellCenterY = pos.y + pos.height / 2;
+      const distance = Math.sqrt(
+        Math.pow(relativeX - cellCenterX, 2) + 
+        Math.pow(relativeY - cellCenterY, 2)
+      );
+      
+      if (!nearestCell || distance < nearestCell.distance) {
+        nearestCell = { column: col, row, distance };
       }
-    }
-    column = Math.max(1, Math.min(gridColumns, column));
+    });
     
-    // Calculate which grid row (1-9) based on Y position
-    const rowHeight = 50;
-    const rowGap = 16;
+    if (!nearestCell) return;
     
-    let row = 1;
-    for (let i = 0; i < 9; i++) {
-      const rowStart = i * rowHeight + i * rowGap;
-      const rowEnd = rowStart + rowHeight;
-      if (relativeY >= rowStart && relativeY <= rowEnd) {
-        row = i + 1;
-        break;
-      }
-    }
-    if (relativeY > 8 * rowHeight + 8 * rowGap + rowHeight) {
-      row = 9;
-    }
-    row = Math.max(1, Math.min(9, row));
+    const { column, row } = nearestCell;
+    
+    // Clamp to valid grid bounds
+    const validColumn = Math.max(1, Math.min(gridColumns, column));
+    const validRow = Math.max(1, Math.min(gridRows, row));
     
     // Update the position immediately - no animations, no jumping
     setGroupPositions(prev => {
       const newPositions = new Map(prev);
-      newPositions.set(draggedGroupId, { column, row });
+      newPositions.set(draggedGroupId, { column: validColumn, row: validRow });
       return newPositions;
     });
     
@@ -611,8 +662,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         const { error } = await supabase
           .from('seating_groups')
           .update({
-            grid_column: column,
-            grid_row: row,
+            grid_column: validColumn,
+            grid_row: validRow,
           })
           .eq('id', draggedGroupId);
         
@@ -626,6 +677,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     
     savePositionToDatabase();
     setDraggedGroupId(null);
+    dragOffsetRef.current = null; // Clear drag offset
   };
 
   const handleGroupClick = (groupId: string) => {
@@ -1445,7 +1497,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
           <div 
             className="bg-pink-500 w-full relative flex-1"
             style={{
-              minHeight: '578px', // Minimum height: 9 rows × 50px + 8 gaps × 16px = 450px + 128px
+              minHeight: '710px', // Minimum height: 11 rows × 50px + 10 gaps × 16px = 550px + 160px
               height: 'calc(100vh - 200px)', // Stretch to fill available space minus header controls
               overflow: 'hidden'
             }}
@@ -1476,9 +1528,9 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                 );
               })}
               
-              {/* Horizontal grid lines - exactly 10 lines (9 row boundaries + 1 bottom) */}
+              {/* Horizontal grid lines - exactly 12 lines (11 row boundaries + 1 bottom) */}
               {/* Grid lines should align with row boundaries: 0, 50, 66, 116, 132, 182, etc. */}
-              {Array.from({ length: 10 }).map((_, index) => {
+              {Array.from({ length: 12 }).map((_, index) => {
                 // Grid line positions: each row is 50px, gap is 16px between rows
                 // Line 0: 0px (top)
                 // Line 1: 50px (end of row 1)
@@ -1517,14 +1569,13 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
               ref={gridContainerRef}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
-              className="grid gap-4 relative"
+              className="relative"
               style={{
-                gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
-                gridTemplateRows: 'repeat(9, 50px)', // Match group row height exactly (50px)
+                position: 'relative',
                 height: '100%', // Fill parent container
-                minHeight: '578px', // Minimum height: 9 rows × 50px + 8 gaps × 16px = 450px + 128px
+                minHeight: '710px', // Minimum height: 11 rows × 50px + 10 gaps × 16px = 550px + 160px
                 zIndex: 1,
-                alignContent: 'start' // Align content to start to prevent extra spacing
+                width: '100%'
               }}
             >
                     {groups.map((group, index) => {
@@ -1547,7 +1598,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                       // Get the stored grid position for this group
                       const position = groupPositions.get(group.id) || { column: 1, row: index + 1 };
                       const gridColumn = position.column;
-                      // Use actual grid row directly (1-9), not logical rows
+                      // Use actual grid row directly (1-11), not logical rows
                       const gridRow = position.row;
                       
                       // Calculate number of rows needed dynamically (on the fly) for responsiveness
@@ -1560,9 +1611,54 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                         ? 1  // Empty group: 1 student row
                         : Math.ceil(studentsInGroup.length / studentsPerRow); // Calculate based on student count
                       const totalRowCount = Math.max(2, 1 + studentRowCount); // 1 header + student rows (minimum 2)
-                      // Ensure group doesn't exceed row 9
-                      const maxRow = Math.min(9, gridRow + totalRowCount - 1);
+                      // Ensure group doesn't exceed row 11
+                      const maxRow = Math.min(11, gridRow + totalRowCount - 1);
                       const actualRowSpan = maxRow - gridRow + 1;
+                      
+                      // Calculate absolute position using coordinate map
+                      const gap = 16;
+                      const rowHeight = 50;
+                      let groupLeft = 0;
+                      let groupTop = 0;
+                      let groupWidth = 0;
+                      let groupHeight = 0;
+                      
+                      if (containerDimensions && cellPositions.size > 0) {
+                        // Get position of top-left cell
+                        const topLeftKey = `${gridColumn}-${gridRow}`;
+                        const topLeftCell = cellPositions.get(topLeftKey);
+                        
+                        if (topLeftCell) {
+                          groupLeft = topLeftCell.x;
+                          groupTop = topLeftCell.y;
+                          
+                          // Calculate width: span multiple columns
+                          // Get the rightmost cell position
+                          const rightCol = Math.min(gridColumn + gridColumnSpan - 1, gridColumns);
+                          const rightKey = `${rightCol}-${gridRow}`;
+                          const rightCell = cellPositions.get(rightKey);
+                          
+                          if (rightCell) {
+                            groupWidth = (rightCell.x + rightCell.width) - topLeftCell.x;
+                          } else {
+                            // Fallback calculation
+                            const cellWidth = (containerDimensions.width - (gap * (gridColumns - 1))) / gridColumns;
+                            groupWidth = gridColumnSpan * cellWidth + (gridColumnSpan - 1) * gap;
+                          }
+                          
+                          // Calculate height: span multiple rows
+                          const bottomRow = Math.min(gridRow + actualRowSpan - 1, gridRows);
+                          const bottomKey = `${gridColumn}-${bottomRow}`;
+                          const bottomCell = cellPositions.get(bottomKey);
+                          
+                          if (bottomCell) {
+                            groupHeight = (bottomCell.y + bottomCell.height) - topLeftCell.y;
+                          } else {
+                            // Fallback calculation
+                            groupHeight = actualRowSpan * rowHeight + (actualRowSpan - 1) * gap;
+                          }
+                        }
+                      }
                       
                       // Distribute students across rows dynamically
                       const studentRows: Student[][] = [];
@@ -1632,21 +1728,17 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                             'border-gray-300'
                           }`}
                           style={{
-                            position: 'relative',
+                            position: 'absolute',
+                            left: `${groupLeft}px`,
+                            top: `${groupTop}px`,
+                            width: `${groupWidth}px`,
+                            height: `${groupHeight}px`,
                             zIndex: draggedGroupId === group.id ? 9999 : 1,
                             boxSizing: 'border-box',
                             gap: 0,
-                            // Span dynamic rows and the appropriate columns
-                            gridColumn: `${gridColumn} / span ${gridColumnSpan}`,
-                            gridRow: `${gridRow} / span ${actualRowSpan}`,
-                            width: '100%',
-                            maxWidth: '100%',
-                            // Height must exactly match grid allocation: rows × 50px + gaps × 16px
-                            height: `calc(${actualRowSpan} * 50px + ${actualRowSpan - 1} * 16px)`,
-                            minHeight: `calc(${actualRowSpan} * 50px + ${actualRowSpan - 1} * 16px)`,
-                            maxHeight: `calc(${actualRowSpan} * 50px + ${actualRowSpan - 1} * 16px)`,
                             overflow: 'hidden',
-                            transition: 'none' // No transitions - instant snap
+                            transition: 'none', // No transitions - instant snap
+                            pointerEvents: 'auto'
                           }}
                         >
                           {/* Group Header - Row 1 */}
