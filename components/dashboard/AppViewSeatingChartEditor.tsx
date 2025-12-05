@@ -61,6 +61,10 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null);
   // Track the offset from where the user clicked to the group's top-left corner
   const dragOffsetRef = useRef<{ x: number; y: number } | null>(null);
+  // Animation state for randomize
+  const [isRandomizing, setIsRandomizing] = useState(false);
+  const [studentsAboutToMove, setStudentsAboutToMove] = useState<Set<string>>(new Set()); // Yellow
+  const [studentsBeingPlaced, setStudentsBeingPlaced] = useState<Set<string>>(new Set()); // Blue
 
   const fetchLayouts = useCallback(async () => {
     try {
@@ -256,6 +260,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     };
   }, [setSelectedStudentForGroup]);
 
+
   // Function to save all group_rows and group_columns to database
   // Called when user clicks "Save Changes" button
   const saveAllGroupSizes = useCallback(async () => {
@@ -318,6 +323,159 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       alert('Failed to save changes. Please try again.');
     }
   }, [groups, groupStudents]);
+
+  // Handle randomize seating - animated swap of all seated students
+  const handleRandomizeSeating = useCallback(async () => {
+    if (isRandomizing || groups.length === 0) return;
+    
+    setIsRandomizing(true);
+    
+    try {
+      // First, record the size of each group (to maintain group sizes after randomization)
+      const groupSizes: Map<string, number> = new Map();
+      groupStudents.forEach((students, groupId) => {
+        groupSizes.set(groupId, students.length);
+      });
+
+      // Collect all seated students with their current groups
+      const seatedStudents: Array<{ student: Student; currentGroupId: string }> = [];
+      groupStudents.forEach((students, groupId) => {
+        students.forEach(student => {
+          seatedStudents.push({ student, currentGroupId: groupId });
+        });
+      });
+
+      if (seatedStudents.length === 0) {
+        setIsRandomizing(false);
+        return;
+      }
+
+      // Shuffle all students randomly
+      const shuffledStudents = [...seatedStudents].sort(() => Math.random() - 0.5);
+      
+      // Create new assignments maintaining original group sizes
+      const newAssignments: Array<{ student: Student; newGroupId: string; currentGroupId: string }> = [];
+      const groupIds = groups.map(g => g.id);
+      
+      // Create a map to track how many students have been assigned to each group
+      const groupAssignmentCounts: Map<string, number> = new Map();
+      groupIds.forEach(groupId => {
+        groupAssignmentCounts.set(groupId, 0);
+      });
+      
+      // Distribute shuffled students back to groups maintaining original sizes
+      let studentIndex = 0;
+      for (const groupId of groupIds) {
+        const targetSize = groupSizes.get(groupId) || 0;
+        const currentCount = groupAssignmentCounts.get(groupId) || 0;
+        const needed = targetSize - currentCount;
+        
+        // Assign the needed number of students to this group
+        for (let i = 0; i < needed && studentIndex < shuffledStudents.length; i++) {
+          const { student, currentGroupId } = shuffledStudents[studentIndex];
+          newAssignments.push({ student, newGroupId: groupId, currentGroupId });
+          groupAssignmentCounts.set(groupId, (groupAssignmentCounts.get(groupId) || 0) + 1);
+          studentIndex++;
+        }
+      }
+
+      // Animate each swap one by one
+      for (let i = 0; i < newAssignments.length; i++) {
+        const { student, newGroupId, currentGroupId } = newAssignments[i];
+        
+        // Skip if student is already in the target group
+        if (currentGroupId === newGroupId) continue;
+
+        // Show yellow (about to move)
+        setStudentsAboutToMove(prev => new Set(prev).add(student.id));
+        
+        // Wait a bit before showing blue (increased from 300ms to 600ms)
+        await new Promise(resolve => setTimeout(resolve, 600));
+        
+        // Show blue (being placed) and update local state
+        setStudentsAboutToMove(prev => {
+          const next = new Set(prev);
+          next.delete(student.id);
+          return next;
+        });
+        setStudentsBeingPlaced(prev => new Set(prev).add(student.id));
+        
+        // Update local state immediately for visual feedback
+        setGroupStudents(prev => {
+          const newMap = new Map(prev);
+          
+          // Remove from old group
+          const oldGroupStudents = newMap.get(currentGroupId) || [];
+          const filteredOld = oldGroupStudents.filter(s => s.id !== student.id);
+          newMap.set(currentGroupId, filteredOld);
+          
+          // Add to new group
+          const newGroupStudents = newMap.get(newGroupId) || [];
+          newMap.set(newGroupId, [...newGroupStudents, student]);
+          
+          return newMap;
+        });
+        
+        // Wait a bit before moving to next student (increased from 400ms to 800ms)
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        // Remove blue state
+        setStudentsBeingPlaced(prev => {
+          const next = new Set(prev);
+          next.delete(student.id);
+          return next;
+        });
+      }
+
+      // After all animations, update database
+      const supabase = createClient();
+      
+      // Delete all current assignments
+      const allStudentIds = seatedStudents.map(s => s.student.id);
+      if (allStudentIds.length > 0) {
+        await supabase
+          .from('student_seat_assignments')
+          .delete()
+          .in('student_id', allStudentIds);
+      }
+      
+      // Insert new assignments
+      const assignmentsToInsert = newAssignments.map(({ student, newGroupId }) => ({
+        student_id: student.id,
+        seating_group_id: newGroupId,
+      }));
+      
+      if (assignmentsToInsert.length > 0) {
+        await supabase
+          .from('student_seat_assignments')
+          .insert(assignmentsToInsert);
+      }
+      
+      // Refresh to ensure sync
+      await fetchGroups();
+      
+    } catch (err) {
+      console.error('Error randomizing seating:', err);
+      alert('Failed to randomize seating. Please try again.');
+    } finally {
+      // Clear all animation states
+      setStudentsAboutToMove(new Set());
+      setStudentsBeingPlaced(new Set());
+      setIsRandomizing(false);
+    }
+  }, [isRandomizing, groups, groupStudents, fetchGroups]);
+
+  // Listen for randomize event
+  useEffect(() => {
+    const handleRandomize = () => {
+      handleRandomizeSeating();
+    };
+
+    window.addEventListener('seatingChartRandomize', handleRandomize as EventListener);
+    return () => {
+      window.removeEventListener('seatingChartRandomize', handleRandomize as EventListener);
+    };
+  }, [handleRandomizeSeating]);
 
   // Listen for add student to group event
   const addStudentToGroup = useCallback(async (student: Student, groupId: string) => {
@@ -1502,16 +1660,25 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                       // Render student card component
                       const renderStudentCard = (student: Student) => {
                         const isSelected = selectedStudentForSwap?.studentId === student.id && selectedStudentForSwap?.groupId === group.id;
+                        const isAboutToMove = studentsAboutToMove.has(student.id);
+                        const isBeingPlaced = studentsBeingPlaced.has(student.id);
+                        
+                        // Determine background color based on animation state
+                        let bgColor = 'bg-white border-gray-200 hover:bg-gray-50';
+                        if (isAboutToMove) {
+                          bgColor = 'bg-yellow-300 border-yellow-500 hover:bg-yellow-400';
+                        } else if (isBeingPlaced) {
+                          bgColor = 'bg-blue-300 border-blue-500 hover:bg-blue-400';
+                        } else if (isSelected) {
+                          bgColor = 'bg-yellow-300 border-yellow-500 hover:bg-yellow-400';
+                        }
+                        
                         return (
                           <div
                             key={student.id}
                             onClick={(e) => handleStudentClick(e, student.id, group.id)}
                             onMouseDown={(e) => e.stopPropagation()}
-                            className={`flex items-center justify-between gap-1 p-1.5 rounded border cursor-pointer transition-colors ${
-                              isSelected 
-                                ? 'bg-yellow-300 border-yellow-500 hover:bg-yellow-400' 
-                                : 'bg-white border-gray-200 hover:bg-gray-50'
-                            }`}
+                            className={`flex items-center justify-between gap-1 p-1.5 rounded border cursor-pointer transition-colors ${bgColor}`}
                             style={{ 
                               width: '100%',
                               minHeight: '32px',
