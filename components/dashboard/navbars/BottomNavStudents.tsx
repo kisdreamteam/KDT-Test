@@ -259,6 +259,17 @@ export default function BottomNavStudents({
               >
                 Alphabetical
               </button>
+              <button
+                onClick={() => {
+                  setSortBy('points');
+                  setIsSortPopupOpen(false);
+                }}
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors ${
+                  sortBy === 'points' ? 'bg-purple-50 text-purple-600 font-medium' : 'text-gray-700'
+                }`}
+              >
+                Points
+              </button>
             </div>
           )}
         </div>

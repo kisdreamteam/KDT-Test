@@ -786,6 +786,11 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     e.stopPropagation(); // Prevent group click handler from firing
     e.preventDefault();
     
+    // Disable clicking during randomize animation
+    if (isRandomizing) {
+      return;
+    }
+    
     if (!selectedStudentForSwap) {
       // First student selected - highlight it
       setSelectedStudentForSwap({ studentId, groupId });
@@ -1678,7 +1683,9 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                             key={student.id}
                             onClick={(e) => handleStudentClick(e, student.id, group.id)}
                             onMouseDown={(e) => e.stopPropagation()}
-                            className={`flex items-center justify-between gap-1 p-1.5 rounded border cursor-pointer transition-colors ${bgColor}`}
+                            className={`flex items-center justify-between gap-1 p-1.5 rounded border transition-colors ${
+                              isRandomizing ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
+                            } ${bgColor}`}
                             style={{ 
                               width: '100%',
                               minHeight: '32px',
@@ -1699,10 +1706,17 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                removeStudentFromGroup(student.id, group.id);
+                                if (!isRandomizing) {
+                                  removeStudentFromGroup(student.id, group.id);
+                                }
                               }}
-                              className="text-red-500 hover:text-red-700 p-0.5 flex-shrink-0"
-                              title="Remove from group"
+                              className={`p-0.5 flex-shrink-0 ${
+                                isRandomizing 
+                                  ? 'text-gray-400 cursor-not-allowed' 
+                                  : 'text-red-500 hover:text-red-700'
+                              }`}
+                              title={isRandomizing ? 'Cannot remove during animation' : 'Remove from group'}
+                              disabled={isRandomizing}
                             >
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

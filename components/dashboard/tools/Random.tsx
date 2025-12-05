@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Student } from '@/lib/types';
 import Image from 'next/image';
+import AwardPointsModal from '@/components/modals/AwardPointsModal';
 
 interface RandomProps {
   onClose: () => void;
@@ -20,6 +21,7 @@ export default function Random({ onClose }: RandomProps) {
   const [scrollPosition, setScrollPosition] = useState(0);
   const reelRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const [isAwardPointsModalOpen, setIsAwardPointsModalOpen] = useState(false);
 
   const fetchStudents = useCallback(async () => {
     try {
@@ -186,21 +188,32 @@ export default function Random({ onClose }: RandomProps) {
             )}
 
             {/* Selected Student Display */}
-            {selectedStudent && (
-              <div className="mt-10 p-8 bg-white/20 rounded-2xl backdrop-blur-sm">
-                <p className="text-white text-3xl font-semibold mb-3">Selected:</p>
-                <div className="flex items-center gap-5 justify-center">
-                  <Image
-                    src={selectedStudent.avatar || "/images/students/avatars/student_avatar_1.png"}
-                    alt={`${selectedStudent.first_name} ${selectedStudent.last_name}`}
-                    width={75}
-                    height={75}
-                    className="rounded-full bg-[#FDF2F0] border-4 border-white"
-                  />
-                  <p className="text-white text-5xl font-bold">{selectedStudent.first_name} {selectedStudent.last_name}</p>
-                </div>
-              </div>
-            )}
+            <div className="mt-10 p-8 bg-white/20 rounded-2xl backdrop-blur-sm">
+              {selectedStudent ? (
+                <>
+                  <p className="text-white text-3xl font-semibold mb-3">Selected:</p>
+                  <div className="flex items-center gap-5 justify-center mb-6">
+                    <Image
+                      src={selectedStudent.avatar || "/images/students/avatars/student_avatar_1.png"}
+                      alt={`${selectedStudent.first_name} ${selectedStudent.last_name}`}
+                      width={75}
+                      height={75}
+                      className="rounded-full bg-[#FDF2F0] border-4 border-white"
+                    />
+                    <p className="text-white text-5xl font-bold">{selectedStudent.first_name} {selectedStudent.last_name}</p>
+                  </div>
+                </>
+              ) : (
+                <p className="text-white text-2xl font-semibold mb-6 text-center">No student selected</p>
+              )}
+              <button
+                onClick={() => setIsAwardPointsModalOpen(true)}
+                disabled={!selectedStudent}
+                className="w-full bg-pink-600 hover:bg-pink-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl font-bold text-xl transition-colors shadow-lg"
+              >
+                Award Points
+              </button>
+            </div>
           </div>
         </div>
 
@@ -271,6 +284,17 @@ export default function Random({ onClose }: RandomProps) {
           )}
         </div>
       </div>
+
+      {/* Award Points Modal */}
+      {selectedStudent && (
+        <AwardPointsModal
+          isOpen={isAwardPointsModalOpen}
+          onClose={() => setIsAwardPointsModalOpen(false)}
+          student={selectedStudent}
+          classId={classId}
+          onRefresh={fetchStudents}
+        />
+      )}
     </div>
   );
 }

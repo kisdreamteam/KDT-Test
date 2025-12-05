@@ -374,6 +374,20 @@ export default function AppViewStudents() {
         if (b.student_number === null) return -1;
         return a.student_number - b.student_number;
       });
+    } else if (sortBy === 'points') {
+      // Sort by points (most to least)
+      return studentsCopy.sort((a, b) => {
+        const pointsA = a.points || 0;
+        const pointsB = b.points || 0;
+        // Sort descending (most points first)
+        if (pointsA !== pointsB) {
+          return pointsB - pointsA;
+        }
+        // If points are equal, sort alphabetically by last name, then first name
+        const lastNameCompare = (a.last_name || '').localeCompare(b.last_name || '');
+        if (lastNameCompare !== 0) return lastNameCompare;
+        return (a.first_name || '').localeCompare(b.first_name || '');
+      });
     } else {
       // Alphabetical sort by last name, then first name
       return studentsCopy.sort((a, b) => {

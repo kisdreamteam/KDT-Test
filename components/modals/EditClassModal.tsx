@@ -62,6 +62,8 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   const [showValidationWarning, setShowValidationWarning] = useState(false);
   const [studentsWithoutFirstName, setStudentsWithoutFirstName] = useState<StudentWithPhoto[]>([]);
+  const [showResetPointsPopup, setShowResetPointsPopup] = useState(false);
+  const [isResettingPoints, setIsResettingPoints] = useState(false);
 
   // Generate array of all available icons
   const availableIcons = Array.from({ length: 15 }, (_, i) => 
@@ -453,6 +455,82 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       }))
     );
     setHasUnsavedChanges(true);
+  };
+
+  // Handle reset points
+  const handleResetPoints = async (deleteEvents: boolean) => {
+    if (isResettingPoints) return;
+    
+    setIsResettingPoints(true);
+    
+    try {
+      const supabase = createClient();
+      
+      // Get all students in this class
+      const { data: studentsData, error: fetchError } = await supabase
+        .from('students')
+        .select('id')
+        .eq('class_id', classId);
+      
+      if (fetchError) {
+        console.error('Error fetching students:', fetchError);
+        alert('Failed to fetch students. Please try again.');
+        setIsResettingPoints(false);
+        return;
+      }
+      
+      if (!studentsData || studentsData.length === 0) {
+        alert('No students found in this class.');
+        setIsResettingPoints(false);
+        return;
+      }
+      
+      const studentIds = studentsData.map(s => s.id);
+      
+      // If deleteEvents is true, delete all point events for these students
+      if (deleteEvents) {
+        const { error: deleteError } = await supabase
+          .from('custom_point_events')
+          .delete()
+          .in('student_id', studentIds);
+        
+        if (deleteError) {
+          console.error('Error deleting point events:', deleteError);
+          alert('Failed to delete point events. Please try again.');
+          setIsResettingPoints(false);
+          return;
+        }
+      }
+      
+      // Reset all students' points to 0
+      const { error: updateError } = await supabase
+        .from('students')
+        .update({ points: 0 })
+        .in('id', studentIds);
+      
+      if (updateError) {
+        console.error('Error resetting points:', updateError);
+        alert('Failed to reset points. Please try again.');
+        setIsResettingPoints(false);
+        return;
+      }
+      
+      // Refresh data
+      await fetchStudents();
+      if (onRefresh) {
+        onRefresh();
+      }
+      
+      // Close popup and show success message
+      setShowResetPointsPopup(false);
+      alert(`Points have been reset successfully.${deleteEvents ? ' All point events have been deleted.' : ' Point events have been preserved.'}`);
+      
+    } catch (err) {
+      console.error('Unexpected error resetting points:', err);
+      alert('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsResettingPoints(false);
+    }
   };
 
   return (
@@ -949,8 +1027,17 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
 
           {/* Settings Tab */}
           {activeTab === 'settings' && (
-            <div className="text-center py-16">
-              <p className="text-gray-600">Settings options will be available here in the future.</p>
+            <div className="space-y-6">
+              <div className="flex flex-col gap-4">
+                <h3 className="text-lg font-semibold text-gray-800">Points Management</h3>
+                <button
+                  onClick={() => setShowResetPointsPopup(true)}
+                  disabled={isResettingPoints}
+                  className="px-6 py-3 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-fit"
+                >
+                  {isResettingPoints ? 'Resetting...' : 'Reset Points'}
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -1048,6 +1135,55 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
               className="px-6 py-2 bg-[#D96B7B] text-white rounded-lg font-bold hover:brightness-95 transition"
             >
               OK
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Reset Points Popup */}
+      <Modal
+        isOpen={showResetPointsPopup}
+        onClose={() => setShowResetPointsPopup(false)}
+        className="max-w-md"
+      >
+        <div className="bg-[#F5F5F5] rounded-[28px] p-8 -m-6">
+          <div className="text-center mb-6">
+            <h3 className="text-2xl font-extrabold text-[#4A3B8D] mb-2">
+              Reset Points
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Choose how you want to reset points for all students in this class:
+            </p>
+          </div>
+          <div className="space-y-3 mb-6">
+            <button
+              onClick={async () => {
+                await handleResetPoints(false); // Keep point events
+              }}
+              disabled={isResettingPoints}
+              className="w-full px-6 py-3 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-left"
+            >
+              <div className="font-semibold mb-1">Option 1: Reset points but keep point events</div>
+              <div className="text-sm opacity-90">Points will be set to 0, but all point event history will be preserved.</div>
+            </button>
+            <button
+              onClick={async () => {
+                await handleResetPoints(true); // Delete point events
+              }}
+              disabled={isResettingPoints}
+              className="w-full px-6 py-3 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-left"
+            >
+              <div className="font-semibold mb-1">Option 2: Reset points and delete point events</div>
+              <div className="text-sm opacity-90">Points will be set to 0 and all point event history will be permanently deleted.</div>
+            </button>
+          </div>
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={() => setShowResetPointsPopup(false)}
+              disabled={isResettingPoints}
+              className="px-6 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              Cancel
             </button>
           </div>
         </div>

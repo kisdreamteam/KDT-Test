@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode } from 'react';
 
-export type SortOption = 'number' | 'alphabetical';
+export type SortOption = 'number' | 'alphabetical' | 'points';
 
 interface StudentSortContextType {
   sortBy: SortOption;
