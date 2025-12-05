@@ -623,7 +623,16 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
 
       if (insertError) {
         console.error('Error creating seating group:', insertError);
-        alert('Failed to create group. Please try again.');
+        console.error('Insert data:', {
+          name: groupName,
+          seating_chart_id: selectedLayoutId,
+          sort_order: maxSortOrder + 1,
+          group_columns: columns,
+          position_x: initialX,
+          position_y: initialY,
+        });
+        console.error('Full error details:', JSON.stringify(insertError, null, 2));
+        alert(`Failed to create group: ${insertError.message || 'Please check the console for details.'}`);
         return;
       }
 
