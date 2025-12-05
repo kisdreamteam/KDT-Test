@@ -294,6 +294,12 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         
         if (error) {
           console.error(`Error updating group ${update.id}:`, error);
+          console.error('Update data:', { 
+            group_rows: update.group_rows, 
+            group_columns: update.group_columns,
+            id: update.id 
+          });
+          console.error('Full error details:', JSON.stringify(error, null, 2));
         }
       }
       
