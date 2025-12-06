@@ -11,7 +11,7 @@ interface ConfirmationModalProps {
   message: string;
   confirmText: string;
   cancelText: string;
-  confirmButtonColor?: 'red' | 'green' | 'purple' | 'blue';
+  confirmButtonColor?: 'red' | 'green' | 'purple' | 'blue' | 'orange';
   icon?: React.ReactNode;
 }
 
@@ -31,6 +31,7 @@ export default function ConfirmationModal({
     green: 'bg-green-600 hover:bg-green-700 text-white',
     purple: 'bg-purple-600 hover:bg-purple-700 text-white',
     blue: 'bg-blue-600 hover:bg-blue-700 text-white',
+    orange: 'bg-orange-600 hover:bg-orange-700 text-white',
   };
 
   return (
