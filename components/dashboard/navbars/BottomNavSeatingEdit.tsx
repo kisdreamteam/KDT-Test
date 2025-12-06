@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { useBottomNavPosition } from '@/hooks/useBottomNavPosition';
 import ViewPopup from './ViewPopup';
 
 interface BottomNavSeatingEditProps {
@@ -11,8 +10,8 @@ interface BottomNavSeatingEditProps {
 }
 
 export default function BottomNavSeatingEdit({ 
-  currentClassName, 
-  sidebarOpen
+  currentClassName,
+  sidebarOpen: _sidebarOpen
 }: BottomNavSeatingEditProps) {
   const router = useRouter();
   const searchParams = useSearchParams();

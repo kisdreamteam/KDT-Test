@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Modal from '@/components/modals/Modal';
 import { createClient } from '@/lib/supabase/client';
-import { PointCategory } from '@/lib/types';
 
 interface AddSkillModalProps {
   isOpen: boolean;
