@@ -186,7 +186,6 @@ function DashboardLayoutContent({
   useEffect(() => {
     fetchTeacherProfile();
     fetchClasses();
-    fetchTeacherCount();
 
     // Listen for class updates from the main dashboard
     const handleClassUpdate = () => {
