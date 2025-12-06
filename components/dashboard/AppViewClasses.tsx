@@ -7,7 +7,6 @@ import CreateClassForm from '@/components/forms/CreateClassForm';
 import EditClassModal from '@/components/modals/EditClassModal';
 import { useDashboard } from '@/context/DashboardContext';
 import LoadingState from './maincontent/LoadingState';
-import ErrorState from './maincontent/ErrorState';
 import EmptyState from './maincontent/EmptyState';
 import ClassCardsGrid from './maincontent/viewClassesGrid/ClassCardsGrid';
 import { createClient } from '@/lib/supabase/client';
@@ -209,11 +208,6 @@ export default function AppViewClasses() {
   // Render loading state
   if (isLoadingClasses) {
     return <LoadingState message={`Loading ${isArchivedView ? 'archived ' : ''}classes...`} />;
-  }
-
-  // Render error state
-  if (error) {
-    return <ErrorState error={error} onRetry={refreshClasses} />;
   }
 
   return (
