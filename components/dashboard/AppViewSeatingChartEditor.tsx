@@ -7,6 +7,8 @@ import { Student } from '@/lib/types';
 import CreateLayoutModal from '@/components/modals/CreateLayoutModal';
 import AddGroupModal from '@/components/modals/AddGroupModal';
 import EditGroupModal from '@/components/modals/EditGroupModal';
+import ConfirmationModal from '@/components/modals/ConfirmationModal';
+import SuccessNotificationModal from '@/components/modals/SuccessNotificationModal';
 import LeftNavSeatingChart from '@/components/dashboard/navbars/LeftNavSeatingChart';
 
 interface SeatingChart {
@@ -48,6 +50,13 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAddGroupModalOpen, setIsAddGroupModalOpen] = useState(false);
   const [isEditGroupModalOpen, setIsEditGroupModalOpen] = useState(false);
+  const [isClearAllModalOpen, setIsClearAllModalOpen] = useState(false);
+  const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
+  const [successNotification, setSuccessNotification] = useState<{ isOpen: boolean; title: string; message: string }>({
+    isOpen: false,
+    title: '',
+    message: '',
+  });
   const [editingGroup, setEditingGroup] = useState<SeatingGroup | null>(null);
   const [groupStudents, setGroupStudents] = useState<Map<string, Student[]>>(new Map());
   const [targetGroupId, setTargetGroupId] = useState<string | null>(null);
@@ -57,8 +66,55 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   // Store pixel positions for each group (x, y coordinates)
   const [groupPositions, setGroupPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
+  const mainContentRef = useRef<HTMLDivElement | null>(null);
+  const buttonRowRef = useRef<HTMLDivElement | null>(null);
+  const [canvasLeft, setCanvasLeft] = useState(8); // Default left position
+  const [canvasTop, setCanvasTop] = useState(280); // Default top position
   // Track which group is being dragged
   const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null);
+  
+  // Helper function to show success notification
+  const showSuccessNotification = (title: string, message: string) => {
+    setSuccessNotification({ isOpen: true, title, message });
+  };
+
+  // Calculate canvas left position based on main content area
+  useEffect(() => {
+    const updateCanvasLeft = () => {
+      if (mainContentRef.current) {
+        const rect = mainContentRef.current.getBoundingClientRect();
+        setCanvasLeft(rect.left);
+      }
+    };
+    
+    updateCanvasLeft();
+    window.addEventListener('resize', updateCanvasLeft);
+    const interval = setInterval(updateCanvasLeft, 100); // Update periodically to catch sidebar changes
+    
+    return () => {
+      window.removeEventListener('resize', updateCanvasLeft);
+      clearInterval(interval);
+    };
+  }, []);
+  
+  // Calculate canvas top position based on button row position
+  useEffect(() => {
+    const updateCanvasTop = () => {
+      if (buttonRowRef.current) {
+        const rect = buttonRowRef.current.getBoundingClientRect();
+        setCanvasTop(rect.bottom + 16); // Start right below button row with 16px spacing
+      }
+    };
+    
+    updateCanvasTop();
+    window.addEventListener('resize', updateCanvasTop);
+    const interval = setInterval(updateCanvasTop, 100); // Update periodically
+    
+    return () => {
+      window.removeEventListener('resize', updateCanvasTop);
+      clearInterval(interval);
+    };
+  }, []);
   // Track the offset from where the user clicked to the group's top-left corner
   const dragOffsetRef = useRef<{ x: number; y: number } | null>(null);
   // Animation state for randomize
@@ -607,7 +663,9 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       const initialY = 20;
 
       // Insert group with all parameters in a single operation
-      // Note: group_rows is calculated dynamically and saved on "Save Changes", so we don't include it here
+      // Calculate group_rows: 1 for header + at least 1 row for students (default to 2 total for new empty group)
+      const defaultGroupRows = 2; // 1 header row + 1 student row for new empty groups
+      
       const { data, error: insertError } = await supabase
         .from('seating_groups')
         .insert({
@@ -615,6 +673,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
           seating_chart_id: selectedLayoutId,
           sort_order: maxSortOrder + 1,
           group_columns: columns,
+          group_rows: defaultGroupRows,
           position_x: initialX,
           position_y: initialY,
         })
@@ -1291,13 +1350,17 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     }
   };
 
-  const handleClearAllGroups = async () => {
-    if (!confirm('Are you sure you want to clear all students from all groups? This will remove all student assignments but keep the groups.')) {
-      return;
-    }
+  const handleClearAllGroups = () => {
+    setIsClearAllModalOpen(true);
+  };
 
+  const handleClearAllConfirmed = async () => {
     if (!selectedLayoutId) {
-      alert('No layout selected.');
+      showSuccessNotification(
+        'No Layout Selected',
+        'Please select a layout before clearing groups.'
+      );
+      setIsClearAllModalOpen(false);
       return;
     }
 
@@ -1308,7 +1371,11 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       const groupIds = groups.map(g => g.id);
       
       if (groupIds.length === 0) {
-        alert('No groups to clear.');
+        showSuccessNotification(
+          'No Groups to Clear',
+          'There are no groups in the selected layout to clear.'
+        );
+        setIsClearAllModalOpen(false);
         return;
       }
 
@@ -1328,7 +1395,11 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       }
 
       if (hasError) {
-        alert('Some errors occurred while clearing groups. Please check the console.');
+        showSuccessNotification(
+          'Error Clearing Groups',
+          'Some errors occurred while clearing groups. Please check the console for details.'
+        );
+        setIsClearAllModalOpen(false);
         return;
       }
 
@@ -1354,20 +1425,32 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         return [...prev, ...newStudents];
       });
 
-      alert('All groups have been cleared successfully.');
+      showSuccessNotification(
+        'Groups Cleared Successfully',
+        'All students have been removed from all groups and moved back to the unseated list.'
+      );
+      setIsClearAllModalOpen(false);
     } catch (err) {
       console.error('Unexpected error clearing all groups:', err);
-      alert('An unexpected error occurred. Please try again.');
+      showSuccessNotification(
+        'Error',
+        'An unexpected error occurred. Please try again.'
+      );
+      setIsClearAllModalOpen(false);
     }
   };
 
-  const handleDeleteAllGroups = async () => {
-    if (!confirm('Are you sure you want to delete ALL groups? This action cannot be undone and will remove all groups and their student assignments.')) {
-      return;
-    }
+  const handleDeleteAllGroups = () => {
+    setIsDeleteAllModalOpen(true);
+  };
 
+  const handleDeleteAllConfirmed = async () => {
     if (!selectedLayoutId) {
-      alert('No layout selected.');
+      showSuccessNotification(
+        'No Layout Selected',
+        'Please select a layout before deleting groups.'
+      );
+      setIsDeleteAllModalOpen(false);
       return;
     }
 
@@ -1378,7 +1461,11 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       const groupIds = groups.map(g => g.id);
       
       if (groupIds.length === 0) {
-        alert('No groups to delete.');
+        showSuccessNotification(
+          'No Groups to Delete',
+          'There are no groups in the selected layout to delete.'
+        );
+        setIsDeleteAllModalOpen(false);
         return;
       }
 
@@ -1397,7 +1484,11 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       }
 
       if (hasAssignmentError) {
-        alert('Some errors occurred while deleting student assignments. Please check the console.');
+        showSuccessNotification(
+          'Error Deleting Assignments',
+          'Some errors occurred while deleting student assignments. Please check the console for details.'
+        );
+        setIsDeleteAllModalOpen(false);
         return;
       }
 
@@ -1416,7 +1507,11 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       }
 
       if (hasGroupError) {
-        alert('Some errors occurred while deleting groups. Please check the console.');
+        showSuccessNotification(
+          'Error Deleting Groups',
+          'Some errors occurred while deleting groups. Please check the console for details.'
+        );
+        setIsDeleteAllModalOpen(false);
         return;
       }
 
@@ -1438,10 +1533,18 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         return [...prev, ...newStudents];
       });
 
-      alert('All groups have been deleted successfully.');
+      showSuccessNotification(
+        'Groups Deleted Successfully',
+        'All groups have been permanently deleted and students have been moved back to the unseated list.'
+      );
+      setIsDeleteAllModalOpen(false);
     } catch (err) {
       console.error('Unexpected error deleting all groups:', err);
-      alert('An unexpected error occurred. Please try again.');
+      showSuccessNotification(
+        'Error',
+        'An unexpected error occurred. Please try again.'
+      );
+      setIsDeleteAllModalOpen(false);
     }
   };
 
@@ -1537,7 +1640,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     >
       {/* Main Content Area - Add right padding to account for right sidebar (w-76 = 304px) + spacing (8px) */}
       {/* Note: Removed overflow-y-auto from this container to avoid nested scroll container warning with drag-and-drop */}
-      <div className="flex-1 p-1 bg-red-500 sm:p-11md:p-2 relative" style={{ paddingRight: '312px', minHeight: '100%', overflow: 'visible' }}>
+      <div ref={mainContentRef} className="flex-1 p-1 bg-red-500 sm:p-11md:p-2 relative" style={{ paddingRight: '312px', minHeight: '100%', overflow: 'visible' }}>
         <div className="space-y-8 relative" style={{ zIndex: 1 }}>
         {/* Layout Selector */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -1564,8 +1667,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         </div>
 
         {/* Seating Groups Canvas */}
-        <div className="mt-8 flex-1 flex flex-col">
-          <div className="flex items-center justify-between mb-4">
+        <div className="mt-8 flex-1 flex flex-col relative" style={{ minHeight: 'calc(100vh - 300px)' }}>
+          <div ref={buttonRowRef} className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-6">
               <button
                 onClick={() => setIsAddGroupModalOpen(true)}
@@ -1598,11 +1701,15 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
 
           {/* Canvas for groups display */}
           <div 
-            className="bg-pink-500 w-full relative flex-1"
+            className="bg-pink-500 w-full fixed"
             style={{
-              minHeight: '710px', // Minimum height: 11 rows × 50px + 10 gaps × 16px = 550px + 160px
-              height: 'calc(100vh - 200px)', // Stretch to fill available space minus header controls
-              overflow: 'hidden'
+              top: `${canvasTop}px`, // Dynamically calculated to start directly below button row
+              left: `${canvasLeft}px`, // Dynamically calculated from main content area
+              right: '320px', // Account for right sidebar (312px) + spacing (8px)
+              bottom: '80px', // Always extend to bottom nav (80px height) - this ensures it reaches the nav regardless of zoom
+              minHeight: '400px',
+              overflow: 'auto',
+              zIndex: 5
             }}
           >
           {isLoadingGroups ? (
@@ -1958,6 +2065,109 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         onUpdateGroup={handleUpdateGroup}
         initialName={editingGroup?.name || ''}
         initialColumns={editingGroup?.group_columns || 2}
+      />
+
+      {/* Clear All Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isClearAllModalOpen}
+        onClose={() => setIsClearAllModalOpen(false)}
+        onConfirm={handleClearAllConfirmed}
+        title="Clear All Students"
+        message="Are you sure you want to clear all students from all groups? This will remove all student assignments but keep the groups. Students will be moved back to the unseated list."
+        confirmText="Clear All"
+        cancelText="Cancel"
+        confirmButtonColor="orange"
+        icon={
+          <div className="flex items-center justify-center h-12 w-12 rounded-full bg-orange-100">
+            <svg
+              className="h-6 w-6 text-orange-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
+          </div>
+        }
+      />
+
+      {/* Delete All Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteAllModalOpen}
+        onClose={() => setIsDeleteAllModalOpen(false)}
+        onConfirm={handleDeleteAllConfirmed}
+        title="Delete All Groups"
+        message="Are you sure you want to delete ALL groups? This action cannot be undone and will permanently remove all groups and their student assignments. Students will be moved back to the unseated list."
+        confirmText="Delete All"
+        cancelText="Cancel"
+        confirmButtonColor="red"
+        icon={
+          <div className="flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+            <svg
+              className="h-6 w-6 text-red-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+          </div>
+        }
+      />
+
+      {/* Success Notification Modal */}
+      <SuccessNotificationModal
+        isOpen={successNotification.isOpen}
+        onClose={() => setSuccessNotification({ isOpen: false, title: '', message: '' })}
+        title={successNotification.title}
+        message={successNotification.message}
+        type={successNotification.title.includes('Error') || successNotification.title.includes('No') ? 'error' : 'success'}
+        icon={
+          successNotification.title.includes('Error') || successNotification.title.includes('No') ? (
+            <div className="flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+              <svg
+                className="h-6 w-6 text-red-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+              <svg
+                className="h-6 w-6 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+          )
+        }
+        autoCloseDelay={successNotification.title.includes('Error') || successNotification.title.includes('No') ? 3000 : 2000}
       />
     </div>
   );
