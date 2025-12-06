@@ -971,8 +971,6 @@ export default function AwardPointsModal({
         isOpen={isManageSkillsModalOpen} 
         onClose={() => setManageSkillsModalOpen(false)} 
         classId={classId}
-        categories={categories}
-        isLoading={isLoading}
         refreshCategories={fetchCategories}
         skillType={activeTab === 'positive' ? 'positive' : activeTab === 'negative' ? 'negative' : 'positive'}
       />
