@@ -8,15 +8,6 @@ import { createClient } from '@/lib/supabase/client';
 import { Student } from '@/lib/types';
 import AddStudentsModal from '@/components/modals/AddStudentsModal';
 
-interface Class {
-  id: string;
-  name: string;
-  grade: string;
-  school_year: string;
-  teacher_id: string;
-  icon?: string;
-}
-
 interface Teacher {
   id: string;
   email: string;

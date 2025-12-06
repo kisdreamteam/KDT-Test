@@ -26,7 +26,6 @@ interface AwardPointsModalProps {
   // Multi-select support
   selectedClassIds?: string[]; // For multi-class selection
   selectedStudentIds?: string[]; // For multi-student selection
-  classes?: Array<{id: string, name: string, icon?: string}>; // For displaying class info in multi-class mode
   onAwardComplete?: (selectedIds: string[], type: 'classes' | 'students') => void; // Callback to store selected IDs
 }
 
@@ -41,7 +40,6 @@ export default function AwardPointsModal({
   onPointsAwarded,
   selectedClassIds,
   selectedStudentIds,
-  classes,
   onAwardComplete,
 }: AwardPointsModalProps) {
   const isMultiClassMode = selectedClassIds && selectedClassIds.length > 0;
@@ -795,7 +793,7 @@ export default function AwardPointsModal({
                                 className="w-10 h-10 object-contain"
                               />
                             ) : (
-                              getSkillIcon(skill.name)
+                              getSkillIcon()
                             )}
                           </div>
                           <h3 className="text-sm font-medium text-gray-900">{skill.name}</h3>
@@ -994,7 +992,7 @@ export default function AwardPointsModal({
 }
 
 // Helper function to generate an icon based on skill name
-function getSkillIcon(skillName: string): React.ReactNode {
+function getSkillIcon(): React.ReactNode {
   // Default icon for all skills (can be customized based on name if needed)
   return (
     <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

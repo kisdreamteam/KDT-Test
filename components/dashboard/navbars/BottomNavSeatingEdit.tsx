@@ -17,7 +17,6 @@ export default function BottomNavSeatingEdit({
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const leftPosition = useBottomNavPosition(sidebarOpen);
   const [isViewPopupOpen, setIsViewPopupOpen] = useState(false);
   const [viewPopupPosition, setViewPopupPosition] = useState({ left: 0, bottom: 0 });
   const viewButtonRef = useRef<HTMLDivElement>(null);
@@ -47,15 +46,6 @@ export default function BottomNavSeatingEdit({
 
   const handleRandomizeSeating = () => {
     window.dispatchEvent(new CustomEvent('seatingChartRandomize'));
-  };
-
-  const handleCancelSeatingEdit = () => {
-    window.dispatchEvent(new CustomEvent('seatingChartEditMode', { detail: { isEditMode: false } }));
-    // Remove mode parameter from URL
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('mode');
-    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-    router.push(newUrl);
   };
 
   const handleSaveSeatingChanges = () => {

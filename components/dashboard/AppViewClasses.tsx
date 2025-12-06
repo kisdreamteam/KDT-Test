@@ -17,7 +17,6 @@ export default function AppViewClasses() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [studentCounts, setStudentCounts] = useState<Record<string, number>>({});
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);

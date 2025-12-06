@@ -10,20 +10,17 @@ interface AddSkillModalProps {
   isOpen: boolean;
   onClose: () => void;
   classId: string;
-  categories: PointCategory[];
-  isLoading: boolean;
   refreshCategories: () => void;
   skillType?: 'positive' | 'negative'; // Determines which type of skill can be added
 }
 
-export default function AddSkillModal({ isOpen, onClose, classId, categories, isLoading: isLoadingCategories, refreshCategories, skillType = 'positive' }: AddSkillModalProps) {
+export default function AddSkillModal({ isOpen, onClose, classId, refreshCategories, skillType = 'positive' }: AddSkillModalProps) {
   const [skillName, setSkillName] = useState<string>('');
   const [points, setPoints] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const previousValueRef = useRef<number>(1);
-  const isHandlingSpinnerRef = useRef<boolean>(false);
   const [selectedIcon, setSelectedIcon] = useState<string>('/images/classes/icons/icon-pos-6.png');
   const [isIconDropdownOpen, setIsIconDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);

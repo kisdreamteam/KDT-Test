@@ -45,7 +45,6 @@ function DashboardLayoutContent({
   const [classes, setClasses] = useState<Class[]>([]);
   const [isLoadingClasses, setIsLoadingClasses] = useState(true);
   const [currentClassName, setCurrentClassName] = useState<string | null>(null);
-  const [teacherCount, setTeacherCount] = useState<number | null>(null);
   const [isTimerOpen, setIsTimerOpen] = useState(false);
   const [isRandomOpen, setIsRandomOpen] = useState(false);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -59,10 +58,6 @@ function DashboardLayoutContent({
   // Get current view mode from URL
   const currentView = (searchParams.get('view') || 'grid') as 'grid' | 'seating';
   const isSeatingView = currentView === 'seating';
-  
-  // Extract classId from pathname for seating chart sidebar
-  const classDetailMatch = pathname?.match(/\/dashboard\/classes\/([^/]+)/);
-  const classId = classDetailMatch ? classDetailMatch[1] : null;
 
   const fetchTeacherProfile = async () => {
     try {
@@ -147,24 +142,6 @@ function DashboardLayoutContent({
     }
   }, [viewMode]);
 
-  const fetchTeacherCount = async () => {
-    try {
-      const supabase = createClient();
-      const { count, error } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'Teacher');
-      
-      if (error) {
-        console.error('Error fetching teacher count:', error);
-        return;
-      }
-      
-      setTeacherCount(count || 0);
-    } catch (err) {
-      console.error('Unexpected error fetching teacher count:', err);
-    }
-  };
 
   const fetchClassName = useCallback(async (classId: string) => {
     try {
