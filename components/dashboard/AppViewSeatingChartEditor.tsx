@@ -1642,31 +1642,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     >
       {/* Main Content Area - Add right padding to account for right sidebar (w-76 = 304px) + spacing (8px) */}
       {/* Note: Removed overflow-y-auto from this container to avoid nested scroll container warning with drag-and-drop */}
-      <div ref={mainContentRef} className="flex-1 p-1 bg-red-500 sm:p-11md:p-2 relative" style={{ paddingRight: '312px', minHeight: '100%', overflow: 'visible' }}>
+      <div ref={mainContentRef} className="flex-1 p-1 bg-[#4A3B8D] sm:p-11md:p-2 relative" style={{ paddingRight: '312px', minHeight: '100%', overflow: 'visible' }}>
         <div className="space-y-8 relative" style={{ zIndex: 1 }}>
-        {/* Layout Selector */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <label className="text-white font-semibold text-lg whitespace-nowrap">
-            Editing Layout:
-          </label>
-          <select
-            value={selectedLayoutId || ''}
-            onChange={(e) => setSelectedLayoutId(e.target.value)}
-            className="flex-1 max-w-md px-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-700"
-          >
-            {layouts.map((layout) => (
-              <option key={layout.id} value={layout.id}>
-                {layout.name}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="px-6 py-2 bg-purple-400 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors"
-          >
-            Create New Layout
-          </button>
-        </div>
 
         {/* Seating Groups Canvas */}
         <div className="mt-8 flex-1 flex flex-col relative" style={{ minHeight: 'calc(100vh - 300px)' }}>
@@ -1719,24 +1696,24 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                 onClick={handleClearAllGroups}
                 className="px-6 py-2 bg-orange-400 text-white rounded-lg font-medium hover:bg-orange-500 transition-colors"
               >
-                Clear All
+                Clear All Groups
               </button>
               <button
                 onClick={handleDeleteAllGroups}
                 className="px-6 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors"
               >
-                Delete All
+                Delete All Groups
               </button>
             </div>
           </div>
 
           {/* Canvas for groups display */}
           <div 
-            className="bg-pink-500 w-full fixed"
+            className="bg-[#fcf1f0] w-full fixed"
             style={{
               top: `${canvasTop}px`, // Dynamically calculated to start directly below button row
               left: `${canvasLeft}px`, // Dynamically calculated from main content area
-              right: '320px', // Account for right sidebar (312px) + spacing (8px)
+              right: '324px', // Account for right sidebar (w-76 = 304px) + right margin (8px) + spacing (12px)
               bottom: '80px', // Always extend to bottom nav (80px height) - this ensures it reaches the nav regardless of zoom
               minHeight: '400px',
               overflow: 'auto',
