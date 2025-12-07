@@ -72,6 +72,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   const [canvasTop, setCanvasTop] = useState(280); // Default top position
   // Track which group is being dragged
   const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null);
+  // Color coding mode: "Gender" or "Level"
+  const [colorCodeBy, setColorCodeBy] = useState<'Gender' | 'Level'>('Gender');
   
   // Helper function to show success notification
   const showSuccessNotification = (title: string, message: string) => {
@@ -1682,6 +1684,35 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
               >
                 Auto Assign Seats
               </button>
+              {/* Color Code By Selection */}
+              <div className="flex items-center gap-3 ml-4">
+                <span className="text-white font-medium text-sm">Color code by:</span>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="colorCodeBy"
+                      value="Gender"
+                      checked={colorCodeBy === 'Gender'}
+                      onChange={(e) => setColorCodeBy(e.target.value as 'Gender' | 'Level')}
+                      className="w-4 h-4 text-purple-600 bg-white border-gray-300 focus:ring-purple-500 focus:ring-2 cursor-pointer"
+                    />
+                    <span className="text-white text-sm">Gender</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-not-allowed opacity-50">
+                    <input
+                      type="radio"
+                      name="colorCodeBy"
+                      value="Level"
+                      checked={colorCodeBy === 'Level'}
+                      onChange={(e) => setColorCodeBy(e.target.value as 'Gender' | 'Level')}
+                      disabled
+                      className="w-4 h-4 text-purple-600 bg-white border-gray-300 focus:ring-purple-500 focus:ring-2 cursor-not-allowed"
+                    />
+                    <span className="text-white text-sm">Level</span>
+                  </label>
+                </div>
+              </div>
             </div>
             <div className="flex items-center gap-4">
               <button
@@ -1784,7 +1815,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                         const isAboutToMove = studentsAboutToMove.has(student.id);
                         const isBeingPlaced = studentsBeingPlaced.has(student.id);
                         
-                        // Determine background color based on animation state
+                        // Determine background color based on animation state first, then gender
                         let bgColor = 'bg-white border-gray-200 hover:bg-gray-50';
                         if (isAboutToMove) {
                           bgColor = 'bg-yellow-300 border-yellow-500 hover:bg-yellow-400';
@@ -1792,6 +1823,18 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                           bgColor = 'bg-blue-300 border-blue-500 hover:bg-blue-400';
                         } else if (isSelected) {
                           bgColor = 'bg-yellow-300 border-yellow-500 hover:bg-yellow-400';
+                        } else {
+                          // Check gender for default background color
+                          if (student.gender === null || student.gender === undefined || student.gender === '') {
+                            // Case 1: NULL gender = white background
+                            bgColor = 'bg-white border-gray-200 hover:bg-gray-50';
+                          } else if (student.gender === 'Boy') {
+                            // Case 2: Boy = blue background
+                            bgColor = 'bg-blue-200 border-blue-300 hover:bg-blue-300';
+                          } else if (student.gender === 'Girl') {
+                            // Case 3: Girl = pink background
+                            bgColor = 'bg-pink-200 border-pink-300 hover:bg-pink-300';
+                          }
                         }
                         
                         return (
