@@ -68,7 +68,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
   const mainContentRef = useRef<HTMLDivElement | null>(null);
   const buttonRowRef = useRef<HTMLDivElement | null>(null);
-  const [canvasLeft, setCanvasLeft] = useState(8); // Default left position
+  const leftSidebarRef = useRef<HTMLDivElement | null>(null);
+  const [canvasLeft, setCanvasLeft] = useState(320); // Default left position (8px sidebar left + 304px width + 8px spacing)
   const [canvasTop, setCanvasTop] = useState(280); // Default top position
   // Track which group is being dragged
   const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null);
@@ -80,20 +81,32 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     setSuccessNotification({ isOpen: true, title, message });
   };
 
-  // Calculate canvas left position based on main content area
+  // Calculate canvas left position based on left sidebar position
   useEffect(() => {
     const updateCanvasLeft = () => {
-      if (mainContentRef.current) {
-        const rect = mainContentRef.current.getBoundingClientRect();
-        setCanvasLeft(rect.left);
+      if (leftSidebarRef.current) {
+        const rect = leftSidebarRef.current.getBoundingClientRect();
+        // Start canvas right after the sidebar with 8px spacing
+        // Sidebar: left: 8px, width: 304px (w-76), so right edge is at 312px
+        // Canvas should start at 312px + 8px spacing = 320px
+        const sidebarRight = rect.left + rect.width;
+        const newLeft = sidebarRight + 8;
+        setCanvasLeft(newLeft);
+      } else {
+        // Fallback: sidebar is 8px left + 304px width (w-76) + 8px spacing = 320px
+        setCanvasLeft(320);
       }
     };
     
+    // Initial update with a small delay to ensure sidebar is rendered
+    const timeoutId = setTimeout(updateCanvasLeft, 10);
     updateCanvasLeft();
+    
     window.addEventListener('resize', updateCanvasLeft);
     const interval = setInterval(updateCanvasLeft, 100); // Update periodically to catch sidebar changes
     
     return () => {
+      clearTimeout(timeoutId);
       window.removeEventListener('resize', updateCanvasLeft);
       clearInterval(interval);
     };
@@ -1640,15 +1653,15 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         left: 0
       }}
     >
-      {/* Main Content Area - Add right padding to account for right sidebar (w-76 = 304px) + spacing (8px) */}
+      {/* Main Content Area - Add left padding to account for left sidebar (w-76 = 304px) + spacing (8px) */}
       {/* Note: Removed overflow-y-auto from this container to avoid nested scroll container warning with drag-and-drop */}
-      <div ref={mainContentRef} className="flex-1 p-1 bg-[#4A3B8D] sm:p-11md:p-2 relative" style={{ paddingRight: '312px', minHeight: '100%', overflow: 'visible' }}>
+      <div ref={mainContentRef} className="flex-1 p-1 bg-[#4A3B8D] sm:p-11md:p-2 relative" style={{ paddingLeft: '312px', minHeight: '100%', overflow: 'visible' }}>
         <div className="space-y-8 relative" style={{ zIndex: 1 }}>
 
         {/* Seating Groups Canvas */}
         <div className="mt-8 flex-1 flex flex-col relative" style={{ minHeight: 'calc(100vh - 300px)' }}>
           <div ref={buttonRowRef} className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 pl-2">
               <button
                 onClick={() => setIsAddGroupModalOpen(true)}
                 className="px-6 py-2 bg-purple-400 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors"
@@ -1691,7 +1704,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 pr-1">
               <button
                 onClick={handleClearAllGroups}
                 className="px-6 py-2 bg-orange-400 text-white rounded-lg font-medium hover:bg-orange-500 transition-colors"
@@ -1709,15 +1722,15 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
 
           {/* Canvas for groups display */}
           <div 
-            className="bg-[#fcf1f0] w-full fixed"
+            className="bg-[#fcf1f0] fixed"
             style={{
               top: `${canvasTop}px`, // Dynamically calculated to start directly below button row
-              left: `${canvasLeft}px`, // Dynamically calculated from main content area
-              right: '324px', // Account for right sidebar (w-76 = 304px) + right margin (8px) + spacing (12px)
+              left: `${canvasLeft}px`, // Dynamically calculated from left sidebar right edge + spacing
+              right: '8px', // Small padding from right edge
               bottom: '80px', // Always extend to bottom nav (80px height) - this ensures it reaches the nav regardless of zoom
               minHeight: '400px',
               overflow: 'auto',
-              zIndex: 5
+              zIndex: 1 // Lower than sidebar (z-40) so sidebar appears on top
             }}
           >
           {isLoadingGroups ? (
@@ -2048,11 +2061,12 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         </div>
       </div>
 
-      {/* Right Sidebar - Unseated Students - Full height without top/bottom navs */}
+      {/* Left Sidebar - Unseated Students - Full height without top/bottom navs */}
       <div 
+        ref={leftSidebarRef}
         className="fixed w-76 bg-white flex flex-col overflow-y-auto z-40" 
         style={{ 
-          right: '8px',
+          left: '8px',
           top: '8px', // Small padding from top
           bottom: '8px', // Small padding from bottom
           height: 'calc(100vh - 16px)' // Full viewport minus small padding
