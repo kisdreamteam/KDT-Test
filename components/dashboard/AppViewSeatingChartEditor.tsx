@@ -1743,7 +1743,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
 
           {/* Canvas for groups display */}
           <div 
-            className="bg-[#fcf1f0] fixed"
+            className="bg-[#fcf1f0] fixed border-2 border-black rounded-lg"
             style={{
               top: `${canvasTop}px`, // Dynamically calculated to start directly below button row
               left: `${canvasLeft}px`, // Dynamically calculated from left sidebar right edge + spacing
@@ -1862,7 +1862,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                               height: 'auto'
                             }}
                           >
-                            <div className="flex-1 min-w-0 overflow-hidden">
+                            <div className="flex-1 min-w-0 overflow-hidden flex items-center justify-between gap-2">
                               <p 
                                 className="font-medium text-gray-800 truncate"
                                 style={{
@@ -1872,6 +1872,12 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                               >
                                 {student.first_name} {student.last_name}
                               </p>
+                              <span className="text-red-600 font-semibold flex-shrink-0" style={{
+                                fontSize: `clamp(0.875rem, ${120 / validColumns}%, 1.5rem)`,
+                                lineHeight: '1.2'
+                              }}>
+                                {student.points || 0}
+                              </span>
                             </div>
                             <button
                               onClick={(e) => {

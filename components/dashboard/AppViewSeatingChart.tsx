@@ -6,6 +6,8 @@ import { Student } from '@/lib/types';
 import LeftNav from '@/components/dashboard/navbars/LeftNav';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import CreateLayoutModal from '@/components/modals/CreateLayoutModal';
+import AwardPointsModal from '@/components/modals/AwardPointsModal';
+import PointsAwardedConfirmationModal from '@/components/modals/PointsAwardedConfirmationModal';
 
 interface SeatingChart {
   id: string;
@@ -57,6 +59,16 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [layoutToDelete, setLayoutToDelete] = useState<{ id: string; name: string } | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isAwardPointsModalOpen, setIsAwardPointsModalOpen] = useState(false);
+  const [selectedGroupStudentIds, setSelectedGroupStudentIds] = useState<string[]>([]);
+  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
+  const [awardInfo, setAwardInfo] = useState<{
+    studentAvatar: string;
+    studentFirstName: string;
+    points: number;
+    categoryName: string;
+    categoryIcon?: string;
+  } | null>(null);
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
   const mainContentRef = useRef<HTMLDivElement | null>(null);
   const buttonRowRef = useRef<HTMLDivElement | null>(null);
@@ -420,6 +432,35 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
     }
   };
 
+  // Handle group click to open award points modal
+  const handleGroupClick = (groupId: string) => {
+    const studentsInGroup = groupStudents.get(groupId) || [];
+    if (studentsInGroup.length === 0) {
+      alert('This group has no students to award points to.');
+      return;
+    }
+    const studentIds = studentsInGroup.map(student => student.id);
+    setSelectedGroupStudentIds(studentIds);
+    setIsAwardPointsModalOpen(true);
+  };
+
+  // Handle points awarded callback
+  const handlePointsAwarded = (info: {
+    studentAvatar: string;
+    studentFirstName: string;
+    points: number;
+    categoryName: string;
+    categoryIcon?: string;
+  }) => {
+    setAwardInfo(info);
+    setIsConfirmationModalOpen(true);
+    // Refresh students and groups to update points display
+    fetchAllStudents();
+    if (selectedLayoutId) {
+      fetchGroups();
+    }
+  };
+
   // Handle create layout
   const handleCreateLayout = async (layoutName: string) => {
     try {
@@ -569,7 +610,7 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
         <div className="mt-8 flex-1 flex flex-col relative" style={{ minHeight: 'calc(100vh - 300px)' }}>
           {/* Canvas for groups display */}
           <div 
-            className="bg-[#fcf1f0] fixed"
+            className="bg-[#fcf1f0] fixed rounded-lg border-2 border-black"
             style={{
               top: `${canvasTop}px`, // Dynamically calculated to start directly below button row
               left: `${canvasLeft}px`, // Dynamically calculated from left sidebar right edge + spacing
@@ -661,7 +702,7 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
                               height: 'auto'
                             }}
                           >
-                            <div className="flex-1 min-w-0 overflow-hidden">
+                            <div className="flex-1 min-w-0 overflow-hidden flex items-center justify-between gap-2">
                               <p 
                                 className="font-medium text-gray-800 truncate"
                                 style={{
@@ -671,6 +712,12 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
                               >
                                 {student.first_name} {student.last_name}
                               </p>
+                              <span className="text-red-600 font-semibold flex-shrink-0" style={{
+                                fontSize: `clamp(0.875rem, ${120 / validColumns}%, 1.5rem)`,
+                                lineHeight: '1.2'
+                              }}>
+                                {student.points || 0}
+                              </span>
                             </div>
                           </div>
                         );
@@ -679,7 +726,8 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
                       return (
                         <div
                           key={group.id}
-                          className="bg-white rounded-lg border-2 border-gray-300 shadow-lg flex flex-col"
+                          onClick={() => handleGroupClick(group.id)}
+                          className="bg-white rounded-lg border-2 border-gray-300 shadow-lg flex flex-col cursor-pointer hover:shadow-xl transition-shadow"
                           style={{
                             position: 'absolute',
                             left: `${groupX}px`,
@@ -812,6 +860,53 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
         onClose={() => setIsCreateModalOpen(false)}
         onCreateLayout={handleCreateLayout}
       />
+
+      {/* Award Points Modal for Group */}
+      {selectedGroupStudentIds.length > 0 && (
+        <AwardPointsModal
+          isOpen={isAwardPointsModalOpen}
+          onClose={() => {
+            setIsAwardPointsModalOpen(false);
+            setSelectedGroupStudentIds([]);
+          }}
+          student={null}
+          classId={classId}
+          selectedStudentIds={selectedGroupStudentIds}
+          onAwardComplete={() => {
+            setIsAwardPointsModalOpen(false);
+            setSelectedGroupStudentIds([]);
+            // Refresh students and groups to update points
+            fetchAllStudents();
+            if (selectedLayoutId) {
+              fetchGroups();
+            }
+          }}
+          onPointsAwarded={handlePointsAwarded}
+          onRefresh={() => {
+            // Refresh students and groups to update points
+            fetchAllStudents();
+            if (selectedLayoutId) {
+              fetchGroups();
+            }
+          }}
+        />
+      )}
+
+      {/* Points Awarded Confirmation Modal */}
+      {awardInfo && (
+        <PointsAwardedConfirmationModal
+          isOpen={isConfirmationModalOpen}
+          onClose={() => {
+            setIsConfirmationModalOpen(false);
+            setAwardInfo(null);
+          }}
+          studentAvatar={awardInfo.studentAvatar}
+          studentFirstName={awardInfo.studentFirstName}
+          points={awardInfo.points}
+          categoryName={awardInfo.categoryName}
+          categoryIcon={awardInfo.categoryIcon}
+        />
+      )}
     </div>
   );
 }
