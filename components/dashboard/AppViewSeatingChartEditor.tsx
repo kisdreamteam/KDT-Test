@@ -65,6 +65,9 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [openSettingsMenuId, setOpenSettingsMenuId] = useState<string | null>(null);
   const [selectedStudentForSwap, setSelectedStudentForSwap] = useState<{ studentId: string; groupId: string } | null>(null);
+  const [editingGroupNameId, setEditingGroupNameId] = useState<string | null>(null);
+  const [editingGroupNameValue, setEditingGroupNameValue] = useState<string>('');
+  const [isAddMultipleGroupsMenuOpen, setIsAddMultipleGroupsMenuOpen] = useState(false);
   // Store pixel positions for each group (x, y coordinates)
   const [groupPositions, setGroupPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
@@ -749,6 +752,94 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     }
   };
 
+  const handleAddMultipleGroups = async (numGroups: number) => {
+    if (!selectedLayoutId) return;
+
+    try {
+      const supabase = createClient();
+      
+      // Get the max sort_order to place new groups at the end
+      const maxSortOrder = groups.length > 0 
+        ? Math.max(...groups.map(g => g.sort_order))
+        : -1;
+
+      // Grid layout configuration: 2 rows, 5 columns max per row (similar to image)
+      const groupsPerRow = 5;
+      const groupWidth = 250; // Approximate group width
+      const groupHeight = 150; // Approximate group height (will vary based on content)
+      const horizontalSpacing = 30; // Space between groups horizontally
+      const verticalSpacing = 30; // Space between rows
+      const startX = 50; // Starting X position
+      const startY = 50; // Starting Y position
+
+      // Default columns for new groups (using 2 as default, same as single group creation)
+      const defaultColumns = 2;
+      const defaultGroupRows = 2;
+
+      // Calculate positions for each group in grid layout
+      type GroupToCreate = {
+        name: string;
+        seating_chart_id: string;
+        sort_order: number;
+        group_columns: number;
+        group_rows: number;
+        position_x: number;
+        position_y: number;
+      };
+      const groupsToCreate: GroupToCreate[] = [];
+      for (let i = 0; i < numGroups; i++) {
+        const row = Math.floor(i / groupsPerRow);
+        const col = i % groupsPerRow;
+        
+        const x = startX + col * (groupWidth + horizontalSpacing);
+        const y = startY + row * (groupHeight + verticalSpacing);
+        
+        groupsToCreate.push({
+          name: `Group ${i + 1}`,
+          seating_chart_id: selectedLayoutId,
+          sort_order: maxSortOrder + 1 + i,
+          group_columns: defaultColumns,
+          group_rows: defaultGroupRows,
+          position_x: x,
+          position_y: y,
+        });
+      }
+
+      // Insert all groups at once
+      const { data: insertedGroups, error: insertError } = await supabase
+        .from('seating_groups')
+        .insert(groupsToCreate)
+        .select();
+
+      if (insertError) {
+        console.error('Error creating multiple groups:', insertError);
+        alert(`Failed to create groups: ${insertError.message || 'Please check the console for details.'}`);
+        return;
+      }
+
+      if (insertedGroups && insertedGroups.length > 0) {
+        // Update local state with the new group positions
+        setGroupPositions(prev => {
+          const newPositions = new Map(prev);
+          insertedGroups.forEach((group) => {
+            const groupData = groupsToCreate.find(g => g.name === group.name);
+            if (groupData) {
+              newPositions.set(group.id, { x: groupData.position_x, y: groupData.position_y });
+            }
+          });
+          return newPositions;
+        });
+        
+        // Refresh groups to get the latest data
+        await fetchGroups();
+        setIsAddMultipleGroupsMenuOpen(false);
+      }
+    } catch (err) {
+      console.error('Unexpected error creating multiple groups:', err);
+      alert('An unexpected error occurred. Please try again.');
+    }
+  };
+
   const handleCreateLayout = async (layoutName: string) => {
     try {
       const supabase = createClient();
@@ -1263,6 +1354,77 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     }
   };
 
+  // Handle double-click to edit group name
+  const handleDoubleClickGroupName = (groupId: string, currentName: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent group click handler
+    setEditingGroupNameId(groupId);
+    setEditingGroupNameValue(currentName);
+  };
+
+  // Handle saving edited group name
+  const handleSaveGroupName = async (groupId: string) => {
+    if (!editingGroupNameValue.trim()) {
+      // If empty, revert to original name
+      const originalGroup = groups.find(g => g.id === groupId);
+      if (originalGroup) {
+        setEditingGroupNameValue(originalGroup.name);
+      }
+      setEditingGroupNameId(null);
+      return;
+    }
+
+    try {
+      const supabase = createClient();
+      
+      // Update in database
+      const { error: updateError } = await supabase
+        .from('seating_groups')
+        .update({
+          name: editingGroupNameValue.trim(),
+        })
+        .eq('id', groupId);
+
+      if (updateError) {
+        console.error('Error updating group name:', updateError);
+        alert('Failed to update group name. Please try again.');
+        // Revert to original
+        const originalGroup = groups.find(g => g.id === groupId);
+        if (originalGroup) {
+          setEditingGroupNameValue(originalGroup.name);
+        }
+        return;
+      }
+
+      // Update local state
+      setGroups(prev => prev.map(g => 
+        g.id === groupId 
+          ? { ...g, name: editingGroupNameValue.trim() }
+          : g
+      ));
+
+      setEditingGroupNameId(null);
+      setEditingGroupNameValue('');
+    } catch (err) {
+      console.error('Unexpected error updating group name:', err);
+      alert('An unexpected error occurred. Please try again.');
+      // Revert to original
+      const originalGroup = groups.find(g => g.id === groupId);
+      if (originalGroup) {
+        setEditingGroupNameValue(originalGroup.name);
+      }
+      setEditingGroupNameId(null);
+    }
+  };
+
+  // Handle cancel editing group name
+  const handleCancelEditGroupName = (groupId: string) => {
+    const originalGroup = groups.find(g => g.id === groupId);
+    if (originalGroup) {
+      setEditingGroupNameValue(originalGroup.name);
+    }
+    setEditingGroupNameId(null);
+  };
+
   const handleUpdateGroupColumns = async (groupId: string, columns: number) => {
     try {
       const supabase = createClient();
@@ -1615,6 +1777,35 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     }
   }, [openSettingsMenuId]);
 
+  // Close add multiple groups menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isAddMultipleGroupsMenuOpen) {
+        const target = event.target as HTMLElement;
+        const menu = document.querySelector('[data-add-multiple-groups-menu]');
+        const button = document.querySelector('[data-add-multiple-groups-button]');
+        
+        if (menu && menu.contains(target)) {
+          return; // Click is inside the menu, don't close
+        }
+        if (button && button.contains(target)) {
+          return; // Click is on the button, don't close (it will toggle)
+        }
+        
+        setIsAddMultipleGroupsMenuOpen(false);
+      }
+    };
+
+    if (isAddMultipleGroupsMenuOpen) {
+      setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+      }, 0);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [isAddMultipleGroupsMenuOpen]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -1689,6 +1880,47 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
               >
                 Add New Group
               </button>
+              {/* Add Multiple Groups Button with Dropdown */}
+              <div className="relative">
+                <button
+                  data-add-multiple-groups-button
+                  onClick={() => setIsAddMultipleGroupsMenuOpen(!isAddMultipleGroupsMenuOpen)}
+                  className="px-6 py-2 bg-purple-400 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors flex items-center gap-2"
+                >
+                  Add Multiple Groups
+                  <svg
+                    className={`w-4 h-4 transition-transform ${isAddMultipleGroupsMenuOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+                {isAddMultipleGroupsMenuOpen && (
+                  <div
+                    data-add-multiple-groups-menu
+                    className="absolute top-full left-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[160px]"
+                  >
+                    {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                      <button
+                        key={num}
+                        onClick={() => {
+                          handleAddMultipleGroups(num);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg transition-colors"
+                      >
+                        {num} Groups
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button
                 onClick={handleAssignSeats}
                 className="px-6 py-2 bg-purple-400 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors"
@@ -1943,8 +2175,47 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                   }}
                                 >
                                 {/* Team Name */}
-                                  <div className="flex-1">
-                                    <h4 className="font-semibold text-gray-800">{group.name}</h4>
+                                  <div 
+                                    className="flex-1 relative group"
+                                    onDoubleClick={(e) => handleDoubleClickGroupName(group.id, group.name, e)}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                  >
+                                    {editingGroupNameId === group.id ? (
+                                      <input
+                                        type="text"
+                                        value={editingGroupNameValue}
+                                        onChange={(e) => setEditingGroupNameValue(e.target.value)}
+                                        onBlur={() => handleSaveGroupName(group.id)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            handleSaveGroupName(group.id);
+                                          } else if (e.key === 'Escape') {
+                                            handleCancelEditGroupName(group.id);
+                                          }
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        className="font-semibold text-gray-800 bg-white border border-purple-300 rounded px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                        autoFocus
+                                      />
+                                    ) : (
+                                      <div className="flex items-center gap-2">
+                                        <h4 className="font-semibold text-gray-800">{group.name}</h4>
+                                        <svg
+                                          className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                          />
+                                        </svg>
+                                      </div>
+                                    )}
                                   </div>
 
                                   {/* Column Radio Buttons */}

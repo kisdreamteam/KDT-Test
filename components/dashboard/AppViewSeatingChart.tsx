@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Student } from '@/lib/types';
 import LeftNav from '@/components/dashboard/navbars/LeftNav';
@@ -44,6 +45,8 @@ interface AppViewSeatingChartProps {
 }
 
 export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [layouts, setLayouts] = useState<SeatingChart[]>([]);
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -482,10 +485,23 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
       }
 
       if (data) {
-        // Refresh layouts and select the new one
+        // Store the new layout ID in localStorage
+        const storageKey = `seatingChart_selectedLayout_${classId}`;
+        localStorage.setItem(storageKey, data.id);
+        
+        // Refresh layouts
         await fetchLayouts();
         setSelectedLayoutId(data.id);
         setIsCreateModalOpen(false);
+        
+        // Navigate to edit mode with the new layout ID
+        window.dispatchEvent(new CustomEvent('seatingChartEditMode', { detail: { isEditMode: true } }));
+        const params = new URLSearchParams();
+        params.set('view', 'seating'); // Required to show seating chart view
+        params.set('mode', 'edit'); // Required to show editor
+        params.set('layout', data.id); // Pass the new layout ID
+        const newUrl = `${pathname}?${params.toString()}`;
+        router.push(newUrl);
       }
     } catch (err) {
       console.error('Unexpected error creating seating chart:', err);
@@ -625,7 +641,7 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
             <div className="flex items-center justify-center p-8 relative" style={{ zIndex: 1 }}>
               <p className="text-white/80">Loading groups...</p>
             </div>
-          ) : groups.length > 0 && (
+          ) : selectedLayoutId && groups.length > 0 ? (
             <div
               ref={canvasContainerRef}
               className="relative"
@@ -797,7 +813,16 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
                       );
                     })}
             </div>
-          )}
+          ) : selectedLayoutId ? (
+            <div className="flex flex-col items-center justify-center h-full p-8 relative" style={{ zIndex: 1, minHeight: '400px' }}>
+              <div className="text-center">
+                <p className="text-gray-700 text-lg font-semibold mb-2">No Groups to Display</p>
+                <p className="text-gray-600 text-sm">
+                  Click on Seating Editor View in the bottom navigation to create groups for this layout
+                </p>
+              </div>
+            </div>
+          ) : null}
           </div>
         </div>
         </div>
