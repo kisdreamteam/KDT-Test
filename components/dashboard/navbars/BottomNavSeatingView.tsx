@@ -46,10 +46,25 @@ export default function BottomNavSeatingView({
   }, [isViewPopupOpen]);
 
   const handleEditSeatingChart = () => {
+    // Get the current layout ID from localStorage
+    // Extract classId from pathname (format: /dashboard/classes/[classId])
+    const classDetailMatch = pathname?.match(/\/dashboard\/classes\/([^/]+)/);
+    const classId = classDetailMatch ? classDetailMatch[1] : null;
+    
+    let layoutId: string | null = null;
+    if (classId && typeof window !== 'undefined') {
+      // Get from localStorage
+      const storageKey = `seatingChart_selectedLayout_${classId}`;
+      layoutId = localStorage.getItem(storageKey);
+    }
+    
     window.dispatchEvent(new CustomEvent('seatingChartEditMode', { detail: { isEditMode: true } }));
-    // Update URL to include mode=edit parameter
+    // Update URL to include mode=edit parameter and layout ID if available
     const params = new URLSearchParams(searchParams.toString());
     params.set('mode', 'edit');
+    if (layoutId) {
+      params.set('layout', layoutId);
+    }
     const newUrl = params.toString() ? `${pathname}?${params.toString()}` : `${pathname}?mode=edit`;
     router.push(newUrl);
   };

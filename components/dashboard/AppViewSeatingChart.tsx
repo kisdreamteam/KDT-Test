@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { Student } from '@/lib/types';
+import LeftNav from '@/components/dashboard/navbars/LeftNav';
+import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import CreateLayoutModal from '@/components/modals/CreateLayoutModal';
 
 interface SeatingChart {
@@ -17,7 +19,22 @@ interface SeatingGroup {
   name: string;
   seating_chart_id: string;
   sort_order: number;
+  group_columns: number;
+  group_rows?: number;
+  position_x?: number;
+  position_y?: number;
   created_at: string;
+}
+
+interface StudentSeatAssignment {
+  seating_group_id: string;
+  students: Student | null;
+}
+
+interface Class {
+  id: string;
+  name: string;
+  icon?: string;
 }
 
 interface AppViewSeatingChartProps {
@@ -29,10 +46,23 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [groups, setGroups] = useState<SeatingGroup[]>([]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
-  const [leftPosition, setLeftPosition] = useState(0);
+  const [groupStudents, setGroupStudents] = useState<Map<string, Student[]>>(new Map());
+  const [allStudents, setAllStudents] = useState<Student[]>([]);
+  const [groupPositions, setGroupPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
+  const [classes, setClasses] = useState<Class[]>([]);
+  const [isLoadingClasses, setIsLoadingClasses] = useState(true);
+  const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [layoutToDelete, setLayoutToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const canvasContainerRef = useRef<HTMLDivElement | null>(null);
+  const mainContentRef = useRef<HTMLDivElement | null>(null);
+  const buttonRowRef = useRef<HTMLDivElement | null>(null);
+  const leftSidebarRef = useRef<HTMLDivElement | null>(null);
+  const [canvasLeft, setCanvasLeft] = useState(320); // Default left position (8px sidebar left + 304px width + 8px spacing)
+  const [canvasTop, setCanvasTop] = useState(280); // Default top position
 
   const fetchLayouts = useCallback(async () => {
     try {
@@ -76,6 +106,90 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
     }
   }, [classId, fetchLayouts]);
 
+  // Store selected layout ID in localStorage and dispatch event when it changes
+  useEffect(() => {
+    if (selectedLayoutId && classId) {
+      // Store in localStorage with classId as key to avoid conflicts
+      const storageKey = `seatingChart_selectedLayout_${classId}`;
+      localStorage.setItem(storageKey, selectedLayoutId);
+      
+      // Dispatch event with layout ID for BottomNav to pick up
+      window.dispatchEvent(new CustomEvent('seatingChartLayoutSelected', { 
+        detail: { layoutId: selectedLayoutId, classId } 
+      }));
+    }
+  }, [selectedLayoutId, classId]);
+
+  // Fetch all students for the class
+  const fetchAllStudents = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .eq('class_id', classId)
+        .order('student_number', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching students:', error);
+        return;
+      }
+
+      if (data) {
+        setAllStudents(data as Student[]);
+      }
+    } catch (err) {
+      console.error('Unexpected error fetching students:', err);
+    }
+  }, [classId]);
+
+  // Fetch all students on mount
+  useEffect(() => {
+    if (classId) {
+      fetchAllStudents();
+    }
+  }, [classId, fetchAllStudents]);
+
+  // Fetch classes for LeftNav
+  const fetchClasses = useCallback(async () => {
+    try {
+      setIsLoadingClasses(true);
+      const supabase = createClient();
+      
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        console.error('User not authenticated:', userError);
+        return;
+      }
+
+      // Fetch classes for the current teacher based on viewMode
+      const { data, error } = await supabase
+        .from('classes')
+        .select('*')
+        .eq('teacher_id', user.id)
+        .eq('is_archived', viewMode === 'archived')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching classes for sidebar:', error);
+        return;
+      }
+
+      setClasses(data || []);
+    } catch (err) {
+      console.error('Unexpected error fetching classes for sidebar:', err);
+    } finally {
+      setIsLoadingClasses(false);
+    }
+  }, [viewMode]);
+
+  // Fetch classes on mount and when viewMode changes
+  useEffect(() => {
+    fetchClasses();
+  }, [fetchClasses]);
+
   const fetchGroups = useCallback(async () => {
     if (!selectedLayoutId) return;
 
@@ -83,59 +197,230 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
       setIsLoadingGroups(true);
       const supabase = createClient();
       
-      const { data, error: fetchError } = await supabase
+      // Fetch groups
+      const { data: groupsData, error: groupsError } = await supabase
         .from('seating_groups')
         .select('*')
         .eq('seating_chart_id', selectedLayoutId)
         .order('sort_order', { ascending: true });
 
-      if (fetchError) {
-        console.error('Error fetching seating groups:', fetchError);
+      if (groupsError) {
+        console.error('Error fetching seating groups:', groupsError);
         return;
       }
 
-      if (data) {
-        setGroups(data);
+      if (groupsData) {
+        setGroups(groupsData);
+        
+        // Initialize positions for groups from database or default
+        setGroupPositions(prev => {
+          const newPositions = new Map(prev);
+          groupsData.forEach((group, index) => {
+            // Use saved position from database if available, otherwise default
+            if (group.position_x !== undefined && group.position_y !== undefined) {
+              newPositions.set(group.id, { 
+                x: group.position_x, 
+                y: group.position_y 
+              });
+            } else if (!newPositions.has(group.id)) {
+              // Default position: staggered horizontally, spaced vertically
+              newPositions.set(group.id, { x: 20 + (index * 20), y: 20 + (index * 100) });
+            }
+          });
+          return newPositions;
+        });
+        
+        // Fetch student seat assignments for all groups
+        const groupIds = groupsData.map(g => g.id);
+        if (groupIds.length > 0) {
+          const { data: assignmentsData, error: assignmentsError } = await supabase
+            .from('student_seat_assignments')
+            .select('*, students(*)')
+            .in('seating_group_id', groupIds);
+
+          if (assignmentsError) {
+            console.error('Error fetching student seat assignments:', assignmentsError);
+            // Continue with empty assignments
+          }
+
+          // Organize students by group
+          const newGroupStudents = new Map<string, Student[]>();
+          groupsData.forEach(group => {
+            newGroupStudents.set(group.id, []);
+          });
+
+          if (assignmentsData) {
+            assignmentsData.forEach((assignment: StudentSeatAssignment) => {
+              const groupId = assignment.seating_group_id;
+              const student = assignment.students;
+              if (student && newGroupStudents.has(groupId)) {
+                const currentStudents = newGroupStudents.get(groupId) || [];
+                // Check for duplicates before adding
+                if (!currentStudents.find(s => s.id === student.id)) {
+                  newGroupStudents.set(groupId, [...currentStudents, student]);
+                }
+              }
+            });
+          }
+
+          setGroupStudents(newGroupStudents);
+        } else {
+          // No groups, all students are unseated
+          setGroupStudents(new Map());
+        }
       } else {
         setGroups([]);
+        setGroupStudents(new Map());
       }
     } catch (err) {
       console.error('Unexpected error fetching seating groups:', err);
     } finally {
       setIsLoadingGroups(false);
     }
-  }, [selectedLayoutId]);
+  }, [selectedLayoutId, allStudents]);
 
-  // Fetch groups when layout is selected
+  // Fetch groups when layout is selected or when allStudents changes
   useEffect(() => {
-    if (selectedLayoutId) {
+    if (selectedLayoutId && allStudents.length > 0) {
       fetchGroups();
-    } else {
+    } else if (!selectedLayoutId) {
       setGroups([]);
+      setGroupStudents(new Map());
     }
-  }, [selectedLayoutId, fetchGroups]);
+  }, [selectedLayoutId, fetchGroups, allStudents.length]);
 
-  // Calculate left position based on top nav position
+  // Calculate canvas left position based on left sidebar position
   useEffect(() => {
-    const updateLeftPosition = () => {
-      const topNav = document.querySelector('[data-top-nav]') as HTMLElement;
-      if (topNav) {
-        const rect = topNav.getBoundingClientRect();
-        setLeftPosition(rect.left);
+    const updateCanvasLeft = () => {
+      if (leftSidebarRef.current) {
+        const rect = leftSidebarRef.current.getBoundingClientRect();
+        // Start canvas right after the sidebar with 8px spacing
+        // Sidebar: left: 8px, width: 304px (w-76), so right edge is at 312px
+        // Canvas should start at 312px + 8px spacing = 320px
+        const sidebarRight = rect.left + rect.width;
+        const newLeft = sidebarRight + 8;
+        setCanvasLeft(newLeft);
+      } else {
+        // Fallback: sidebar is 8px left + 304px width (w-76) + 8px spacing = 320px
+        setCanvasLeft(320);
       }
     };
-
-    updateLeftPosition();
-    window.addEventListener('resize', updateLeftPosition);
-    // Also update when sidebar might toggle (check periodically)
-    const interval = setInterval(updateLeftPosition, 100);
-
+    
+    // Initial update with a small delay to ensure sidebar is rendered
+    const timeoutId = setTimeout(updateCanvasLeft, 10);
+    updateCanvasLeft();
+    
+    window.addEventListener('resize', updateCanvasLeft);
+    const interval = setInterval(updateCanvasLeft, 100); // Update periodically to catch sidebar changes
+    
     return () => {
-      window.removeEventListener('resize', updateLeftPosition);
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', updateCanvasLeft);
       clearInterval(interval);
     };
   }, []);
 
+  // Calculate canvas top position based on button row position
+  useEffect(() => {
+    const updateCanvasTop = () => {
+      if (buttonRowRef.current) {
+        const rect = buttonRowRef.current.getBoundingClientRect();
+        setCanvasTop(rect.bottom + 16); // Start right below button row with 16px spacing
+      }
+    };
+    
+    updateCanvasTop();
+    window.addEventListener('resize', updateCanvasTop);
+    const interval = setInterval(updateCanvasTop, 100); // Update periodically
+    
+    return () => {
+      window.removeEventListener('resize', updateCanvasTop);
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Handle delete layout
+  const handleDeleteLayout = (layoutId: string, layoutName: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent button click from selecting the layout
+    setLayoutToDelete({ id: layoutId, name: layoutName });
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirmed = async () => {
+    if (!layoutToDelete) return;
+
+    try {
+      const supabase = createClient();
+      
+      // First, get all groups for this layout
+      const { data: groupsData, error: groupsError } = await supabase
+        .from('seating_groups')
+        .select('id')
+        .eq('seating_chart_id', layoutToDelete.id);
+
+      if (groupsError) {
+        console.error('Error fetching groups for deletion:', groupsError);
+        alert('Failed to delete layout. Please try again.');
+        setIsDeleteModalOpen(false);
+        setLayoutToDelete(null);
+        return;
+      }
+
+      // Delete all student seat assignments for all groups in this layout
+      if (groupsData && groupsData.length > 0) {
+        const groupIds = groupsData.map(g => g.id);
+        for (const groupId of groupIds) {
+          await supabase
+            .from('student_seat_assignments')
+            .delete()
+            .eq('seating_group_id', groupId);
+        }
+
+        // Delete all groups
+        for (const groupId of groupIds) {
+          await supabase
+            .from('seating_groups')
+            .delete()
+            .eq('id', groupId);
+        }
+      }
+
+      // Finally, delete the seating chart itself
+      const { error: deleteError } = await supabase
+        .from('seating_charts')
+        .delete()
+        .eq('id', layoutToDelete.id);
+
+      if (deleteError) {
+        console.error('Error deleting seating chart:', deleteError);
+        alert('Failed to delete layout. Please try again.');
+        setIsDeleteModalOpen(false);
+        setLayoutToDelete(null);
+        return;
+      }
+
+      // If the deleted layout was selected, clear the selection
+      if (selectedLayoutId === layoutToDelete.id) {
+        setSelectedLayoutId(null);
+        // Clear from localStorage
+        const storageKey = `seatingChart_selectedLayout_${classId}`;
+        localStorage.removeItem(storageKey);
+      }
+
+      // Refresh layouts
+      await fetchLayouts();
+      
+      setIsDeleteModalOpen(false);
+      setLayoutToDelete(null);
+    } catch (err) {
+      console.error('Unexpected error deleting layout:', err);
+      alert('An unexpected error occurred. Please try again.');
+      setIsDeleteModalOpen(false);
+      setLayoutToDelete(null);
+    }
+  };
+
+  // Handle create layout
   const handleCreateLayout = async (layoutName: string) => {
     try {
       const supabase = createClient();
@@ -167,65 +452,6 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
     }
   };
 
-  const handleCreateGroup = async () => {
-    if (!selectedLayoutId) return;
-
-    try {
-      const supabase = createClient();
-      
-      // Get the next group number
-      const nextGroupNumber = groups.length + 1;
-      const groupName = `Group ${nextGroupNumber}`;
-      
-      // Get the max sort_order to place new group at the end
-      const maxSortOrder = groups.length > 0 
-        ? Math.max(...groups.map(g => g.sort_order))
-        : -1;
-
-      const { data, error: insertError } = await supabase
-        .from('seating_groups')
-        .insert({
-          name: groupName,
-          seating_chart_id: selectedLayoutId,
-          sort_order: maxSortOrder + 1,
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        console.error('Error creating seating group:', insertError);
-        alert('Failed to create group. Please try again.');
-        return;
-      }
-
-      if (data) {
-        // Refresh groups
-        await fetchGroups();
-      }
-    } catch (err) {
-      console.error('Unexpected error creating seating group:', err);
-      alert('An unexpected error occurred. Please try again.');
-    }
-  };
-
-  const handleDragEnd = (result: DropResult) => {
-    if (!result.destination) {
-      return;
-    }
-
-    const items = Array.from(groups);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-
-    // Update sort_order for all items
-    const updatedGroups = items.map((group, index) => ({
-      ...group,
-      sort_order: index,
-    }));
-
-    setGroups(updatedGroups);
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -248,173 +474,344 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
     );
   }
 
-  return (
-    <div className="relative">
-      {/* Layout Buttons Bar - Fixed under top nav, 60px height */}
-      {layouts.length > 0 && (
-        <div 
-          className="fixed top-[120px] h-[60px] py-font-spartan bg-[#fcf1f0] border-[#4A3B8D] border-t-4 z-40 flex items-center justify-start gap-2 sm:gap-4 md:gap-8 lg:gap-4 px-1 sm:px-1 md:px-8 lg:px-2 overflow-x-auto"
-          style={{ left: `${leftPosition}px`, right: '0.5rem' }}
-        >
-          {layouts.map((layout) => (
-            <button
-              key={layout.id}
-              onClick={() => setSelectedLayoutId(layout.id)}
-              className={`flex-shrink-0 w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 ${
-                selectedLayoutId === layout.id ? 'bg-pink-50 shadow-sm' : ''
-              }`}
-            >
-              <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base truncate">
-                {layout.name}
-              </h2>
-            </button>
-          ))}
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex-shrink-0 w-16 sm:w-24 md:w-32 lg:w-[200px] bg-blue-100 p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-blue-200 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 border-2 border-blue-200"
-          >
-            <div className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xs sm:text-sm md:text-base font-bold">+</span>
-            </div>
-            <h2 className="font-semibold text-gray-700 text-xs sm:text-sm md:text-base lg:text-base">
-              Add a Layout
-            </h2>
-          </button>
-        </div>
-      )}
-
-      {/* Main Content - Add top padding to account for the fixed bar */}
-      <div className={`${layouts.length > 0 ? 'pt-[60px]' : ''} p-6 sm:p-8 md:p-10`}>
-        {layouts.length === 0 ? (
-          // Empty state - No layouts exist
-          <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
-            <div className="text-center">
-              <h2 className="text-white text-2xl font-semibold mb-2">No seating charts yet</h2>
-              <p className="text-white/80 text-lg">
-                Create your first seating chart layout to get started.
-              </p>
-            </div>
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="px-8 py-3 bg-purple-400 text-white rounded-lg font-semibold text-lg hover:bg-purple-500 transition-colors shadow-lg"
-            >
-              Create New Layout
-            </button>
+  if (layouts.length === 0) {
+    return (
+      <div className="p-6 sm:p-8 md:p-10">
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+          <div className="text-center">
+            <h2 className="text-white text-2xl font-semibold mb-2">No seating charts yet</h2>
+            <p className="text-white/80 text-lg">
+              Click on Seating Editor View in the bottom navigation to create a new layout.
+            </p>
           </div>
-        ) : (
-          // Layouts exist - Show groups
-          <div className="space-y-6">
+        </div>
+      </div>
+    );
+  }
 
-            {/* Seating Groups Drag-and-Drop Canvas */}
-            <div className="mt-8">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white text-xl font-semibold">Seating Groups</h3>
+  return (
+    <div 
+      className="flex flex-row bg-red-600 font-spartan relative w-full h-screen" 
+      style={{ 
+        height: '100vh',
+        width: '100vw',
+        position: 'fixed',
+        top: 0,
+        left: 0
+      }}
+    >
+      {/* Main Content Area - Add left padding to account for left sidebar (w-76 = 304px) + spacing (8px) */}
+      <div ref={mainContentRef} className="flex-1 p-1 bg-[#4A3B8D] sm:p-11md:p-2 relative" style={{ paddingLeft: '312px', minHeight: '100%', overflow: 'visible' }}>
+        <div className="space-y-8 relative" style={{ zIndex: 1 }}>
+
+        {/* Layout Selector Bar */}
+        <div ref={buttonRowRef} className="flex items-center gap-4 mb-4 pt-4 pl-2">
+          {layouts.map((layout) => (
+            <div
+              key={layout.id}
+              className="relative"
+            >
               <button
-                onClick={handleCreateGroup}
-                className="px-6 py-2 bg-purple-400 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors"
+                onClick={() => setSelectedLayoutId(layout.id)}
+                className={`px-8 py-3 rounded-lg font-medium transition-colors min-w-[200px] relative ${
+                  selectedLayoutId === layout.id 
+                    ? 'bg-purple-400 text-white' 
+                    : 'bg-white text-gray-700 hover:bg-gray-100'
+                }`}
               >
-                Add New Group
+                Layout: {layout.name}
+              </button>
+              {/* Trash can icon at top corner */}
+              <button
+                onClick={(e) => handleDeleteLayout(layout.id, layout.name, e)}
+                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors z-10"
+                title={`Delete ${layout.name}`}
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
               </button>
             </div>
+          ))}
+          {/* Add Layout Button */}
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="px-8 py-3 rounded-lg font-medium transition-colors min-w-[200px] bg-blue-100 text-blue-700 hover:bg-blue-200 border-2 border-blue-300 flex items-center justify-center gap-2"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Add Layout
+          </button>
+        </div>
 
-            {isLoadingGroups ? (
-              <div className="flex items-center justify-center p-8">
-                <p className="text-white/80">Loading groups...</p>
-              </div>
-            ) : groups.length === 0 ? (
-              <div className="p-8 bg-white/10 rounded-lg border border-white/20 text-center">
-                <p className="text-white/80 mb-4">No groups yet. Create your first group to get started.</p>
-                <button
-                  onClick={handleCreateGroup}
-                  className="px-6 py-2 bg-purple-400 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors"
-                >
-                  Create First Group
-                </button>
-              </div>
-            ) : (
-              <DragDropContext onDragEnd={handleDragEnd}>
-                <Droppable droppableId="groups" direction="horizontal">
-                  {(provided) => (
-                    <div
-                      {...provided.droppableProps}
-                      ref={provided.innerRef}
-                      className="flex flex-wrap gap-4 min-h-[200px]"
-                    >
-                      {groups.map((group, index) => (
-                        <Draggable key={group.id} draggableId={group.id} index={index}>
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              className={`bg-white rounded-lg border-2 border-gray-300 shadow-lg min-w-[250px] flex flex-col ${
-                                snapshot.isDragging ? 'shadow-2xl rotate-2' : ''
-                              }`}
-                              style={provided.draggableProps.style}
-                            >
-                              {/* Group Header */}
-                              <div
-                                {...provided.dragHandleProps}
-                                className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg cursor-grab active:cursor-grabbing"
+        {/* Seating Groups Canvas */}
+        <div className="mt-8 flex-1 flex flex-col relative" style={{ minHeight: 'calc(100vh - 300px)' }}>
+          {/* Canvas for groups display */}
+          <div 
+            className="bg-[#fcf1f0] fixed"
+            style={{
+              top: `${canvasTop}px`, // Dynamically calculated to start directly below button row
+              left: `${canvasLeft}px`, // Dynamically calculated from left sidebar right edge + spacing
+              right: '8px', // Small padding from right edge
+              bottom: '80px', // Always extend to bottom nav (80px height)
+              minHeight: '400px',
+              overflow: 'auto',
+              zIndex: 1 // Lower than sidebar (z-40) so sidebar appears on top
+            }}
+          >
+          {isLoadingGroups ? (
+            <div className="flex items-center justify-center p-8 relative" style={{ zIndex: 1 }}>
+              <p className="text-white/80">Loading groups...</p>
+            </div>
+          ) : groups.length > 0 && (
+            <div
+              ref={canvasContainerRef}
+              className="relative"
+              style={{
+                position: 'relative',
+                height: '100%',
+                minHeight: '710px',
+                zIndex: 1,
+                width: '100%'
+              }}
+            >
+                    {groups.map((group, index) => {
+                      const studentsInGroupRaw = groupStudents.get(group.id) || [];
+                      // Filter out duplicates by student ID to prevent React key errors
+                      const studentsInGroup = studentsInGroupRaw.filter((student, idx, self) => 
+                        self.findIndex(s => s.id === student.id) === idx
+                      );
+                      // Use group_columns from database (stored value)
+                      // Clamp to valid range (1-3) - this is the internal columns for student cards
+                      const validColumns = Math.max(1, Math.min(3, group.group_columns || 2));
+                      
+                      // Get the stored pixel position for this group
+                      const position = groupPositions.get(group.id) || { x: 20 + (index * 20), y: 20 + (index * 100) };
+                      const groupX = position.x;
+                      const groupY = position.y;
+                      
+                      // Calculate number of rows needed dynamically
+                      const studentsPerRow = validColumns;
+                      const studentRowCount = studentsInGroup.length === 0 
+                        ? 1  // Empty group: 1 student row
+                        : Math.ceil(studentsInGroup.length / studentsPerRow);
+                      
+                      // Calculate group dimensions based on content
+                      const headerHeight = 50; // Header is always 50px
+                      const studentRowHeight = 50; // Each student row is 50px
+                      const padding = 8; // Internal padding
+                      const gap = 8; // Gap between student cards
+                      
+                      // Calculate width: based on number of columns and card width
+                      const cardMinWidth = 120; // Minimum card width
+                      const cardWidth = Math.max(cardMinWidth, (250 - (padding * 2) - (gap * (validColumns - 1))) / validColumns);
+                      const groupWidth = Math.max(200, (cardWidth * validColumns) + (gap * (validColumns - 1)) + (padding * 2));
+                      
+                      // Calculate height: header + student rows
+                      const groupHeight = headerHeight + (studentRowCount * studentRowHeight) + (padding * 2);
+                      
+                      // Distribute students across rows dynamically
+                      const studentRows: Student[][] = [];
+                      for (let i = 0; i < studentRowCount; i++) {
+                        const startIndex = i * studentsPerRow;
+                        const endIndex = startIndex + studentsPerRow;
+                        studentRows.push(studentsInGroup.slice(startIndex, endIndex));
+                      }
+                      
+                      // Render student card component (read-only)
+                      const renderStudentCard = (student: Student) => {
+                        // Determine background color based on gender
+                        let bgColor = 'bg-white border-gray-200';
+                        if (student.gender === null || student.gender === undefined || student.gender === '') {
+                          bgColor = 'bg-white border-gray-200';
+                        } else if (student.gender === 'Boy') {
+                          bgColor = 'bg-blue-200 border-blue-300';
+                        } else if (student.gender === 'Girl') {
+                          bgColor = 'bg-pink-200 border-pink-300';
+                        }
+                        
+                        return (
+                          <div
+                            key={student.id}
+                            className={`flex items-center justify-between gap-1 p-1.5 rounded border ${bgColor}`}
+                            style={{ 
+                              width: '100%',
+                              minHeight: '32px',
+                              height: 'auto'
+                            }}
+                          >
+                            <div className="flex-1 min-w-0 overflow-hidden">
+                              <p 
+                                className="font-medium text-gray-800 truncate"
+                                style={{
+                                  fontSize: `clamp(0.875rem, ${120 / validColumns}%, 1.5rem)`,
+                                  lineHeight: '1.2'
+                                }}
                               >
-                                <h4 className="font-semibold text-gray-800">{group.name}</h4>
-                                <button
-                                  className="p-1 hover:bg-gray-200 rounded transition-colors"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    // TODO: Open settings modal for grid columns
-                                  }}
-                                  title="Edit group settings"
-                                >
-                                  <svg
-                                    className="w-5 h-5 text-gray-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                                    />
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                                    />
-                                  </svg>
-                                </button>
-                              </div>
-
-                              {/* Group Content Area */}
-                              <div className="p-4 min-h-[150px] flex items-center justify-center bg-gray-50">
-                                <p className="text-gray-500 text-sm text-center">
-                                  Students will appear here
-                                </p>
-                              </div>
+                                {student.first_name} {student.last_name}
+                              </p>
                             </div>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </DragDropContext>
-            )}
+                          </div>
+                        );
+                      };
+                      
+                      return (
+                        <div
+                          key={group.id}
+                          className="bg-white rounded-lg border-2 border-gray-300 shadow-lg flex flex-col"
+                          style={{
+                            position: 'absolute',
+                            left: `${groupX}px`,
+                            top: `${groupY}px`,
+                            width: `${groupWidth}px`,
+                            height: `${groupHeight}px`,
+                            zIndex: 1,
+                            boxSizing: 'border-box',
+                            gap: 0,
+                            overflow: 'hidden',
+                            pointerEvents: 'auto'
+                          }}
+                        >
+                          {/* Group Header - Row 1 */}
+                          <div
+                            className="border-b border-gray-200 bg-purple-50 rounded-t-lg"
+                            style={{
+                              height: '50px',
+                              minHeight: '50px',
+                              maxHeight: '50px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              padding: '0 0.5rem',
+                              boxSizing: 'border-box'
+                            }}
+                          >
+                            {/* Team Name */}
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-gray-800">{group.name}</h4>
+                            </div>
+                          </div>
+                          
+                          {/* Dynamic Student Rows */}
+                          {studentRows.map((rowStudents, rowIndex) => (
+                            <div
+                              key={`${group.id}-row-${rowIndex}`}
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: `repeat(${validColumns}, 1fr)`,
+                                gap: '0.5rem',
+                                padding: '0 0.5rem',
+                                backgroundColor: '#f9fafb',
+                                height: '50px',
+                                minHeight: '50px',
+                                maxHeight: '50px',
+                                overflow: 'hidden',
+                                boxSizing: 'border-box',
+                                alignItems: 'center'
+                              }}
+                            >
+                              {rowStudents.length === 0 ? (
+                                <div className="col-span-full text-gray-500 text-sm text-center py-2" style={{ gridColumn: `1 / ${validColumns + 1}` }}>
+                                  No students
+                                </div>
+                              ) : (
+                                <>
+                                  {rowStudents.map(student => renderStudentCard(student))}
+                                  {/* Fill empty slots in the row if needed */}
+                                  {Array.from({ length: validColumns - rowStudents.length }).map((_, emptyIndex) => (
+                                    <div key={`empty-${emptyIndex}`} style={{ minHeight: '32px' }} />
+                                  ))}
+                                </>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+            </div>
+          )}
           </div>
-          </div>
-        )}
+        </div>
+        </div>
+      </div>
 
-        {/* Create Layout Modal */}
-        <CreateLayoutModal
-          isOpen={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
-          onCreateLayout={handleCreateLayout}
+      {/* Left Sidebar - Full height without top/bottom navs */}
+      <div 
+        ref={leftSidebarRef}
+        className="fixed w-76 bg-white flex flex-col overflow-y-auto z-40" 
+        style={{ 
+          left: '8px',
+          top: '8px', // Small padding from top
+          bottom: '8px', // Small padding from bottom
+          height: 'calc(100vh - 16px)' // Full viewport minus small padding
+        }}
+      >
+        <LeftNav 
+          classes={classes}
+          isLoadingClasses={isLoadingClasses}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
         />
       </div>
+
+      {/* Delete Layout Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setLayoutToDelete(null);
+        }}
+        onConfirm={handleDeleteConfirmed}
+        title="Delete Layout"
+        message={`Are you sure you want to delete "${layoutToDelete?.name}"? This action cannot be undone and will permanently delete the layout, all groups, and student seat assignments.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmButtonColor="red"
+        icon={
+          <div className="flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+            <svg
+              className="h-6 w-6 text-red-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
+          </div>
+        }
+      />
+
+      {/* Create Layout Modal */}
+      <CreateLayoutModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreateLayout={handleCreateLayout}
+      />
     </div>
   );
 }
-

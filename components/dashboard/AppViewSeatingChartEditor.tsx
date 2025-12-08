@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useSeatingChart } from '@/context/SeatingChartContext';
 import { Student } from '@/lib/types';
@@ -41,6 +42,7 @@ interface AppViewSeatingChartEditorProps {
 
 export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingChartEditorProps) {
   const { selectedStudentForGroup, setSelectedStudentForGroup, setUnseatedStudents, unseatedStudents } = useSeatingChart();
+  const searchParams = useSearchParams();
   const [layouts, setLayouts] = useState<SeatingChart[]>([]);
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -157,9 +159,20 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
 
       if (data) {
         setLayouts(data);
-        // Auto-select the first layout if available
+        // Check URL parameter for layout ID first, then localStorage, then default to first
+        const layoutIdFromURL = searchParams.get('layout');
+        const storageKey = `seatingChart_selectedLayout_${classId}`;
+        const layoutIdFromStorage = typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null;
+        
         if (data.length > 0 && !selectedLayoutId) {
-          setSelectedLayoutId(data[0].id);
+          // Priority: URL parameter > localStorage > first layout
+          if (layoutIdFromURL && data.find(l => l.id === layoutIdFromURL)) {
+            setSelectedLayoutId(layoutIdFromURL);
+          } else if (layoutIdFromStorage && data.find(l => l.id === layoutIdFromStorage)) {
+            setSelectedLayoutId(layoutIdFromStorage);
+          } else {
+            setSelectedLayoutId(data[0].id);
+          }
         }
       } else {
         setLayouts([]);
@@ -170,7 +183,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     } finally {
       setIsLoading(false);
     }
-  }, [classId, selectedLayoutId]);
+  }, [classId, selectedLayoutId, searchParams]);
 
   // Fetch layouts from Supabase
   useEffect(() => {
@@ -178,6 +191,14 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       fetchLayouts();
     }
   }, [classId, fetchLayouts]);
+
+  // Store selected layout ID in localStorage when it changes
+  useEffect(() => {
+    if (selectedLayoutId && classId) {
+      const storageKey = `seatingChart_selectedLayout_${classId}`;
+      localStorage.setItem(storageKey, selectedLayoutId);
+    }
+  }, [selectedLayoutId, classId]);
 
   // Fetch all students for the class
   const fetchAllStudents = useCallback(async () => {
