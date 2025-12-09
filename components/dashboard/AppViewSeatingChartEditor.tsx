@@ -658,24 +658,28 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       }
 
       // Update local state
+      let removedStudent: Student | undefined;
       setGroupStudents(prev => {
         const newMap = new Map(prev);
         const groupStudentsList = newMap.get(groupId) || [];
-        const removedStudent = groupStudentsList.find(s => s.id === studentId);
+        removedStudent = groupStudentsList.find(s => s.id === studentId);
         
         if (removedStudent) {
           newMap.set(groupId, groupStudentsList.filter(s => s.id !== studentId));
-          // Add back to unseated list (check for duplicates first)
-          setUnseatedStudents((prev: Student[]) => {
-            // Check if student is already in the list
-            if (!prev.find(s => s.id === removedStudent.id)) {
-              return [...prev, removedStudent];
-            }
-            return prev;
-          });
         }
         return newMap;
       });
+      
+      // Add back to unseated list (check for duplicates first) - outside of setGroupStudents callback
+      if (removedStudent) {
+        setUnseatedStudents((prev: Student[]) => {
+          // Check if student is already in the list
+          if (!prev.find(s => s.id === removedStudent!.id)) {
+            return [...prev, removedStudent!];
+          }
+          return prev;
+        });
+      }
       
       // Note: group_rows is calculated on the fly for responsiveness
       // Database will be updated when user clicks "Save Changes" button
@@ -873,6 +877,12 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
 
   // Native HTML5 drag handlers
   const handleDragStart = (e: React.DragEvent, groupId: string) => {
+    // Prevent dragging if the group name is being edited
+    if (editingGroupNameId === groupId) {
+      e.preventDefault();
+      return;
+    }
+    
     setDraggedGroupId(groupId);
     // Set drag image to be the element itself
     e.dataTransfer.effectAllowed = 'move';
@@ -964,9 +974,136 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     dragOffsetRef.current = null; // Clear drag offset
   };
 
+  const moveStudentToGroup = async (studentId: string, fromGroupId: string, toGroupId: string) => {
+    // If moving to the same group, do nothing
+    if (fromGroupId === toGroupId) {
+      setSelectedStudentForSwap(null);
+      return;
+    }
+
+    try {
+      const supabase = createClient();
+      
+      // Get the student data from the current group
+      const studentsInSourceGroup = groupStudents.get(fromGroupId) || [];
+      const studentToMove = studentsInSourceGroup.find(s => s.id === studentId);
+
+      if (!studentToMove) {
+        console.error('Student not found in source group');
+        alert('Failed to move student. The student data may be out of sync.');
+        setSelectedStudentForSwap(null);
+        return;
+      }
+
+      // Get current assignment to verify it exists
+      const { data: assignmentArray, error: assignmentError } = await supabase
+        .from('student_seat_assignments')
+        .select('id')
+        .eq('student_id', studentId)
+        .eq('seating_group_id', fromGroupId);
+
+      if (assignmentError) {
+        console.error('Error finding assignment:', assignmentError);
+        alert('Failed to move student. Please try again.');
+        setSelectedStudentForSwap(null);
+        return;
+      }
+
+      const assignmentData = assignmentArray && assignmentArray.length > 0 ? assignmentArray[0] : null;
+
+      if (!assignmentData) {
+        console.error('Assignment not found');
+        alert('Failed to move student. The student may not be assigned to the group.');
+        setSelectedStudentForSwap(null);
+        return;
+      }
+
+      // OPTIMISTIC UPDATE: Update local state FIRST for instant UI response
+      let rollbackState: Map<string, Student[]> | null = null;
+      
+      setGroupStudents(prev => {
+        // Save current state for potential rollback
+        rollbackState = new Map(prev);
+        
+        const newMap = new Map(prev);
+        const sourceGroupStudents = [...(newMap.get(fromGroupId) || [])];
+        const targetGroupStudents = [...(newMap.get(toGroupId) || [])];
+        
+        // Remove student from source group
+        const studentIndex = sourceGroupStudents.findIndex(s => s.id === studentId);
+        if (studentIndex !== -1) {
+          sourceGroupStudents.splice(studentIndex, 1);
+        }
+        
+        // Add student to target group (at the end)
+        targetGroupStudents.push(studentToMove);
+        
+        newMap.set(fromGroupId, sourceGroupStudents);
+        newMap.set(toGroupId, targetGroupStudents);
+        
+        return newMap;
+      });
+
+      // Update database in the background
+      try {
+        // Delete old assignment
+        const { error: deleteError } = await supabase
+          .from('student_seat_assignments')
+          .delete()
+          .eq('id', assignmentData.id);
+
+        if (deleteError) {
+          console.error('Error deleting assignment:', deleteError);
+          // Rollback optimistic update
+          if (rollbackState) {
+            setGroupStudents(rollbackState);
+          }
+          alert('Failed to move student. Please try again.');
+          setSelectedStudentForSwap(null);
+          return;
+        }
+
+        // Create new assignment
+        const { error: insertError } = await supabase
+          .from('student_seat_assignments')
+          .insert({
+            student_id: studentId,
+            seating_group_id: toGroupId,
+          });
+
+        if (insertError) {
+          console.error('Error moving student:', insertError);
+          // Rollback optimistic update
+          if (rollbackState) {
+            setGroupStudents(rollbackState);
+          }
+          alert('Failed to move student. Please try again.');
+          setSelectedStudentForSwap(null);
+          return;
+        }
+
+        // Success - clear selection
+        setSelectedStudentForSwap(null);
+      } catch (err) {
+        console.error('Unexpected error during database move:', err);
+        // Rollback optimistic update
+        if (rollbackState) {
+          setGroupStudents(rollbackState);
+        }
+        alert('An unexpected error occurred. The move has been reverted.');
+        setSelectedStudentForSwap(null);
+      }
+    } catch (err) {
+      console.error('Unexpected error moving student:', err);
+      alert('An unexpected error occurred. Please try again.');
+      setSelectedStudentForSwap(null);
+    }
+  };
+
   const handleGroupClick = (groupId: string) => {
-    // Don't handle group click if a student is selected for swapping
+    // If a student is selected for swap, move it to the clicked group
     if (selectedStudentForSwap) {
+      moveStudentToGroup(selectedStudentForSwap.studentId, selectedStudentForSwap.groupId, groupId);
       return;
     }
     
@@ -2134,16 +2271,21 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                         );
                       };
                       
+                      const isEditingName = editingGroupNameId === group.id;
+                      // Check if a student is selected for swap and this group is a valid target (not the source group)
+                      const isTargetForMove = selectedStudentForSwap && selectedStudentForSwap.groupId !== group.id;
+                      
                       return (
                         <div
                           key={group.id}
-                          draggable
+                          draggable={!isEditingName}
                           onDragStart={(e) => handleDragStart(e, group.id)}
                           onDragEnd={handleDragEnd}
                           onClick={() => handleGroupClick(group.id)}
                           className={`bg-white rounded-lg border-2 shadow-lg flex flex-col ${
                             draggedGroupId === group.id ? 'shadow-2xl border-purple-600 opacity-50' : 
                             isTarget ? 'border-purple-500 ring-4 ring-purple-300' :
+                            isTargetForMove ? 'border-green-400 hover:border-green-500 cursor-pointer ring-2 ring-green-200' :
                             selectedStudentForGroup ? 'border-purple-400 hover:border-purple-500 cursor-pointer' :
                             'border-gray-300'
                           }`}
@@ -2163,7 +2305,9 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                         >
                           {/* Group Header - Row 1 */}
                           <div
-                            className="border-b border-gray-200 bg-purple-50 rounded-t-lg cursor-grab active:cursor-grabbing relative"
+                            className={`border-b border-gray-200 bg-purple-50 rounded-t-lg relative ${
+                              isEditingName ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
+                            }`}
                                   style={{
                                     height: '50px',
                                     minHeight: '50px',
@@ -2325,7 +2469,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                       gap: '0.5rem',
                                       padding: '0 0.5rem', // Reduced padding to fit within 50px
                                       backgroundColor: '#f9fafb',
-                                      cursor: selectedStudentForGroup ? 'pointer' : 'default',
+                                      cursor: (selectedStudentForGroup || isTargetForMove) ? 'pointer' : 'default',
                                       height: '50px',
                                       minHeight: '50px',
                                       maxHeight: '50px',
