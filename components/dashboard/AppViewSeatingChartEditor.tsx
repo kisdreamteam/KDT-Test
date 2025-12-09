@@ -17,6 +17,9 @@ interface SeatingChart {
   name: string;
   class_id: string;
   created_at: string;
+  show_grid?: boolean;
+  show_objects?: boolean;
+  layout_orientation?: string;
 }
 
 interface SeatingGroup {
@@ -64,6 +67,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   const [targetGroupId, setTargetGroupId] = useState<string | null>(null);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [openSettingsMenuId, setOpenSettingsMenuId] = useState<string | null>(null);
+  const [settingsMenuPosition, setSettingsMenuPosition] = useState<{ top: number; right: number } | null>(null);
   const [selectedStudentForSwap, setSelectedStudentForSwap] = useState<{ studentId: string; groupId: string } | null>(null);
   const [editingGroupNameId, setEditingGroupNameId] = useState<string | null>(null);
   const [editingGroupNameValue, setEditingGroupNameValue] = useState<string>('');
@@ -167,14 +171,21 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         const storageKey = `seatingChart_selectedLayout_${classId}`;
         const layoutIdFromStorage = typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null;
         
-        if (data.length > 0 && !selectedLayoutId) {
+        if (data.length > 0) {
           // Priority: URL parameter > localStorage > first layout
+          // Always check URL parameter first, even if selectedLayoutId is already set
           if (layoutIdFromURL && data.find(l => l.id === layoutIdFromURL)) {
-            setSelectedLayoutId(layoutIdFromURL);
-          } else if (layoutIdFromStorage && data.find(l => l.id === layoutIdFromStorage)) {
-            setSelectedLayoutId(layoutIdFromStorage);
-          } else {
-            setSelectedLayoutId(data[0].id);
+            // Update if URL parameter is different from current selection
+            if (selectedLayoutId !== layoutIdFromURL) {
+              setSelectedLayoutId(layoutIdFromURL);
+            }
+          } else if (!selectedLayoutId) {
+            // Only use localStorage or first layout if no URL parameter and no current selection
+            if (layoutIdFromStorage && data.find(l => l.id === layoutIdFromStorage)) {
+              setSelectedLayoutId(layoutIdFromStorage);
+            } else {
+              setSelectedLayoutId(data[0].id);
+            }
           }
         }
       } else {
@@ -194,6 +205,17 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       fetchLayouts();
     }
   }, [classId, fetchLayouts]);
+
+  // Watch for URL parameter changes and update selected layout
+  useEffect(() => {
+    const layoutIdFromURL = searchParams.get('layout');
+    if (layoutIdFromURL && layouts.length > 0) {
+      const layoutExists = layouts.find(l => l.id === layoutIdFromURL);
+      if (layoutExists && selectedLayoutId !== layoutIdFromURL) {
+        setSelectedLayoutId(layoutIdFromURL);
+      }
+    }
+  }, [searchParams, layouts, selectedLayoutId]);
 
   // Store selected layout ID in localStorage when it changes
   useEffect(() => {
@@ -853,6 +875,9 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         .insert({
           name: layoutName,
           class_id: classId,
+          show_grid: true,
+          show_objects: true,
+          layout_orientation: 'Left',
         })
         .select()
         .single();
@@ -1883,6 +1908,22 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     }
   };
 
+  // Calculate settings menu position when it opens
+  useEffect(() => {
+    if (openSettingsMenuId) {
+      const settingsButton = document.querySelector(`[data-settings-button="${openSettingsMenuId}"]`) as HTMLElement;
+      if (settingsButton) {
+        const rect = settingsButton.getBoundingClientRect();
+        setSettingsMenuPosition({
+          top: rect.bottom + 4,
+          right: window.innerWidth - rect.right
+        });
+      }
+    } else {
+      setSettingsMenuPosition(null);
+    }
+  }, [openSettingsMenuId]);
+
   // Close settings menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -2135,6 +2176,67 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
               zIndex: 0
             }}
           />
+          {/* Visual Objects - Whiteboard and TV, Teacher's Desk, and Doors */}
+          <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+            {/* Whiteboard and TV - Centered at top */}
+            <div
+              className="absolute bg-white border-2 border-gray-400 rounded-lg flex items-center justify-center"
+              style={{
+                top: '0px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '800px',
+                height: '30px',
+                zIndex: 0
+              }}
+            >
+              <span className="text-gray-700 font-semibold text-lg">Whiteboard and TV</span>
+            </div>
+            
+            {/* Teacher's Desk - Top left */}
+            <div
+              className="absolute bg-white border-2 border-gray-400 rounded-lg flex items-center justify-center"
+              style={{
+                top: '55px',
+                left: '5px',
+                width: '200px',
+                height: '75px',
+                zIndex: 0
+              }}
+            >
+              <span className="text-gray-700 font-semibold">Teacher's Desk</span>
+            </div>
+            
+            {/* Door 1 - Top*/}
+            <div
+              className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
+              style={{
+                top: '20%',
+                right: '5px',
+                transform: 'translateY(-50%)',
+                width: '30px',
+                height: '100px',
+                zIndex: 0
+              }}
+            >
+              <span className="text-white font-semibold" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>DOOR</span>
+            </div>
+            
+            {/* Door 2 - Bottom */}
+            <div
+              className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
+              style={{
+                top: '70%',
+                right: '5px',
+                transform: 'translateY(-50%)',
+                width: '30px',
+                height: '100px',
+                zIndex: 0
+              }}
+            >
+              <span className="text-white font-semibold" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>DOOR</span>
+            </div>
+          </div>
           {isLoadingGroups ? (
             <div className="flex items-center justify-center p-8 relative" style={{ zIndex: 1 }}>
               <p className="text-white/80">Loading groups...</p>
@@ -2432,10 +2534,14 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                 </button>
 
                                 {/* Settings Dropdown Menu */}
-                                {openSettingsMenuId === group.id && (
+                                {openSettingsMenuId === group.id && settingsMenuPosition && (
                                   <div
                                     data-settings-menu
-                                    className="absolute top-10 right-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[140px]"
+                                    className="fixed bg-white border border-gray-200 rounded-lg shadow-lg z-[100] min-w-[140px]"
+                                    style={{
+                                      top: `${settingsMenuPosition.top}px`,
+                                      right: `${settingsMenuPosition.right}px`,
+                                    }}
                                     onClick={(e) => e.stopPropagation()}
                                     onMouseDown={(e) => e.stopPropagation()}
                                   >

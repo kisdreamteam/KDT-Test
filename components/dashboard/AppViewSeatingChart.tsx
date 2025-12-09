@@ -15,6 +15,9 @@ interface SeatingChart {
   name: string;
   class_id: string;
   created_at: string;
+  show_grid?: boolean;
+  show_objects?: boolean;
+  layout_orientation?: string;
 }
 
 interface SeatingGroup {
@@ -474,6 +477,9 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
         .insert({
           name: layoutName,
           class_id: classId,
+          show_grid: true,
+          show_objects: true,
+          layout_orientation: 'Left',
         })
         .select()
         .single();
@@ -649,6 +655,67 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
               zIndex: 0
             }}
           />
+          {/* Visual Objects - Whiteboard and TV, Teacher's Desk, and Doors */}
+          <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+            {/* Whiteboard and TV - Centered at top */}
+            <div
+              className="absolute bg-white border-2 border-gray-400 rounded-lg flex items-center justify-center"
+              style={{
+                top: '0px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '800px',
+                height: '30px',
+                zIndex: 0
+              }}
+            >
+              <span className="text-gray-700 font-semibold text-lg">Whiteboard and TV</span>
+            </div>
+            
+            {/* Teacher's Desk - Top left */}
+            <div
+              className="absolute bg-white border-2 border-gray-400 rounded-lg flex items-center justify-center"
+              style={{
+                top: '55px',
+                left: '5px',
+                width: '200px',
+                height: '75px',
+                zIndex: 0
+              }}
+            >
+              <span className="text-gray-700 font-semibold">Teacher's Desk</span>
+            </div>
+            
+            {/* Door 1 - top */}
+            <div
+              className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
+              style={{
+                top: '20%',
+                right: '5px',
+                transform: 'translateY(-50%)',
+                width: '30px',
+                height: '100px',
+                zIndex: 0
+              }}
+            >
+              <span className="text-white font-semibold" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>DOOR</span>
+            </div>
+            
+            {/* Door 2 - Bottom */}
+            <div
+              className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
+              style={{
+                top: '70%',
+                right: '5px',
+                transform: 'translateY(-50%)',
+                width: '30px',
+                height: '100px',
+                zIndex: 0
+              }}
+            >
+              <span className="text-white font-semibold" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>DOOR</span>
+            </div>
+          </div>
           {isLoadingGroups ? (
             <div className="flex items-center justify-center p-8 relative" style={{ zIndex: 1 }}>
               <p className="text-white/80">Loading groups...</p>
