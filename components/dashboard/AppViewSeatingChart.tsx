@@ -81,6 +81,10 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
   const leftSidebarRef = useRef<HTMLDivElement | null>(null);
   const [canvasLeft, setCanvasLeft] = useState(320); // Default left position (8px sidebar left + 304px width + 8px spacing)
   const [canvasTop, setCanvasTop] = useState(280); // Default top position
+  // View settings from database
+  const [showGrid, setShowGrid] = useState<boolean>(true);
+  const [showObjects, setShowObjects] = useState<boolean>(true);
+  const [layoutOrientation, setLayoutOrientation] = useState<string>('Left');
 
   const fetchLayouts = useCallback(async () => {
     try {
@@ -306,6 +310,71 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
       setGroupStudents(new Map());
     }
   }, [selectedLayoutId, fetchGroups, allStudents.length]);
+
+  // Fetch layout settings (show_grid, show_objects, layout_orientation) when layout changes
+  useEffect(() => {
+    const fetchLayoutSettings = async () => {
+      if (!selectedLayoutId) return;
+      
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('seating_charts')
+          .select('show_grid, show_objects, layout_orientation')
+          .eq('id', selectedLayoutId)
+          .single();
+
+        if (error) {
+          console.error('Error fetching layout settings:', error);
+          return;
+        }
+
+        if (data) {
+          // Set value from database (default to true if null, 'Left' if null)
+          setShowGrid(data.show_grid ?? true);
+          setShowObjects(data.show_objects ?? true);
+          setLayoutOrientation(data.layout_orientation ?? 'Left');
+        }
+      } catch (err) {
+        console.error('Unexpected error fetching layout settings:', err);
+      }
+    };
+
+    fetchLayoutSettings();
+  }, [selectedLayoutId]);
+
+  // Listen for view settings updates (polling approach)
+  useEffect(() => {
+    if (!selectedLayoutId) return;
+    
+    const handleViewSettingsUpdate = async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('seating_charts')
+          .select('show_grid, show_objects, layout_orientation')
+          .eq('id', selectedLayoutId)
+          .single();
+
+        if (error) {
+          return; // Silently fail if error
+        }
+
+        if (data) {
+          setShowGrid(data.show_grid ?? true);
+          setShowObjects(data.show_objects ?? true);
+          setLayoutOrientation(data.layout_orientation ?? 'Left');
+        }
+      } catch (err) {
+        // Silently fail
+      }
+    };
+
+    // Poll for changes every 500ms to catch updates from bottom nav
+    const interval = setInterval(handleViewSettingsUpdate, 500);
+    
+    return () => clearInterval(interval);
+  }, [selectedLayoutId]);
 
   // Calculate canvas left position based on left sidebar position
   useEffect(() => {
@@ -643,21 +712,23 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
               zIndex: 1 // Lower than sidebar (z-40) so sidebar appears on top
             }}
           >
-          {/* Grid Lines Overlay - Visual guide only */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              backgroundImage: `
-                linear-gradient(to right, rgb(209 213 219) 1px, transparent 1px),
-                linear-gradient(to bottom, rgb(209 213 219) 1px, transparent 1px)
-              `,
-              backgroundSize: '38px 38px', // 1cm ≈ 38px at 96 DPI
-              zIndex: 0
-            }}
-          />
+          {/* Grid Lines Overlay - Visual guide only - Only show if showGrid is true */}
+          {showGrid && (
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                backgroundImage: `
+                  linear-gradient(to right, rgb(209 213 219) 1px, transparent 1px),
+                  linear-gradient(to bottom, rgb(209 213 219) 1px, transparent 1px)
+                `,
+                backgroundSize: '38px 38px', // 1cm ≈ 38px at 96 DPI
+                zIndex: 0
+              }}
+            />
+          )}
           {/* Visual Objects - Whiteboard and TV, Teacher's Desk, and Doors */}
           <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
-            {/* Whiteboard and TV - Centered at top */}
+            {/* Whiteboard and TV - Centered at top (always visible) */}
             <div
               className="absolute bg-white border-2 border-gray-400 rounded-lg flex items-center justify-center"
               style={{
@@ -672,49 +743,63 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
               <span className="text-gray-700 font-semibold text-lg">Whiteboard and TV</span>
             </div>
             
-            {/* Teacher's Desk - Top left */}
-            <div
-              className="absolute bg-white border-2 border-gray-400 rounded-lg flex items-center justify-center"
-              style={{
-                top: '55px',
-                left: '5px',
-                width: '200px',
-                height: '75px',
-                zIndex: 0
-              }}
-            >
-              <span className="text-gray-700 font-semibold">Teacher's Desk</span>
-            </div>
-            
-            {/* Door 1 - top */}
-            <div
-              className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
-              style={{
-                top: '20%',
-                right: '5px',
-                transform: 'translateY(-50%)',
-                width: '30px',
-                height: '100px',
-                zIndex: 0
-              }}
-            >
-              <span className="text-white font-semibold" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>DOOR</span>
-            </div>
-            
-            {/* Door 2 - Bottom */}
-            <div
-              className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
-              style={{
-                top: '70%',
-                right: '5px',
-                transform: 'translateY(-50%)',
-                width: '30px',
-                height: '100px',
-                zIndex: 0
-              }}
-            >
-              <span className="text-white font-semibold" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>DOOR</span>
-            </div>
+            {/* Furniture (Teacher's Desk and Doors) - Only show if showObjects is true */}
+            {showObjects && (
+              <>
+                {/* Teacher's Desk - Position based on layoutOrientation */}
+                <div
+                  className="absolute bg-white border-2 border-gray-400 rounded-lg flex items-center justify-center"
+                  style={{
+                    top: '55px',
+                    ...(layoutOrientation === 'Left' 
+                      ? { left: '5px' }
+                      : { right: '5px' }
+                    ),
+                    width: '200px',
+                    height: '75px',
+                    zIndex: 0
+                  }}
+                >
+                  <span className="text-gray-700 font-semibold">Teacher's Desk</span>
+                </div>
+                
+                {/* Door 1 - top - Position based on layoutOrientation */}
+                <div
+                  className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
+                  style={{
+                    top: '20%',
+                    ...(layoutOrientation === 'Left' 
+                      ? { right: '5px' }
+                      : { left: '5px' }
+                    ),
+                    transform: 'translateY(-50%)',
+                    width: '30px',
+                    height: '100px',
+                    zIndex: 0
+                  }}
+                >
+                  <span className="text-white font-semibold" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>DOOR</span>
+                </div>
+                
+                {/* Door 2 - Bottom - Position based on layoutOrientation */}
+                <div
+                  className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
+                  style={{
+                    top: '70%',
+                    ...(layoutOrientation === 'Left' 
+                      ? { right: '5px' }
+                      : { left: '5px' }
+                    ),
+                    transform: 'translateY(-50%)',
+                    width: '30px',
+                    height: '100px',
+                    zIndex: 0
+                  }}
+                >
+                  <span className="text-white font-semibold" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>DOOR</span>
+                </div>
+              </>
+            )}
           </div>
           {isLoadingGroups ? (
             <div className="flex items-center justify-center p-8 relative" style={{ zIndex: 1 }}>
