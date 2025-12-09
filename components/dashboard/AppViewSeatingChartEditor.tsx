@@ -769,7 +769,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
 
       // Grid layout configuration: 2 rows, 5 columns max per row (similar to image)
       const groupsPerRow = 5;
-      const groupWidth = 250; // Approximate group width
+      const groupWidth = 400; // Approximate group width (increased to match new group sizing)
       const groupHeight = 150; // Approximate group height (will vary based on content)
       const horizontalSpacing = 30; // Space between groups horizontally
       const verticalSpacing = 30; // Space between rows
@@ -939,7 +939,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     const relativeY = groupTopLeftY - containerRect.top;
     
     // Clamp to canvas bounds (prevent groups from going outside)
-    const clampedX = Math.max(0, Math.min(relativeX, containerRect.width - 200)); // 200px minimum group width
+    const clampedX = Math.max(0, Math.min(relativeX, containerRect.width - 300)); // 300px minimum group width (updated to match new sizing)
     const clampedY = Math.max(0, Math.min(relativeY, containerRect.height - 100)); // 100px minimum group height
     
     // Update the position immediately - free positioning, no snapping
@@ -2186,9 +2186,10 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                       const gap = 8; // Gap between student cards
                       
                       // Calculate width: based on number of columns and card width
-                      const cardMinWidth = 120; // Minimum card width
-                      const cardWidth = Math.max(cardMinWidth, (250 - (padding * 2) - (gap * (validColumns - 1))) / validColumns);
-                      const groupWidth = Math.max(200, (cardWidth * validColumns) + (gap * (validColumns - 1)) + (padding * 2));
+                      const cardMinWidth = 180; // Minimum card width (increased to accommodate names and points)
+                      const baseWidth = 400; // Base width for calculation (increased from 250)
+                      const cardWidth = Math.max(cardMinWidth, (baseWidth - (padding * 2) - (gap * (validColumns - 1))) / validColumns);
+                      const groupWidth = Math.max(300, (cardWidth * validColumns) + (gap * (validColumns - 1)) + (padding * 2));
                       
                       // Calculate height: header + student rows
                       const groupHeight = headerHeight + (studentRowCount * studentRowHeight) + (padding * 2);
@@ -2247,14 +2248,14 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                               <p 
                                 className="font-medium text-gray-800 truncate"
                                 style={{
-                                  fontSize: `clamp(0.875rem, ${120 / validColumns}%, 1.5rem)`,
+                                  fontSize: 'clamp(0.875rem, 120%, 1.5rem)', // Fixed font size for all groups (same as 1-column groups)
                                   lineHeight: '1.2'
                                 }}
                               >
                                 {student.first_name} {student.last_name}
                               </p>
                               <span className="text-red-600 font-semibold flex-shrink-0" style={{
-                                fontSize: `clamp(0.875rem, ${120 / validColumns}%, 1.5rem)`,
+                                fontSize: 'clamp(0.875rem, 120%, 1.5rem)', // Fixed font size for all groups (same as 1-column groups)
                                 lineHeight: '1.2'
                               }}>
                                 {student.points || 0}

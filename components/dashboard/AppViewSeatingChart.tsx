@@ -693,9 +693,10 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
                       const gap = 8; // Gap between student cards
                       
                       // Calculate width: based on number of columns and card width
-                      const cardMinWidth = 120; // Minimum card width
-                      const cardWidth = Math.max(cardMinWidth, (250 - (padding * 2) - (gap * (validColumns - 1))) / validColumns);
-                      const groupWidth = Math.max(200, (cardWidth * validColumns) + (gap * (validColumns - 1)) + (padding * 2));
+                      const cardMinWidth = 180; // Minimum card width (increased to accommodate names and points)
+                      const baseWidth = 400; // Base width for calculation (increased from 250)
+                      const cardWidth = Math.max(cardMinWidth, (baseWidth - (padding * 2) - (gap * (validColumns - 1))) / validColumns);
+                      const groupWidth = Math.max(300, (cardWidth * validColumns) + (gap * (validColumns - 1)) + (padding * 2));
                       
                       // Calculate height: header + student rows
                       const groupHeight = headerHeight + (studentRowCount * studentRowHeight) + (padding * 2);
@@ -734,14 +735,14 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
                               <p 
                                 className="font-medium text-gray-800 truncate"
                                 style={{
-                                  fontSize: `clamp(0.875rem, ${120 / validColumns}%, 1.5rem)`,
+                                  fontSize: 'clamp(0.875rem, 120%, 1.5rem)', // Fixed font size for all groups (same as 1-column groups)
                                   lineHeight: '1.2'
                                 }}
                               >
                                 {student.first_name} {student.last_name}
                               </p>
                               <span className="text-red-600 font-semibold flex-shrink-0" style={{
-                                fontSize: `clamp(0.875rem, ${120 / validColumns}%, 1.5rem)`,
+                                fontSize: 'clamp(0.875rem, 120%, 1.5rem)', // Fixed font size for all groups (same as 1-column groups)
                                 lineHeight: '1.2'
                               }}>
                                 {student.points || 0}
