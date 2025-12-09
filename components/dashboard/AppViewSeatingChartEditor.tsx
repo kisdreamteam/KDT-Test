@@ -57,6 +57,10 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   const [isEditGroupModalOpen, setIsEditGroupModalOpen] = useState(false);
   const [isClearAllModalOpen, setIsClearAllModalOpen] = useState(false);
   const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
+  const [isClearTeamModalOpen, setIsClearTeamModalOpen] = useState(false);
+  const [isDeleteTeamModalOpen, setIsDeleteTeamModalOpen] = useState(false);
+  const [teamToClear, setTeamToClear] = useState<SeatingGroup | null>(null);
+  const [teamToDelete, setTeamToDelete] = useState<SeatingGroup | null>(null);
   const [successNotification, setSuccessNotification] = useState<{ isOpen: boolean; title: string; message: string }>({
     isOpen: false,
     title: '',
@@ -1813,10 +1817,17 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     }
   };
 
-  const handleClearTeam = async (groupId: string) => {
-    if (!confirm('Are you sure you want to clear all students from this team?')) {
-      return;
+  const handleClearTeam = (groupId: string) => {
+    const group = groups.find(g => g.id === groupId);
+    if (group) {
+      setTeamToClear(group);
+      setIsClearTeamModalOpen(true);
+      setOpenSettingsMenuId(null);
     }
+  };
+
+  const handleClearTeamConfirmed = async () => {
+    if (!teamToClear) return;
 
     try {
       const supabase = createClient();
@@ -1825,19 +1836,24 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       const { error: deleteError } = await supabase
         .from('student_seat_assignments')
         .delete()
-        .eq('seating_group_id', groupId);
+        .eq('seating_group_id', teamToClear.id);
 
       if (deleteError) {
         console.error('Error clearing team:', deleteError);
-        alert('Failed to clear team. Please try again.');
+        showSuccessNotification(
+          'Error',
+          'Failed to clear team. Please try again.'
+        );
+        setIsClearTeamModalOpen(false);
+        setTeamToClear(null);
         return;
       }
 
       // Update local state - move all students back to unseated
-      const studentsToUnseat = groupStudents.get(groupId) || [];
+      const studentsToUnseat = groupStudents.get(teamToClear.id) || [];
       setGroupStudents(prev => {
         const newMap = new Map(prev);
-        newMap.set(groupId, []);
+        newMap.set(teamToClear.id, []);
         return newMap;
       });
       
@@ -1851,17 +1867,34 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       // Note: group_rows is calculated on the fly for responsiveness
       // Database will be updated when user clicks "Save Changes" button
       
-      setOpenSettingsMenuId(null);
+      showSuccessNotification(
+        'Team Cleared Successfully',
+        `All students have been removed from "${teamToClear.name}" and moved back to the unseated list.`
+      );
+      setIsClearTeamModalOpen(false);
+      setTeamToClear(null);
     } catch (err) {
       console.error('Unexpected error clearing team:', err);
-      alert('An unexpected error occurred. Please try again.');
+      showSuccessNotification(
+        'Error',
+        'An unexpected error occurred. Please try again.'
+      );
+      setIsClearTeamModalOpen(false);
+      setTeamToClear(null);
     }
   };
 
-  const handleDeleteTeam = async (groupId: string) => {
-    if (!confirm('Are you sure you want to delete this team? This action cannot be undone.')) {
-      return;
+  const handleDeleteTeam = (groupId: string) => {
+    const group = groups.find(g => g.id === groupId);
+    if (group) {
+      setTeamToDelete(group);
+      setIsDeleteTeamModalOpen(true);
+      setOpenSettingsMenuId(null);
     }
+  };
+
+  const handleDeleteTeamConfirmed = async () => {
+    if (!teamToDelete) return;
 
     try {
       const supabase = createClient();
@@ -1870,39 +1903,62 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       await supabase
         .from('student_seat_assignments')
         .delete()
-        .eq('seating_group_id', groupId);
+        .eq('seating_group_id', teamToDelete.id);
 
       // Then delete the group itself
       const { error: deleteError } = await supabase
         .from('seating_groups')
         .delete()
-        .eq('id', groupId);
+        .eq('id', teamToDelete.id);
 
       if (deleteError) {
         console.error('Error deleting team:', deleteError);
-        alert('Failed to delete team. Please try again.');
+        showSuccessNotification(
+          'Error',
+          'Failed to delete team. Please try again.'
+        );
+        setIsDeleteTeamModalOpen(false);
+        setTeamToDelete(null);
         return;
       }
 
       // Update local state - move students back to unseated
-      const studentsToUnseat = groupStudents.get(groupId) || [];
+      const studentsToUnseat = groupStudents.get(teamToDelete.id) || [];
       setGroupStudents(prev => {
         const newMap = new Map(prev);
-        newMap.delete(groupId);
+        newMap.delete(teamToDelete.id);
         return newMap;
       });
       
-      setGroups(prev => prev.filter(g => g.id !== groupId));
+      setGroups(prev => prev.filter(g => g.id !== teamToDelete.id));
+      // Remove from group positions
+      setGroupPositions(prev => {
+        const newPositions = new Map(prev);
+        newPositions.delete(teamToDelete.id);
+        return newPositions;
+      });
+      
       // Add students back to unseated list (filter out duplicates)
       setUnseatedStudents((prev: Student[]) => {
         const existingIds = new Set(prev.map(s => s.id));
         const newStudents = studentsToUnseat.filter(s => !existingIds.has(s.id));
         return [...prev, ...newStudents];
       });
-      setOpenSettingsMenuId(null);
+      
+      showSuccessNotification(
+        'Team Deleted Successfully',
+        `"${teamToDelete.name}" has been permanently deleted and students have been moved back to the unseated list.`
+      );
+      setIsDeleteTeamModalOpen(false);
+      setTeamToDelete(null);
     } catch (err) {
       console.error('Unexpected error deleting team:', err);
-      alert('An unexpected error occurred. Please try again.');
+      showSuccessNotification(
+        'Error',
+        'An unexpected error occurred. Please try again.'
+      );
+      setIsDeleteTeamModalOpen(false);
+      setTeamToDelete(null);
     }
   };
 
@@ -2916,6 +2972,70 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         title="Delete All Groups"
         message="Are you sure you want to delete ALL groups? This action cannot be undone and will permanently remove all groups and their student assignments. Students will be moved back to the unseated list."
         confirmText="Delete All"
+        cancelText="Cancel"
+        confirmButtonColor="red"
+        icon={
+          <div className="flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+            <svg
+              className="h-6 w-6 text-red-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+          </div>
+        }
+      />
+
+      {/* Clear Team Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isClearTeamModalOpen}
+        onClose={() => {
+          setIsClearTeamModalOpen(false);
+          setTeamToClear(null);
+        }}
+        onConfirm={handleClearTeamConfirmed}
+        title="Clear Team"
+        message={teamToClear ? `Are you sure you want to clear all students from "${teamToClear.name}"? This will remove all student assignments from this team but keep the team. Students will be moved back to the unseated list.` : ''}
+        confirmText="Clear Team"
+        cancelText="Cancel"
+        confirmButtonColor="orange"
+        icon={
+          <div className="flex items-center justify-center h-12 w-12 rounded-full bg-orange-100">
+            <svg
+              className="h-6 w-6 text-orange-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
+          </div>
+        }
+      />
+
+      {/* Delete Team Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteTeamModalOpen}
+        onClose={() => {
+          setIsDeleteTeamModalOpen(false);
+          setTeamToDelete(null);
+        }}
+        onConfirm={handleDeleteTeamConfirmed}
+        title="Delete Team"
+        message={teamToDelete ? `Are you sure you want to delete "${teamToDelete.name}"? This action cannot be undone and will permanently remove this team and all student assignments. Students will be moved back to the unseated list.` : ''}
+        confirmText="Delete Team"
         cancelText="Cancel"
         confirmButtonColor="red"
         icon={
