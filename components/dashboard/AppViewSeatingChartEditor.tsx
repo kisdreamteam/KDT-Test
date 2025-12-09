@@ -731,6 +731,30 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     };
   }, [saveAllGroupSizes]);
 
+  // Listen for clear all groups event from bottom nav
+  useEffect(() => {
+    const handleClearAllGroups = () => {
+      setIsClearAllModalOpen(true);
+    };
+
+    window.addEventListener('seatingChartClearAllGroups', handleClearAllGroups);
+    return () => {
+      window.removeEventListener('seatingChartClearAllGroups', handleClearAllGroups);
+    };
+  }, []);
+
+  // Listen for delete all groups event from bottom nav
+  useEffect(() => {
+    const handleDeleteAllGroups = () => {
+      setIsDeleteAllModalOpen(true);
+    };
+
+    window.addEventListener('seatingChartDeleteAllGroups', handleDeleteAllGroups);
+    return () => {
+      window.removeEventListener('seatingChartDeleteAllGroups', handleDeleteAllGroups);
+    };
+  }, []);
+
   const removeStudentFromGroup = async (studentId: string, groupId: string) => {
     try {
       const supabase = createClient();
@@ -858,9 +882,15 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         ? Math.max(...groups.map(g => g.sort_order))
         : -1;
 
-      // Grid layout configuration: 2 rows, 5 columns max per row (similar to image)
-      const groupsPerRow = 5;
-      const groupWidth = 400; // Approximate group width (increased to match new group sizing)
+      // Grid layout configuration: 3 columns per row (as shown in image)
+      const groupsPerRow = 3;
+      // Calculate group width based on 2-column groups (default)
+      const baseWidthFor2Columns = 400;
+      const padding = 8;
+      const gap = 8;
+      const cardMinWidth = 180;
+      const cardWidthFor2Columns = Math.max(cardMinWidth, (baseWidthFor2Columns - (padding * 2) - (gap * (2 - 1))) / 2);
+      const groupWidth = Math.max(300, (cardWidthFor2Columns * 2) + (gap * (2 - 1)) + (padding * 2));
       const groupHeight = 150; // Approximate group height (will vary based on content)
       const horizontalSpacing = 30; // Space between groups horizontally
       const verticalSpacing = 30; // Space between rows
@@ -1105,11 +1135,108 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
 
       const assignmentData = assignmentArray && assignmentArray.length > 0 ? assignmentArray[0] : null;
 
+      // If assignment doesn't exist but student is in local state, create it first
+      // This handles cases where there might be a sync issue
       if (!assignmentData) {
-        console.error('Assignment not found');
-        alert('Failed to move student. The student may not be assigned to the group.');
-        setSelectedStudentForSwap(null);
-        return;
+        console.warn('Assignment not found in database, but student is in local state. Creating assignment first.');
+        // Create the assignment first
+        const { data: newAssignment, error: createError } = await supabase
+          .from('student_seat_assignments')
+          .insert({
+            student_id: studentId,
+            seating_group_id: fromGroupId,
+          })
+          .select('id')
+          .single();
+
+        if (createError || !newAssignment) {
+          console.error('Error creating assignment:', createError);
+          alert('Failed to move student. Could not create assignment.');
+          setSelectedStudentForSwap(null);
+          return;
+        }
+        
+        // Use the newly created assignment
+        const tempAssignmentData = { id: newAssignment.id };
+        
+        // Continue with the move using the new assignment
+        // OPTIMISTIC UPDATE: Update local state FIRST for instant UI response
+        let rollbackState: Map<string, Student[]> | null = null;
+        
+        setGroupStudents(prev => {
+          // Save current state for potential rollback
+          rollbackState = new Map(prev);
+          
+          const newMap = new Map(prev);
+          const sourceGroupStudents = [...(newMap.get(fromGroupId) || [])];
+          const targetGroupStudents = [...(newMap.get(toGroupId) || [])];
+          
+          // Remove student from source group
+          const studentIndex = sourceGroupStudents.findIndex(s => s.id === studentId);
+          if (studentIndex !== -1) {
+            sourceGroupStudents.splice(studentIndex, 1);
+          }
+          
+          // Add student to target group (at the end)
+          targetGroupStudents.push(studentToMove);
+          
+          newMap.set(fromGroupId, sourceGroupStudents);
+          newMap.set(toGroupId, targetGroupStudents);
+          
+          return newMap;
+        });
+
+        // Update database in the background
+        try {
+          // Delete the assignment we just created (since we're moving to a new group)
+          const { error: deleteError } = await supabase
+            .from('student_seat_assignments')
+            .delete()
+            .eq('id', tempAssignmentData.id);
+
+          if (deleteError) {
+            console.error('Error deleting assignment:', deleteError);
+            // Rollback optimistic update
+            if (rollbackState) {
+              setGroupStudents(rollbackState);
+            }
+            alert('Failed to move student. Please try again.');
+            setSelectedStudentForSwap(null);
+            return;
+          }
+
+          // Create new assignment in target group
+          const { error: insertError } = await supabase
+            .from('student_seat_assignments')
+            .insert({
+              student_id: studentId,
+              seating_group_id: toGroupId,
+            });
+
+          if (insertError) {
+            console.error('Error moving student:', insertError);
+            // Rollback optimistic update
+            if (rollbackState) {
+              setGroupStudents(rollbackState);
+            }
+            alert('Failed to move student. Please try again.');
+            setSelectedStudentForSwap(null);
+            return;
+          }
+
+          // Success - clear selection
+          setSelectedStudentForSwap(null);
+        } catch (err) {
+          console.error('Unexpected error during database move:', err);
+          // Rollback optimistic update
+          if (rollbackState) {
+            setGroupStudents(rollbackState);
+          }
+          alert('An unexpected error occurred. The move has been reverted.');
+          setSelectedStudentForSwap(null);
+        }
+        
+        return; // Exit early since we handled the case where assignment didn't exist
       }
 
       // OPTIMISTIC UPDATE: Update local state FIRST for instant UI response
@@ -2204,20 +2331,6 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-4 pr-1">
-              <button
-                onClick={handleClearAllGroups}
-                className="px-6 py-2 bg-orange-400 text-white rounded-lg font-medium hover:bg-orange-500 transition-colors"
-              >
-                Clear All Groups
-              </button>
-              <button
-                onClick={handleDeleteAllGroups}
-                className="px-6 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors"
-              >
-                Delete All Groups
-              </button>
-            </div>
           </div>
 
           {/* Canvas for groups display */}
@@ -2228,9 +2341,12 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
               left: `${canvasLeft}px`, // Dynamically calculated from left sidebar right edge + spacing
               right: '8px', // Small padding from right edge
               bottom: '80px', // Always extend to bottom nav (80px height) - this ensures it reaches the nav regardless of zoom
-              minHeight: '400px',
               overflow: 'auto',
-              zIndex: 1 // Lower than sidebar (z-40) so sidebar appears on top
+              zIndex: 1, // Lower than sidebar (z-40) so sidebar appears on top
+              width: 'auto', // Width is constrained by left and right
+              height: 'auto', // Height is constrained by top and bottom
+              maxWidth: '100%', // Prevent overflow
+              maxHeight: '100%' // Prevent overflow
             }}
           >
           {/* Grid Lines Overlay - Visual guide only (only show if show_grid is true) */}
@@ -2334,10 +2450,9 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
               className="relative"
               style={{
                 position: 'relative',
-                height: '100%', // Fill parent container
-                minHeight: '710px',
-                zIndex: 1,
-                width: '100%'
+                width: '100%',
+                height: '100%',
+                zIndex: 1
               }}
             >
                     {groups.map((group, index) => {
@@ -2373,10 +2488,27 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                       const gap = 8; // Gap between student cards
                       
                       // Calculate width: based on number of columns and card width
+                      // First, calculate the 2-column group width as the base reference
+                      const baseWidthFor2Columns = 400; // Base width for 2-column groups
                       const cardMinWidth = 180; // Minimum card width (increased to accommodate names and points)
-                      const baseWidth = 400; // Base width for calculation (increased from 250)
-                      const cardWidth = Math.max(cardMinWidth, (baseWidth - (padding * 2) - (gap * (validColumns - 1))) / validColumns);
-                      const groupWidth = Math.max(300, (cardWidth * validColumns) + (gap * (validColumns - 1)) + (padding * 2));
+                      
+                      // Calculate 2-column group width
+                      const cardWidthFor2Columns = Math.max(cardMinWidth, (baseWidthFor2Columns - (padding * 2) - (gap * (2 - 1))) / 2);
+                      const twoColumnGroupWidth = Math.max(300, (cardWidthFor2Columns * 2) + (gap * (2 - 1)) + (padding * 2));
+                      
+                      // Calculate width based on column count
+                      let groupWidth: number;
+                      if (validColumns === 1) {
+                        // 1-column groups are 50% of 2-column groups
+                        groupWidth = twoColumnGroupWidth * 0.5;
+                      } else if (validColumns === 2) {
+                        // 2-column groups use the calculated width
+                        groupWidth = twoColumnGroupWidth;
+                      } else {
+                        // 3-column groups: proportional calculation
+                        const cardWidth = Math.max(cardMinWidth, (baseWidthFor2Columns - (padding * 2) - (gap * (validColumns - 1))) / validColumns);
+                        groupWidth = Math.max(300, (cardWidth * validColumns) + (gap * (validColumns - 1)) + (padding * 2));
+                      }
                       
                       // Calculate height: header + student rows
                       const groupHeight = headerHeight + (studentRowCount * studentRowHeight) + (padding * 2);

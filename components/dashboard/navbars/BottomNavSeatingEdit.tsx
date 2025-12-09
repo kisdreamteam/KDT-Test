@@ -23,6 +23,9 @@ export default function BottomNavSeatingEdit({
   const [showFurniture, setShowFurniture] = useState(true);
   const [teachersDeskLeft, setTeachersDeskLeft] = useState(true);
   const [isLoadingSettings, setIsLoadingSettings] = useState(false);
+  const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
+  const [settingsMenuPosition, setSettingsMenuPosition] = useState({ left: 0, bottom: 0 });
+  const settingsButtonRef = useRef<HTMLDivElement>(null);
   
   // Get layout ID from URL
   const layoutId = searchParams.get('layout');
@@ -148,6 +151,17 @@ export default function BottomNavSeatingEdit({
     }
   }, [isViewSettingsMenuOpen]);
 
+  // Update settings menu position when it opens
+  useEffect(() => {
+    if (isSettingsMenuOpen && settingsButtonRef.current) {
+      const rect = settingsButtonRef.current.getBoundingClientRect();
+      setSettingsMenuPosition({
+        left: rect.left,
+        bottom: window.innerHeight - rect.top + 8,
+      });
+    }
+  }, [isSettingsMenuOpen]);
+
   // Close view settings menu when clicking outside
   useEffect(() => {
     if (!isViewSettingsMenuOpen) return;
@@ -163,8 +177,33 @@ export default function BottomNavSeatingEdit({
     return () => document.removeEventListener('click', handleClickOutside, true);
   }, [isViewSettingsMenuOpen]);
 
+  // Close settings menu when clicking outside
+  useEffect(() => {
+    if (!isSettingsMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (settingsButtonRef.current && !settingsButtonRef.current.contains(e.target as Node)) {
+        const menu = document.querySelector('[data-settings-menu]');
+        if (menu && !menu.contains(e.target as Node)) {
+          setIsSettingsMenuOpen(false);
+        }
+      }
+    };
+    document.addEventListener('click', handleClickOutside, true);
+    return () => document.removeEventListener('click', handleClickOutside, true);
+  }, [isSettingsMenuOpen]);
+
   const handleRandomizeSeating = () => {
     window.dispatchEvent(new CustomEvent('seatingChartRandomize'));
+  };
+
+  const handleClearAllGroups = () => {
+    window.dispatchEvent(new CustomEvent('seatingChartClearAllGroups'));
+    setIsSettingsMenuOpen(false);
+  };
+
+  const handleDeleteAllGroups = () => {
+    window.dispatchEvent(new CustomEvent('seatingChartDeleteAllGroups'));
+    setIsSettingsMenuOpen(false);
   };
 
   const handleSaveSeatingChanges = () => {
@@ -319,14 +358,87 @@ export default function BottomNavSeatingEdit({
             <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Randomize Seats</h2>
           </div>
 
-          {/* Award Points View Button */}
+          {/* Settings Button */}
+          {currentClassName && (
+            <div className="relative flex-shrink-0" ref={settingsButtonRef}>
+              <div 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsSettingsMenuOpen(!isSettingsMenuOpen);
+                }}
+                className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2"
+              >
+                {/* Settings/Gear icon */}
+                <svg 
+                  className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-gray-400" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" 
+                  />
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" 
+                  />
+                </svg>
+                <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Settings</h2>
+              </div>
+              
+              {/* Settings Dropdown Menu */}
+              {isSettingsMenuOpen && (
+                <div
+                  data-settings-menu
+                  className="fixed bg-white border border-gray-200 rounded-lg shadow-lg z-[100] min-w-[220px] py-2"
+                  style={{
+                    left: `${settingsMenuPosition.left}px`,
+                    bottom: `${settingsMenuPosition.bottom}px`,
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  {/* Clear All Groups Option */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleClearAllGroups();
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 first:rounded-t-lg transition-colors"
+                  >
+                    Clear All Groups
+                  </button>
+                  
+                  {/* Delete All Groups Option */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteAllGroups();
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 last:rounded-b-lg transition-colors"
+                  >
+                    Delete All Groups
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        
+        {/* Right side - Exit Edit Mode Button */}
+        <div className="flex items-center">
           <div 
             onClick={handleSaveSeatingChanges}
-            className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
+            className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-purple-800 text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-purple-900 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0 rounded-xl"
           >
-            {/* Award/Star icon */}
+            {/* Exit/Arrow icon */}
             <svg 
-              className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-gray-400" 
+              className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-white" 
               fill="none" 
               stroke="currentColor" 
               viewBox="0 0 24 24"
@@ -335,10 +447,10 @@ export default function BottomNavSeatingEdit({
                 strokeLinecap="round" 
                 strokeLinejoin="round" 
                 strokeWidth={2} 
-                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" 
+                d="M6 18L18 6M6 6l12 12" 
               />
             </svg>
-            <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Award Points View</h2>
+            <h2 className="font-semibold text-white text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Exit Editor Mode</h2>
           </div>
         </div>
       </div>

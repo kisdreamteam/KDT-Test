@@ -18,8 +18,8 @@ export default function LeftNavSeatingChart() {
     <div className="p-4 flex flex-col h-full max-h-screen overflow-y-auto bg-[#dd7f81] font-spartan text-[#4A3B8D] border-r-0">
       {/* Header */}
       <div className="mb-4">
-        <h2 className="text-xl font-semibold mb-2">Unseated Students</h2>
-        <p className="text-sm ">
+        <h2 className="text-xl font-semibold mb-2 text-center">Unseated Students</h2>
+        <p className="text-sm text-center">
           Click a student to add them to a group
         </p>
       </div>
@@ -28,7 +28,7 @@ export default function LeftNavSeatingChart() {
       <div className="space-y-2 flex-1 overflow-y-auto">
         {unseatedStudents.length === 0 ? (
           <div className="text-center py-4">
-            <p className="text-sm">All students are seated</p>
+            <p className="text-sm text-center">All students are seated</p>
           </div>
         ) : (
           unseatedStudents.map((student) => (

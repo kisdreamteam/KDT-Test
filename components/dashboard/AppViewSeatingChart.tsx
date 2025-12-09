@@ -707,9 +707,12 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
               left: `${canvasLeft}px`, // Dynamically calculated from left sidebar right edge + spacing
               right: '8px', // Small padding from right edge
               bottom: '80px', // Always extend to bottom nav (80px height)
-              minHeight: '400px',
               overflow: 'auto',
-              zIndex: 1 // Lower than sidebar (z-40) so sidebar appears on top
+              zIndex: 1, // Lower than sidebar (z-40) so sidebar appears on top
+              width: 'auto', // Width is constrained by left and right
+              height: 'auto', // Height is constrained by top and bottom
+              maxWidth: '100%', // Prevent overflow
+              maxHeight: '100%' // Prevent overflow
             }}
           >
           {/* Grid Lines Overlay - Visual guide only - Only show if showGrid is true */}
@@ -811,10 +814,9 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
               className="relative"
               style={{
                 position: 'relative',
+                width: '100%',
                 height: '100%',
-                minHeight: '710px',
-                zIndex: 1,
-                width: '100%'
+                zIndex: 1
               }}
             >
                     {groups.map((group, index) => {
@@ -845,10 +847,27 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
                       const gap = 8; // Gap between student cards
                       
                       // Calculate width: based on number of columns and card width
+                      // First, calculate the 2-column group width as the base reference
+                      const baseWidthFor2Columns = 400; // Base width for 2-column groups
                       const cardMinWidth = 180; // Minimum card width (increased to accommodate names and points)
-                      const baseWidth = 400; // Base width for calculation (increased from 250)
-                      const cardWidth = Math.max(cardMinWidth, (baseWidth - (padding * 2) - (gap * (validColumns - 1))) / validColumns);
-                      const groupWidth = Math.max(300, (cardWidth * validColumns) + (gap * (validColumns - 1)) + (padding * 2));
+                      
+                      // Calculate 2-column group width
+                      const cardWidthFor2Columns = Math.max(cardMinWidth, (baseWidthFor2Columns - (padding * 2) - (gap * (2 - 1))) / 2);
+                      const twoColumnGroupWidth = Math.max(300, (cardWidthFor2Columns * 2) + (gap * (2 - 1)) + (padding * 2));
+                      
+                      // Calculate width based on column count
+                      let groupWidth: number;
+                      if (validColumns === 1) {
+                        // 1-column groups are 50% of 2-column groups
+                        groupWidth = twoColumnGroupWidth * 0.5;
+                      } else if (validColumns === 2) {
+                        // 2-column groups use the calculated width
+                        groupWidth = twoColumnGroupWidth;
+                      } else {
+                        // 3-column groups: proportional calculation
+                        const cardWidth = Math.max(cardMinWidth, (baseWidthFor2Columns - (padding * 2) - (gap * (validColumns - 1))) / validColumns);
+                        groupWidth = Math.max(300, (cardWidth * validColumns) + (gap * (validColumns - 1)) + (padding * 2));
+                      }
                       
                       // Calculate height: header + student rows
                       const groupHeight = headerHeight + (studentRowCount * studentRowHeight) + (padding * 2);
