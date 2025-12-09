@@ -15,7 +15,7 @@ export default function LeftNavSeatingChart() {
   };
 
   return (
-    <div className="p-4 flex flex-col h-full max-h-screen overflow-y-auto bg-[#dd7f81] font-spartan text-[#4A3B8D] border-r-0">
+    <div className="p-4 flex flex-col h-full max-h-screen overflow-y-auto bg-white font-spartan text-[#4A3B8D] border-r-0">
       {/* Header */}
       <div className="mb-4">
         <h2 className="text-xl font-semibold mb-2 text-center">Unseated Students</h2>

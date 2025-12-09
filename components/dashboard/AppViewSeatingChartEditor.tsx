@@ -6,7 +6,6 @@ import { createClient } from '@/lib/supabase/client';
 import { useSeatingChart } from '@/context/SeatingChartContext';
 import { Student } from '@/lib/types';
 import CreateLayoutModal from '@/components/modals/CreateLayoutModal';
-import AddGroupModal from '@/components/modals/AddGroupModal';
 import EditGroupModal from '@/components/modals/EditGroupModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import SuccessNotificationModal from '@/components/modals/SuccessNotificationModal';
@@ -53,7 +52,6 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   const [groups, setGroups] = useState<SeatingGroup[]>([]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isAddGroupModalOpen, setIsAddGroupModalOpen] = useState(false);
   const [isEditGroupModalOpen, setIsEditGroupModalOpen] = useState(false);
   const [isClearAllModalOpen, setIsClearAllModalOpen] = useState(false);
   const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
@@ -75,15 +73,12 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   const [selectedStudentForSwap, setSelectedStudentForSwap] = useState<{ studentId: string; groupId: string } | null>(null);
   const [editingGroupNameId, setEditingGroupNameId] = useState<string | null>(null);
   const [editingGroupNameValue, setEditingGroupNameValue] = useState<string>('');
-  const [isAddMultipleGroupsMenuOpen, setIsAddMultipleGroupsMenuOpen] = useState(false);
   // Store pixel positions for each group (x, y coordinates)
   const [groupPositions, setGroupPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
   const mainContentRef = useRef<HTMLDivElement | null>(null);
-  const buttonRowRef = useRef<HTMLDivElement | null>(null);
   const leftSidebarRef = useRef<HTMLDivElement | null>(null);
   const [canvasLeft, setCanvasLeft] = useState(320); // Default left position (8px sidebar left + 304px width + 8px spacing)
-  const [canvasTop, setCanvasTop] = useState(280); // Default top position
   // Track which group is being dragged
   const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null);
   // Color coding mode: "Gender" or "Level"
@@ -129,24 +124,6 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     };
   }, []);
   
-  // Calculate canvas top position based on button row position
-  useEffect(() => {
-    const updateCanvasTop = () => {
-      if (buttonRowRef.current) {
-        const rect = buttonRowRef.current.getBoundingClientRect();
-        setCanvasTop(rect.bottom + 16); // Start right below button row with 16px spacing
-      }
-    };
-    
-    updateCanvasTop();
-    window.addEventListener('resize', updateCanvasTop);
-    const interval = setInterval(updateCanvasTop, 100); // Update periodically
-    
-    return () => {
-      window.removeEventListener('resize', updateCanvasTop);
-      clearInterval(interval);
-    };
-  }, []);
   // Track the offset from where the user clicked to the group's top-left corner
   const dragOffsetRef = useRef<{ x: number; y: number } | null>(null);
   // Animation state for randomize
@@ -192,7 +169,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
             if (layoutIdFromStorage && data.find(l => l.id === layoutIdFromStorage)) {
               setSelectedLayoutId(layoutIdFromStorage);
             } else {
-              setSelectedLayoutId(data[0].id);
+          setSelectedLayoutId(data[0].id);
             }
           }
         }
@@ -759,6 +736,19 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     };
   }, []);
 
+  // Listen for color code by event from bottom nav
+  useEffect(() => {
+    const handleColorCodeBy = (event: CustomEvent) => {
+      const { colorCodeBy: newColorCodeBy } = event.detail;
+      setColorCodeBy(newColorCodeBy);
+    };
+
+    window.addEventListener('seatingChartColorCodeBy', handleColorCodeBy as EventListener);
+    return () => {
+      window.removeEventListener('seatingChartColorCodeBy', handleColorCodeBy as EventListener);
+    };
+  }, []);
+
   const removeStudentFromGroup = async (studentId: string, groupId: string) => {
     try {
       const supabase = createClient();
@@ -791,14 +781,14 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       
       // Add back to unseated list (check for duplicates first) - outside of setGroupStudents callback
       if (removedStudent) {
-        setUnseatedStudents((prev: Student[]) => {
-          // Check if student is already in the list
+          setUnseatedStudents((prev: Student[]) => {
+            // Check if student is already in the list
           if (!prev.find(s => s.id === removedStudent!.id)) {
             return [...prev, removedStudent!];
-          }
-          return prev;
-        });
-      }
+            }
+            return prev;
+          });
+        }
       
       // Note: group_rows is calculated on the fly for responsiveness
       // Database will be updated when user clicks "Save Changes" button
@@ -827,7 +817,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       // Insert group with all parameters in a single operation
       // Calculate group_rows: 1 for header + at least 1 row for students (default to 2 total for new empty group)
       const defaultGroupRows = 2; // 1 header row + 1 student row for new empty groups
-      
+
       const { data, error: insertError } = await supabase
         .from('seating_groups')
         .insert({
@@ -867,7 +857,6 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         
         // Refresh groups to get the latest data
         await fetchGroups();
-        setIsAddGroupModalOpen(false);
       }
     } catch (err) {
       console.error('Unexpected error creating seating group:', err);
@@ -961,7 +950,6 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         
         // Refresh groups to get the latest data
         await fetchGroups();
-        setIsAddMultipleGroupsMenuOpen(false);
       }
     } catch (err) {
       console.error('Unexpected error creating multiple groups:', err);
@@ -1010,7 +998,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       e.preventDefault();
       return;
     }
-    
+
     setDraggedGroupId(groupId);
     // Set drag image to be the element itself
     e.dataTransfer.effectAllowed = 'move';
@@ -1667,6 +1655,30 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     }
   };
 
+  // Listen for add multiple groups event from bottom nav
+  useEffect(() => {
+    const handleAddMultipleGroupsEvent = (event: CustomEvent) => {
+      const { numGroups } = event.detail;
+      handleAddMultipleGroups(numGroups);
+    };
+
+    window.addEventListener('seatingChartAddMultipleGroups', handleAddMultipleGroupsEvent as EventListener);
+    return () => {
+      window.removeEventListener('seatingChartAddMultipleGroups', handleAddMultipleGroupsEvent as EventListener);
+    };
+  }, []);
+
+  // Listen for auto assign seats event from bottom nav
+  useEffect(() => {
+    const handleAutoAssignSeatsEvent = () => {
+      handleAssignSeats();
+    };
+
+    window.addEventListener('seatingChartAutoAssignSeats', handleAutoAssignSeatsEvent);
+    return () => {
+      window.removeEventListener('seatingChartAutoAssignSeats', handleAutoAssignSeatsEvent);
+    };
+  }, []);
 
   const handleEditTeam = (groupId: string) => {
     const groupToEdit = groups.find(g => g.id === groupId);
@@ -2207,34 +2219,6 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     }
   }, [openSettingsMenuId]);
 
-  // Close add multiple groups menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (isAddMultipleGroupsMenuOpen) {
-        const target = event.target as HTMLElement;
-        const menu = document.querySelector('[data-add-multiple-groups-menu]');
-        const button = document.querySelector('[data-add-multiple-groups-button]');
-        
-        if (menu && menu.contains(target)) {
-          return; // Click is inside the menu, don't close
-        }
-        if (button && button.contains(target)) {
-          return; // Click is on the button, don't close (it will toggle)
-        }
-        
-        setIsAddMultipleGroupsMenuOpen(false);
-      }
-    };
-
-    if (isAddMultipleGroupsMenuOpen) {
-      setTimeout(() => {
-        document.addEventListener('mousedown', handleClickOutside);
-      }, 0);
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
-    }
-  }, [isAddMultipleGroupsMenuOpen]);
 
   if (isLoading) {
     return (
@@ -2291,7 +2275,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         height: '100vh',
         width: '100vw',
         position: 'fixed',
-        top: 0,
+            top: 0, 
         left: 0
       }}
     >
@@ -2301,102 +2285,15 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         <div className="space-y-8 relative" style={{ zIndex: 1 }}>
 
         {/* Seating Groups Canvas */}
-        <div className="mt-8 flex-1 flex flex-col relative" style={{ minHeight: 'calc(100vh - 300px)' }}>
-          <div ref={buttonRowRef} className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2 pl-2">
-              <button
-                onClick={() => setIsAddGroupModalOpen(true)}
-                className="px-6 py-2 bg-purple-400 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors"
-              >
-                Add New Group
-              </button>
-              {/* Add Multiple Groups Button with Dropdown */}
-              <div className="relative">
-                <button
-                  data-add-multiple-groups-button
-                  onClick={() => setIsAddMultipleGroupsMenuOpen(!isAddMultipleGroupsMenuOpen)}
-                  className="px-6 py-2 bg-purple-400 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors flex items-center gap-2"
-                >
-                  Add Multiple Groups
-                  <svg
-                    className={`w-4 h-4 transition-transform ${isAddMultipleGroupsMenuOpen ? 'rotate-180' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-                {isAddMultipleGroupsMenuOpen && (
-                  <div
-                    data-add-multiple-groups-menu
-                    className="absolute top-full left-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[160px]"
-                  >
-                    {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                      <button
-                        key={num}
-                        onClick={() => {
-                          handleAddMultipleGroups(num);
-                        }}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg transition-colors"
-                      >
-                        {num} Groups
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={handleAssignSeats}
-                className="px-6 py-2 bg-purple-400 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors"
-              >
-                Auto Assign Seats
-              </button>
-              {/* Color Code By Selection */}
-              <div className="flex items-center gap-3 ml-4">
-                <span className="text-white font-medium text-sm">Color code by:</span>
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="colorCodeBy"
-                      value="Gender"
-                      checked={colorCodeBy === 'Gender'}
-                      onChange={(e) => setColorCodeBy(e.target.value as 'Gender' | 'Level')}
-                      className="w-4 h-4 text-purple-600 bg-white border-gray-300 focus:ring-purple-500 focus:ring-2 cursor-pointer"
-                    />
-                    <span className="text-white text-sm">Gender</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-not-allowed opacity-50">
-                    <input
-                      type="radio"
-                      name="colorCodeBy"
-                      value="Level"
-                      checked={colorCodeBy === 'Level'}
-                      onChange={(e) => setColorCodeBy(e.target.value as 'Gender' | 'Level')}
-                      disabled
-                      className="w-4 h-4 text-purple-600 bg-white border-gray-300 focus:ring-purple-500 focus:ring-2 cursor-not-allowed"
-                    />
-                    <span className="text-white text-sm">Level</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-
+        <div className="flex-1 flex flex-col relative" style={{ minHeight: 'calc(100vh - 300px)' }}>
           {/* Canvas for groups display */}
           <div 
-            className="bg-[#fcf1f0] fixed border-2 border-black rounded-lg"
+            className="bg-[#fcf1f0] fixed border-2 border-black rounded-lg pt-2"
             style={{
-              top: `${canvasTop}px`, // Dynamically calculated to start directly below button row
+              top: '6px', // Start at the top of the screen
               left: `${canvasLeft}px`, // Dynamically calculated from left sidebar right edge + spacing
               right: '8px', // Small padding from right edge
-              bottom: '80px', // Always extend to bottom nav (80px height) - this ensures it reaches the nav regardless of zoom
+              bottom: '85px', // Always extend to bottom nav (80px height) - this ensures it reaches the nav regardless of zoom
               overflow: 'auto',
               zIndex: 1, // Lower than sidebar (z-40) so sidebar appears on top
               width: 'auto', // Width is constrained by left and right
@@ -2454,7 +2351,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                   }}
                 >
                   <span className="text-gray-700 font-semibold">Teacher's Desk</span>
-                </div>
+            </div>
                 
                 {/* Door 1 - Top - Position based on layoutOrientation */}
                 <div
@@ -2477,7 +2374,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                 {/* Door 2 - Bottom - Position based on layoutOrientation */}
                 <div
                   className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
-                  style={{
+                    style={{
                     top: '70%',
                     ...(layoutOrientation === 'Left' 
                       ? { right: '5px' }
@@ -2509,8 +2406,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                 width: '100%',
                 height: '100%',
                 zIndex: 1
-              }}
-            >
+                    }}
+                  >
                     {groups.map((group, index) => {
                       const studentsInGroupRaw = groupStudents.get(group.id) || [];
                       // Filter out duplicates by student ID to prevent React key errors
@@ -2583,7 +2480,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                         const isAboutToMove = studentsAboutToMove.has(student.id);
                         const isBeingPlaced = studentsBeingPlaced.has(student.id);
                         
-                        // Determine background color based on animation state first, then gender
+                        // Determine background color based on animation state first, then gender (if color by gender is enabled)
                         let bgColor = 'bg-white border-gray-200 hover:bg-gray-50';
                         if (isAboutToMove) {
                           bgColor = 'bg-yellow-300 border-yellow-500 hover:bg-yellow-400';
@@ -2592,16 +2489,22 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                         } else if (isSelected) {
                           bgColor = 'bg-yellow-300 border-yellow-500 hover:bg-yellow-400';
                         } else {
-                          // Check gender for default background color
-                          if (student.gender === null || student.gender === undefined || student.gender === '') {
-                            // Case 1: NULL gender = white background
+                          // Only color by gender if the toggle is ON
+                          if (colorCodeBy === 'Gender') {
+                            // Check gender for background color
+                            if (student.gender === null || student.gender === undefined || student.gender === '') {
+                              // NULL/unassigned gender = white background
+                              bgColor = 'bg-white border-gray-200 hover:bg-gray-50';
+                            } else if (student.gender === 'Boy') {
+                              // Boy = blue background
+                              bgColor = 'bg-blue-200 border-blue-300 hover:bg-blue-300';
+                            } else if (student.gender === 'Girl') {
+                              // Girl = pink background
+                              bgColor = 'bg-pink-200 border-pink-300 hover:bg-pink-300';
+                            }
+                          } else {
+                            // Color by gender is OFF - all students are white
                             bgColor = 'bg-white border-gray-200 hover:bg-gray-50';
-                          } else if (student.gender === 'Boy') {
-                            // Case 2: Boy = blue background
-                            bgColor = 'bg-blue-200 border-blue-300 hover:bg-blue-300';
-                          } else if (student.gender === 'Girl') {
-                            // Case 3: Girl = pink background
-                            bgColor = 'bg-pink-200 border-pink-300 hover:bg-pink-300';
                           }
                         }
                         
@@ -2662,22 +2565,22 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                       const isEditingName = editingGroupNameId === group.id;
                       // Check if a student is selected for swap and this group is a valid target (not the source group)
                       const isTargetForMove = selectedStudentForSwap && selectedStudentForSwap.groupId !== group.id;
-                      
-                      return (
-                        <div
+                            
+                            return (
+                            <div
                           key={group.id}
                           draggable={!isEditingName}
                           onDragStart={(e) => handleDragStart(e, group.id)}
                           onDragEnd={handleDragEnd}
-                          onClick={() => handleGroupClick(group.id)}
+                              onClick={() => handleGroupClick(group.id)}
                           className={`bg-white rounded-lg border-2 shadow-lg flex flex-col ${
                             draggedGroupId === group.id ? 'shadow-2xl border-purple-600 opacity-50' : 
-                            isTarget ? 'border-purple-500 ring-4 ring-purple-300' :
+                                isTarget ? 'border-purple-500 ring-4 ring-purple-300' :
                             isTargetForMove ? 'border-green-400 hover:border-green-500 cursor-pointer ring-2 ring-green-200' :
-                            selectedStudentForGroup ? 'border-purple-400 hover:border-purple-500 cursor-pointer' :
-                            'border-gray-300'
-                          }`}
-                          style={{
+                                selectedStudentForGroup ? 'border-purple-400 hover:border-purple-500 cursor-pointer' :
+                                'border-gray-300'
+                              }`}
+                              style={{
                             position: 'absolute',
                             left: `${groupX}px`,
                             top: `${groupY}px`,
@@ -2848,11 +2751,11 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                     </button>
                                   </div>
                                 )}
-                                </div>
-                                
+                              </div>
+
                                 {/* Dynamic Student Rows */}
                                 {studentRows.map((rowStudents, rowIndex) => (
-                                  <div
+                                  <div 
                                     key={`${group.id}-row-${rowIndex}`}
                                     onClick={() => handleGroupClick(group.id)}
                                     style={{
@@ -2872,9 +2775,9 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                   >
                                     {rowStudents.length === 0 ? (
                                       <div className="col-span-full text-gray-500 text-sm text-center py-2" style={{ gridColumn: `1 / ${validColumns + 1}` }}>
-                                        {selectedStudentForGroup ? 'Click to add student' : 'No students yet'}
-                                      </div>
-                                    ) : (
+                                    {selectedStudentForGroup ? 'Click to add student' : 'No students yet'}
+                                  </div>
+                                ) : (
                                       <>
                                         {rowStudents.map(student => renderStudentCard(student))}
                                         {/* Fill empty slots in the row if needed */}
@@ -2882,13 +2785,13 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                           <div key={`empty-${emptyIndex}`} style={{ minHeight: '32px' }} />
                                         ))}
                                       </>
-                                    )}
-                                  </div>
+                                )}
+                              </div>
                                 ))}
-                        </div>
+                            </div>
                       );
                     })}
-            </div>
+                  </div>
           )}
           </div>
         </div>
@@ -2914,13 +2817,6 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onCreateLayout={handleCreateLayout}
-      />
-
-      {/* Add Group Modal */}
-      <AddGroupModal
-        isOpen={isAddGroupModalOpen}
-        onClose={() => setIsAddGroupModalOpen(false)}
-        onCreateGroup={handleCreateGroup}
       />
 
       {/* Edit Group Modal */}
