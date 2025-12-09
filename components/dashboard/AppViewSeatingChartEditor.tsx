@@ -2123,6 +2123,18 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
               zIndex: 1 // Lower than sidebar (z-40) so sidebar appears on top
             }}
           >
+          {/* Grid Lines Overlay - Visual guide only */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: `
+                linear-gradient(to right, rgb(209 213 219) 1px, transparent 1px),
+                linear-gradient(to bottom, rgb(209 213 219) 1px, transparent 1px)
+              `,
+              backgroundSize: '38px 38px', // 1cm ≈ 38px at 96 DPI
+              zIndex: 0
+            }}
+          />
           {isLoadingGroups ? (
             <div className="flex items-center justify-center p-8 relative" style={{ zIndex: 1 }}>
               <p className="text-white/80">Loading groups...</p>
