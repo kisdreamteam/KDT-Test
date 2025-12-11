@@ -606,7 +606,7 @@ export default function BottomNavSeatingEdit({
         <div className="flex items-center">
           <div 
             onClick={handleSaveSeatingChanges}
-            className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-purple-800 text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-purple-900 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0 rounded-xl"
+            className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-red-400 text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-red-600 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0 rounded-xl"
           >
             {/* Exit/Arrow icon */}
             <svg 

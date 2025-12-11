@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Student } from '@/lib/types';
-import LeftNav from '@/components/dashboard/navbars/LeftNav';
+import LeftNavSeatingChartView from '@/components/dashboard/navbars/LeftNavSeatingChartView';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import CreateLayoutModal from '@/components/modals/CreateLayoutModal';
 import AwardPointsModal from '@/components/modals/AwardPointsModal';
@@ -77,10 +77,8 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
   } | null>(null);
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
   const mainContentRef = useRef<HTMLDivElement | null>(null);
-  const buttonRowRef = useRef<HTMLDivElement | null>(null);
   const leftSidebarRef = useRef<HTMLDivElement | null>(null);
   const [canvasLeft, setCanvasLeft] = useState(320); // Default left position (8px sidebar left + 304px width + 8px spacing)
-  const [canvasTop, setCanvasTop] = useState(280); // Default top position
   // View settings from database
   const [showGrid, setShowGrid] = useState<boolean>(true);
   const [showObjects, setShowObjects] = useState<boolean>(true);
@@ -407,24 +405,6 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
     };
   }, []);
 
-  // Calculate canvas top position based on button row position
-  useEffect(() => {
-    const updateCanvasTop = () => {
-      if (buttonRowRef.current) {
-        const rect = buttonRowRef.current.getBoundingClientRect();
-        setCanvasTop(rect.bottom + 16); // Start right below button row with 16px spacing
-      }
-    };
-    
-    updateCanvasTop();
-    window.addEventListener('resize', updateCanvasTop);
-    const interval = setInterval(updateCanvasTop, 100); // Update periodically
-    
-    return () => {
-      window.removeEventListener('resize', updateCanvasTop);
-      clearInterval(interval);
-    };
-  }, []);
 
   // Handle delete layout
   const handleDeleteLayout = (layoutId: string, layoutName: string, e: React.MouseEvent) => {
@@ -636,77 +616,16 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
       <div ref={mainContentRef} className="flex-1 p-1 bg-[#4A3B8D] sm:p-11md:p-2 relative" style={{ paddingLeft: '312px', minHeight: '100%', overflow: 'visible' }}>
         <div className="space-y-8 relative" style={{ zIndex: 1 }}>
 
-        {/* Layout Selector Bar */}
-        <div ref={buttonRowRef} className="flex items-center gap-4 mb-4 pt-4 pl-2">
-          {layouts.map((layout) => (
-            <div
-              key={layout.id}
-              className="relative"
-            >
-              <button
-                onClick={() => setSelectedLayoutId(layout.id)}
-                className={`px-8 py-3 rounded-lg font-medium transition-colors min-w-[200px] relative ${
-                  selectedLayoutId === layout.id 
-                    ? 'bg-purple-400 text-white' 
-                    : 'bg-white text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                Layout: {layout.name}
-              </button>
-              {/* Trash can icon at top corner */}
-              <button
-                onClick={(e) => handleDeleteLayout(layout.id, layout.name, e)}
-                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors z-10"
-                title={`Delete ${layout.name}`}
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  />
-                </svg>
-              </button>
-            </div>
-          ))}
-          {/* Add Layout Button */}
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="px-8 py-3 rounded-lg font-medium transition-colors min-w-[200px] bg-blue-100 text-blue-700 hover:bg-blue-200 border-2 border-blue-300 flex items-center justify-center gap-2"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            Add Layout
-          </button>
-        </div>
-
         {/* Seating Groups Canvas */}
-        <div className="mt-8 flex-1 flex flex-col relative" style={{ minHeight: 'calc(100vh - 300px)' }}>
+        <div className="flex-1 flex flex-col relative" style={{ minHeight: 'calc(100vh - 300px)' }}>
           {/* Canvas for groups display */}
           <div 
-            className="bg-[#fcf1f0] fixed rounded-lg border-2 border-black"
+            className="bg-[#4A3B8D] fixed border-2 border-white rounded-lg pt-2"
             style={{
-              top: `${canvasTop}px`, // Dynamically calculated to start directly below button row
+              top: '6px', // Start at the top of the screen
               left: `${canvasLeft}px`, // Dynamically calculated from left sidebar right edge + spacing
               right: '8px', // Small padding from right edge
-              bottom: '80px', // Always extend to bottom nav (80px height)
+              bottom: '85px', // Always extend to bottom nav (80px height) - this ensures it reaches the nav regardless of zoom
               overflow: 'auto',
               zIndex: 1, // Lower than sidebar (z-40) so sidebar appears on top
               width: 'auto', // Width is constrained by left and right
@@ -715,7 +634,7 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
               maxHeight: '100%' // Prevent overflow
             }}
           >
-          {/* Grid Lines Overlay - Visual guide only - Only show if showGrid is true */}
+          {/* Grid Lines Overlay - Visual guide only (only show if show_grid is true) */}
           {showGrid && (
             <div
               className="absolute inset-0 pointer-events-none"
@@ -766,7 +685,7 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
                   <span className="text-gray-700 font-semibold">Teacher's Desk</span>
                 </div>
                 
-                {/* Door 1 - top - Position based on layoutOrientation */}
+                {/* Door 1 - Top - Position based on layoutOrientation */}
                 <div
                   className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
                   style={{
@@ -808,7 +727,7 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
             <div className="flex items-center justify-center p-8 relative" style={{ zIndex: 1 }}>
               <p className="text-white/80">Loading groups...</p>
             </div>
-          ) : selectedLayoutId && groups.length > 0 ? (
+          ) : groups.length > 0 && (
             <div
               ref={canvasContainerRef}
               className="relative"
@@ -997,16 +916,7 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
                       );
                     })}
             </div>
-          ) : selectedLayoutId ? (
-            <div className="flex flex-col items-center justify-center h-full p-8 relative" style={{ zIndex: 1, minHeight: '400px' }}>
-              <div className="text-center">
-                <p className="text-gray-700 text-lg font-semibold mb-2">No Groups to Display</p>
-                <p className="text-gray-600 text-sm">
-                  Click on Seating Editor View in the bottom navigation to create groups for this layout
-                </p>
-              </div>
-            </div>
-          ) : null}
+          )}
           </div>
         </div>
         </div>
@@ -1023,11 +933,13 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
           height: 'calc(100vh - 16px)' // Full viewport minus small padding
         }}
       >
-        <LeftNav 
-          classes={classes}
-          isLoadingClasses={isLoadingClasses}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
+        <LeftNavSeatingChartView 
+          onAddLayout={() => setIsCreateModalOpen(true)}
+          layouts={layouts}
+          selectedLayoutId={selectedLayoutId}
+          onSelectLayout={setSelectedLayoutId}
+          onDeleteLayout={handleDeleteLayout}
+          isLoadingLayouts={isLoading}
         />
       </div>
 

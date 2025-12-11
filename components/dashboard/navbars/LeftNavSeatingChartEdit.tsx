@@ -3,7 +3,7 @@
 import { useSeatingChart } from '@/context/SeatingChartContext';
 import { Student } from '@/lib/types';
 
-export default function LeftNavSeatingChart() {
+export default function LeftNavSeatingChartEdit() {
   const { unseatedStudents, setSelectedStudentForGroup } = useSeatingChart();
 
   const handleStudentClick = (student: Student) => {

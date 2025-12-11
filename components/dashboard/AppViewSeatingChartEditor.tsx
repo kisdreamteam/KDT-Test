@@ -9,7 +9,7 @@ import CreateLayoutModal from '@/components/modals/CreateLayoutModal';
 import EditGroupModal from '@/components/modals/EditGroupModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import SuccessNotificationModal from '@/components/modals/SuccessNotificationModal';
-import LeftNavSeatingChart from '@/components/dashboard/navbars/LeftNavSeatingChart';
+import LeftNavSeatingChartEdit from '@/components/dashboard/navbars/LeftNavSeatingChartEdit';
 
 interface SeatingChart {
   id: string;
@@ -66,7 +66,13 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   });
   const [editingGroup, setEditingGroup] = useState<SeatingGroup | null>(null);
   const [groupStudents, setGroupStudents] = useState<Map<string, Student[]>>(new Map());
+  const groupStudentsRef = useRef<Map<string, Student[]>>(new Map());
   const [targetGroupId, setTargetGroupId] = useState<string | null>(null);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    groupStudentsRef.current = groupStudents;
+  }, [groupStudents]);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [openSettingsMenuId, setOpenSettingsMenuId] = useState<string | null>(null);
   const [settingsMenuPosition, setSettingsMenuPosition] = useState<{ top: number; right: number } | null>(null);
@@ -864,7 +870,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     }
   };
 
-  const handleAddMultipleGroups = async (numGroups: number) => {
+  const handleAddMultipleGroups = useCallback(async (numGroups: number) => {
     if (!selectedLayoutId) return;
 
     try {
@@ -955,7 +961,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       console.error('Unexpected error creating multiple groups:', err);
       alert('An unexpected error occurred. Please try again.');
     }
-  };
+  }, [selectedLayoutId, groups, fetchGroups]);
 
   const handleCreateLayout = async (layoutName: string) => {
     try {
@@ -1560,7 +1566,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     }
   };
 
-  const handleAssignSeats = async () => {
+  const handleAssignSeats = useCallback(async () => {
     if (groups.length === 0) {
       alert('Please create at least one group before assigning seats.');
       return;
@@ -1574,8 +1580,11 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     try {
       const supabase = createClient();
       
+      // Get current groupStudents value from ref (always latest)
+      const currentGroupStudents = groupStudentsRef.current;
+      
       // Calculate total students (seated + unseated)
-      const totalSeatedStudents = Array.from(groupStudents.values()).reduce(
+      const totalSeatedStudents = Array.from(currentGroupStudents.values()).reduce(
         (sum, students) => sum + students.length,
         0
       );
@@ -1588,7 +1597,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       // Calculate how many students each group currently has
       const groupCurrentCounts = groups.map(group => ({
         groupId: group.id,
-        currentCount: groupStudents.get(group.id)?.length || 0
+        currentCount: currentGroupStudents.get(group.id)?.length || 0
       }));
       
       // Calculate how many students each group needs to reach target
@@ -1653,7 +1662,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       console.error('Unexpected error assigning seats:', err);
       alert('An unexpected error occurred. Please try again.');
     }
-  };
+  }, [groups, unseatedStudents, fetchGroups]);
 
   // Listen for add multiple groups event from bottom nav
   useEffect(() => {
@@ -1666,7 +1675,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     return () => {
       window.removeEventListener('seatingChartAddMultipleGroups', handleAddMultipleGroupsEvent as EventListener);
     };
-  }, []);
+  }, [handleAddMultipleGroups]);
 
   // Listen for auto assign seats event from bottom nav
   useEffect(() => {
@@ -1678,7 +1687,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     return () => {
       window.removeEventListener('seatingChartAutoAssignSeats', handleAutoAssignSeatsEvent);
     };
-  }, []);
+  }, [handleAssignSeats]);
 
   const handleEditTeam = (groupId: string) => {
     const groupToEdit = groups.find(g => g.id === groupId);
@@ -2809,7 +2818,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
           height: 'calc(100vh - 16px)' // Full viewport minus small padding
         }}
       >
-        <LeftNavSeatingChart />
+        <LeftNavSeatingChartEdit />
       </div>
 
       {/* Create Layout Modal */}
