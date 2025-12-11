@@ -620,7 +620,7 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
         <div className="flex-1 flex flex-col relative" style={{ minHeight: 'calc(100vh - 300px)' }}>
           {/* Canvas for groups display */}
           <div 
-            className="bg-[#4A3B8D] fixed border-2 border-white rounded-lg pt-2"
+            className="bg-[#fcfcfc] fixed border-2 border-white rounded-lg pt-2"
             style={{
               top: '6px', // Start at the top of the screen
               left: `${canvasLeft}px`, // Dynamically calculated from left sidebar right edge + spacing
