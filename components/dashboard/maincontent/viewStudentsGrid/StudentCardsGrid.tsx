@@ -30,32 +30,41 @@ export default function StudentCardsGrid({
 }: StudentCardsGridProps) {
   return (
     <div 
-      // smaller contained with only the cards (contained in a bigger container)
-      className="grid gap-6 mb-8"
       style={{
-        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))'
+        transform: 'scale(0.67)',
+        transformOrigin: 'top left',
+        width: '149.25%', // Compensate for 0.67 scale: 100% / 0.67
+        marginBottom: 'calc(2rem * 0.67)' // Scale the margin-bottom proportionally
       }}
     >
-      {/* Whole Class Card - Always First */}
-      <WholeClassCard 
-        classIcon={classIcon}
-        totalPoints={totalClassPoints}
-        onClick={onWholeClassClick}
-      />
-      
-      {/* Student Cards */}
-      {students.map((student) => (
-        <StudentCard
-          key={student.id}
-          student={student}
-          openDropdownId={openDropdownId}
-          onToggleDropdown={onToggleDropdown}
-          onEdit={onEdit}
-          onDelete={onDelete}
-          onClick={onStudentClick}
+      <div 
+        // smaller contained with only the cards (contained in a bigger container)
+        className="grid gap-6"
+        style={{
+          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))'
+        }}
+      >
+        {/* Whole Class Card - Always First */}
+        <WholeClassCard 
+          classIcon={classIcon}
+          totalPoints={totalClassPoints}
+          onClick={onWholeClassClick}
         />
-      ))}
-      <AddStudentCard onClick={onAddStudent} />
+        
+        {/* Student Cards */}
+        {students.map((student) => (
+          <StudentCard
+            key={student.id}
+            student={student}
+            openDropdownId={openDropdownId}
+            onToggleDropdown={onToggleDropdown}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onClick={onStudentClick}
+          />
+        ))}
+        <AddStudentCard onClick={onAddStudent} />
+      </div>
     </div>
   );
 }

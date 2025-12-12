@@ -14,20 +14,29 @@ export default function StudentCardsGridMulti({
 }: StudentCardsGridMultiProps) {
   return (
     <div 
-      className="grid gap-6 mb-8"
       style={{
-        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))'
+        transform: 'scale(0.67)',
+        transformOrigin: 'top left',
+        width: '149.25%', // Compensate for 0.67 scale: 100% / 0.67
+        marginBottom: 'calc(2rem * 0.67)' // Scale the margin-bottom proportionally
       }}
     >
-      {/* Student Cards */}
-      {students.map((student) => (
-        <StudentCardMulti
-          key={student.id}
-          student={student}
-          isSelected={selectedStudentIds.includes(student.id)}
-          onSelect={onSelectStudent}
-        />
-      ))}
+      <div 
+        className="grid gap-6"
+        style={{
+          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))'
+        }}
+      >
+        {/* Student Cards */}
+        {students.map((student) => (
+          <StudentCardMulti
+            key={student.id}
+            student={student}
+            isSelected={selectedStudentIds.includes(student.id)}
+            onSelect={onSelectStudent}
+          />
+        ))}
+      </div>
     </div>
   );
 }
