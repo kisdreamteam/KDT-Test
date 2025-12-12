@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useSeatingChart } from '@/context/SeatingChartContext';
 import { Student } from '@/lib/types';
@@ -45,6 +45,8 @@ interface AppViewSeatingChartEditorProps {
 export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingChartEditorProps) {
   const { selectedStudentForGroup, setSelectedStudentForGroup, setUnseatedStudents, unseatedStudents } = useSeatingChart();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [layouts, setLayouts] = useState<SeatingChart[]>([]);
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -97,6 +99,17 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   // Helper function to show success notification
   const showSuccessNotification = (title: string, message: string) => {
     setSuccessNotification({ isOpen: true, title, message });
+  };
+
+  // Handle exit editor mode (same functionality as BottomNavSeatingEdit)
+  const handleExitEditorMode = () => {
+    window.dispatchEvent(new CustomEvent('seatingChartSave'));
+    window.dispatchEvent(new CustomEvent('seatingChartEditMode', { detail: { isEditMode: false } }));
+    // Remove mode parameter from URL
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('mode');
+    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.push(newUrl);
   };
 
   // Calculate canvas left position based on left sidebar position
@@ -893,8 +906,11 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       const groupHeight = 150; // Approximate group height (will vary based on content)
       const horizontalSpacing = 30; // Space between groups horizontally
       const verticalSpacing = 30; // Space between rows
-      const startX = 50; // Starting X position
-      const startY = 50; // Starting Y position
+      // Start positions: Groups should start below Teacher's Desk (at top: 55px, height: 75px)
+      // Teacher's Desk ends at ~130px, so start groups at 140px with some spacing
+      // Groups should start to the right of Teacher's Desk (at left: 5px, width: 200px)
+      const startX = 20; // Starting X position (to the right of Teacher's Desk)
+      const startY = 140; // Starting Y position (below Teacher's Desk at 55px + 75px height + 10px spacing)
 
       // Default columns for new groups (using 2 as default, same as single group creation)
       const defaultColumns = 2;
@@ -2329,7 +2345,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
           <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
             {/* Whiteboard and TV - Centered at top (always visible) */}
             <div
-              className="absolute bg-white border-2 border-gray-400 rounded-lg flex items-center justify-center"
+              className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
               style={{
                 top: '0px',
                 left: '50%',
@@ -2339,7 +2355,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                 zIndex: 0
               }}
             >
-              <span className="text-gray-700 font-semibold text-lg">Whiteboard and TV</span>
+              <span className="text-white font-semibold text-lg">Whiteboard and TV</span>
             </div>
             
             {/* Furniture (Teacher's Desk and Doors) - Only show if showObjects is true */}
@@ -2347,7 +2363,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
               <>
                 {/* Teacher's Desk - Position based on layoutOrientation */}
                 <div
-                  className="absolute bg-white border-2 border-gray-400 rounded-lg flex items-center justify-center"
+                  className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
                   style={{
                     top: '55px',
                     ...(layoutOrientation === 'Left' 
@@ -2359,7 +2375,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                     zIndex: 0
                   }}
                 >
-                  <span className="text-gray-700 font-semibold">Teacher's Desk</span>
+                  <span className="text-white font-semibold">Teacher's Desk</span>
             </div>
                 
                 {/* Door 1 - Top - Position based on layoutOrientation */}
@@ -2417,6 +2433,27 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                 zIndex: 1
                     }}
                   >
+                    {/* Exit Editor Mode X Icon - Top Right Corner */}
+                    <div
+                      onClick={handleExitEditorMode}
+                      className="absolute top-4 right-4 z-50 cursor-pointer flex items-center justify-center w-10 h-10 rounded-full bg-gray-800 hover:bg-gray-700 border-2 border-white shadow-lg transition-colors"
+                      style={{ pointerEvents: 'auto' }}
+                      title="Exit Editor Mode"
+                    >
+                      <svg 
+                        className="w-6 h-6 text-white" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={3} 
+                          d="M6 18L18 6M6 6l12 12" 
+                        />
+                      </svg>
+                    </div>
                     {groups.map((group, index) => {
                       const studentsInGroupRaw = groupStudents.get(group.id) || [];
                       // Filter out duplicates by student ID to prevent React key errors

@@ -652,7 +652,7 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
           <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
             {/* Whiteboard and TV - Centered at top (always visible) */}
             <div
-              className="absolute bg-white border-2 border-gray-400 rounded-lg flex items-center justify-center"
+              className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
               style={{
                 top: '0px',
                 left: '50%',
@@ -662,7 +662,7 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
                 zIndex: 0
               }}
             >
-              <span className="text-gray-700 font-semibold text-lg">Whiteboard and TV</span>
+              <span className="text-white font-semibold text-lg">Whiteboard and TV</span>
             </div>
             
             {/* Furniture (Teacher's Desk and Doors) - Only show if showObjects is true */}
@@ -670,7 +670,7 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
               <>
                 {/* Teacher's Desk - Position based on layoutOrientation */}
                 <div
-                  className="absolute bg-white border-2 border-gray-400 rounded-lg flex items-center justify-center"
+                  className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
                   style={{
                     top: '55px',
                     ...(layoutOrientation === 'Left' 
@@ -682,7 +682,7 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
                     zIndex: 0
                   }}
                 >
-                  <span className="text-gray-700 font-semibold">Teacher's Desk</span>
+                  <span className="text-white font-semibold">Teacher's Desk</span>
                 </div>
                 
                 {/* Door 1 - Top - Position based on layoutOrientation */}
