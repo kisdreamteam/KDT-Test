@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 export type SortOption = 'number' | 'alphabetical' | 'points';
 
@@ -19,8 +19,26 @@ export function useStudentSort() {
   return context;
 }
 
+const STORAGE_KEY = 'studentSortOrder';
+
 export function StudentSortProvider({ children }: { children: ReactNode }) {
-  const [sortBy, setSortBy] = useState<SortOption>('number'); // Default to 'number'
+  // Initialize from localStorage or default to 'number'
+  const [sortBy, setSortBy] = useState<SortOption>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored && ['number', 'alphabetical', 'points'].includes(stored)) {
+        return stored as SortOption;
+      }
+    }
+    return 'number';
+  });
+
+  // Persist to localStorage whenever sortBy changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, sortBy);
+    }
+  }, [sortBy]);
 
   return (
     <StudentSortContext.Provider value={{ sortBy, setSortBy }}>

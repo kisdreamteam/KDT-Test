@@ -363,6 +363,8 @@ export default function AppViewStudents() {
   };
 
   // Sort students based on sortBy option
+  // Note: This same sortedStudents array is used for both single view and multi-select view,
+  // ensuring the sort order is preserved when switching between views
   const sortedStudents = useMemo(() => {
     const studentsCopy = [...students];
     
@@ -439,6 +441,9 @@ export default function AppViewStudents() {
                   students={sortedStudents}
                   selectedStudentIds={selectedStudentIds}
                   onSelectStudent={handleSelectStudent}
+                  classIcon={classIcon}
+                  totalClassPoints={totalClassPoints}
+                  onWholeClassClick={handleWholeClassClick}
                 />
               ) : (
                 <StudentCardsGrid

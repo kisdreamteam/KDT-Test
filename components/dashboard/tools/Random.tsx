@@ -22,6 +22,8 @@ export default function Random({ onClose }: RandomProps) {
   const reelRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const [isAwardPointsModalOpen, setIsAwardPointsModalOpen] = useState(false);
+  const lastCardIndexRef = useRef<number>(-1);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   const fetchStudents = useCallback(async () => {
     try {
@@ -54,13 +56,69 @@ export default function Random({ onClose }: RandomProps) {
     }
   }, [classId, fetchStudents]);
 
-  // Cleanup animation frame on unmount
+  // Cleanup animation frame and audio context on unmount
   useEffect(() => {
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
     };
+  }, []);
+
+  // Function to play a tick sound for each card passing through
+  const playTickSound = useCallback(async (volume: number = 0.2) => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) {
+        return;
+      }
+      
+      // Create or reuse audio context
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioContextClass();
+      }
+      
+      const audioContext = audioContextRef.current;
+      
+      // Resume audio context if suspended (required by some browsers)
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+      
+      // Create a mechanical slot machine tick sound
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Lower frequency for a more mechanical, slot machine-like sound
+      // Real slot machines typically have lower-pitched mechanical clicks
+      oscillator.frequency.value = 250; // Lower pitch (was 800)
+      oscillator.type = 'sawtooth'; // Sawtooth gives a more mechanical, gritty sound
+      
+      // Create a short mechanical click envelope
+      const now = audioContext.currentTime;
+      const duration = 0.08; // Slightly longer for more presence
+      
+      // Quick attack and decay for a mechanical click sound
+      gainNode.gain.setValueAtTime(0, now);
+      gainNode.gain.linearRampToValueAtTime(volume, now + 0.005); // Very quick attack
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration); // Quick decay
+      
+      // Add slight frequency variation for more mechanical character
+      oscillator.frequency.setValueAtTime(250, now);
+      oscillator.frequency.linearRampToValueAtTime(230, now + duration); // Slight downward sweep
+      
+      oscillator.start(now);
+      oscillator.stop(now + duration);
+    } catch (error) {
+      // Silently fail if audio cannot be played
+      console.log('Could not play tick sound:', error);
+    }
   }, []);
 
   const handleSpin = () => {
@@ -68,6 +126,10 @@ export default function Random({ onClose }: RandomProps) {
 
     setIsSpinning(true);
     setSelectedStudent(null);
+    
+    // Reset card tracking and scroll position to top for consistent animation
+    lastCardIndexRef.current = -1;
+    setScrollPosition(0); // Reset to top immediately
 
     // Randomly select a student
     const randomIndex = Math.floor(Math.random() * students.length);
@@ -94,12 +156,12 @@ export default function Random({ onClose }: RandomProps) {
     // Final target position (add extra scroll to ensure we have enough content to scroll through)
     const finalTarget = extraScroll + targetPosition;
     
-    // Start from current position or 0
-    const startPosition = scrollPosition;
+    // Always start from top (0) for consistent animation
+    const startPosition = 0;
     const distance = finalTarget - startPosition;
     
-    // Animation duration (3-4 seconds)
-    const duration = 3000 + Math.random() * 1000; // 3-4 seconds
+    // Consistent animation duration (3.5 seconds)
+    const duration = 3500; // Always 3.5 seconds
     const startTime = performance.now();
     
     // Easing function for smooth deceleration
@@ -116,6 +178,25 @@ export default function Random({ onClose }: RandomProps) {
       const currentPosition = startPosition + distance * easedProgress;
       setScrollPosition(currentPosition);
       
+      // Calculate which card is currently in the middle slot
+      // The middle of the window is at middleOfWindow (375px)
+      // With scrollPosition, the card at position (scrollPosition + middleOfWindow) is centered
+      // Calculate which item index this corresponds to
+      const currentCenterPosition = currentPosition + middleOfWindow;
+      const currentCardIndex = Math.floor((currentCenterPosition - itemCenterOffset) / itemHeight);
+      
+      // Play sound when a new card passes through the middle
+      // The timing will naturally be faster at the start (due to higher scroll speed) 
+      // and slower at the end (due to easing), which is exactly what we want
+      if (currentCardIndex !== lastCardIndexRef.current && currentCardIndex >= 0) {
+        lastCardIndexRef.current = currentCardIndex;
+        
+        // Volume decreases as we approach the end (softer sounds near the end)
+        // This creates a nice effect where sounds are more prominent at the start
+        const volume = 0.3 - (progress * 0.2); // Start at 0.3, end at 0.1
+        playTickSound(volume);
+      }
+      
       if (progress < 1) {
         animationFrameRef.current = requestAnimationFrame(animate);
       } else {
@@ -123,6 +204,7 @@ export default function Random({ onClose }: RandomProps) {
         setIsSpinning(false);
         setSelectedStudent(selected);
         setScrollPosition(finalTarget);
+        lastCardIndexRef.current = -1; // Reset for next spin
       }
     };
     
