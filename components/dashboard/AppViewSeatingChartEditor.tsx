@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useSeatingChart } from '@/context/SeatingChartContext';
 import { Student } from '@/lib/types';
@@ -45,6 +45,8 @@ interface AppViewSeatingChartEditorProps {
 export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingChartEditorProps) {
   const { selectedStudentForGroup, setSelectedStudentForGroup, setUnseatedStudents, unseatedStudents } = useSeatingChart();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [layouts, setLayouts] = useState<SeatingChart[]>([]);
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -97,6 +99,15 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   // Helper function to show success notification
   const showSuccessNotification = (title: string, message: string) => {
     setSuccessNotification({ isOpen: true, title, message });
+  };
+
+  // Handle close button - navigate back to seating chart view (remove mode=edit)
+  const handleClose = () => {
+    window.dispatchEvent(new CustomEvent('seatingChartEditMode', { detail: { isEditMode: false } }));
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('mode');
+    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.push(newUrl);
   };
 
   // Calculate canvas left position based on left sidebar position
@@ -2288,6 +2299,26 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         left: 0
       }}
     >
+      {/* Close Button */}
+      <button
+        onClick={handleClose}
+        className="absolute top-10 right-10 w-12 h-12 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-colors z-50 shadow-lg"
+      >
+        <svg
+          className="w-8 h-8 text-black"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M6 18L18 6M6 6l12 12"
+          />
+        </svg>
+      </button>
+
       {/* Main Content Area - Add left padding to account for left sidebar (w-76 = 304px) + spacing (8px) */}
       {/* Note: Removed overflow-y-auto from this container to avoid nested scroll container warning with drag-and-drop */}
       <div ref={mainContentRef} className="flex-1 p-1 bg-[#4A3B8D] sm:p-11md:p-2 relative" style={{ paddingLeft: '312px', minHeight: '100%', overflow: 'visible' }}>
