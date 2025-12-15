@@ -698,7 +698,7 @@ export default function AwardPointsModal({
                 </div>
               )}
             </div>
-            <span className="text-5xl font-bold text-gray-900 lowercase">
+            <span className="text-5xl font-bold text-gray-900">
               {isMultiClassMode && selectedClassIds
                 ? `${selectedClassIds.length} Selected ${selectedClassIds.length === 1 ? 'Class' : 'Classes'}`
                 : isMultiStudentMode && selectedStudentIds
@@ -711,7 +711,7 @@ export default function AwardPointsModal({
             
             {/* Point Totals */}
             <div className="flex items-left gap-2 ml-4">
-              <span className="px-3 py-1 bg-gray-100 border border-gray-300 rounded-full text-5xl font-bold text-red-600">
+              <span className="px-0 py-1 rounded-full text-3xl font-bold text-red-600 translate-y-2/12">
                 {isMultiClassMode || isMultiStudentMode
                   ? 'Multiple'
                   : isWholeClassMode 
@@ -770,7 +770,7 @@ export default function AwardPointsModal({
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-4 gap-3">
                   {positiveSkills.map((skill) => {
                     // Find the full category object
                     const category = categories.find(cat => cat.id === skill.id);
@@ -780,26 +780,39 @@ export default function AwardPointsModal({
                       <div
                         key={skill.id}
                         onClick={() => handleAwardSkill(category)}
-                        className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer relative"
+                        className="bg-white font-spartan rounded-3xl hover:bg-blue-100 hover:rounded-3xl shadow-md p-4 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer aspect-square flex flex-col"
                       >
-                        <div className="flex flex-col items-center text-center">
-                          <div className="mb-3" style={{ color: getSkillColor(skill.name) }}>
-                            {skill.icon ? (
-                              <Image
-                                src={skill.icon}
-                                alt={skill.name}
-                                width={40}
-                                height={40}
-                                className="w-10 h-10 object-contain"
-                              />
-                            ) : (
-                              getSkillIcon()
-                            )}
+                        <div className="flex flex-col items-center text-center flex-1">
+                          {/* Skill Icon */}
+                          <div className="flex justify-center mb-3 pointer-events-none flex-shrink-0">
+                            <div className="rounded-xl bg-[#FDF2F0] p-2 flex items-center justify-center" style={{ color: getSkillColor(skill.name) }}>
+                              {skill.icon ? (
+                                <Image
+                                  src={skill.icon}
+                                  alt={skill.name}
+                                  width={60}
+                                  height={60}
+                                  className="w-full h-full object-contain"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <h3 className="text-sm font-medium text-gray-900">{skill.name}</h3>
-                          <span className="text-xs font-medium text-gray-700 absolute top-2 right-3">
-                            +{skill.points}
-                          </span>
+                          {/* Skill Name */}
+                          <div className="text-center mb-0.5 pointer-events-none flex-shrink-0">
+                            <h3 className="text-sm font-semibold text-gray-900">{skill.name}</h3>
+                          </div>
+                          {/* Points Badge */}
+                          <div className="text-center pointer-events-none mt-auto">
+                            <div className="inline-flex items-center px-2 py-1 rounded-full bg-[#FDF2F0] text-red-400 text-base font-bold">
+                              +{skill.points}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );
@@ -807,27 +820,39 @@ export default function AwardPointsModal({
                   {/* Add Skills Card */}
                   <button
                     onClick={() => setManageSkillsModalOpen(true)}
-                    className="bg-white rounded-lg border-2 border-purple-500 border-dashed p-4 hover:border-purple-600 transition-colors cursor-pointer flex flex-col items-center justify-center min-h-[120px]"
+                    className="bg-white font-spartan rounded-3xl hover:bg-blue-100 hover:rounded-3xl shadow-md p-4 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer aspect-square flex flex-col border-2 border-purple-500 border-dashed hover:border-purple-600"
                   >
-                    <div className="text-purple-500 mb-2">
-                      <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
-                      </svg>
+                    <div className="flex flex-col items-center justify-center flex-1">
+                      <div className="flex justify-center mb-1 pointer-events-none flex-shrink-0">
+                        <div className="rounded-xl bg-[#FDF2F0] p-2 flex items-center justify-center text-purple-500">
+                          <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="text-center mb-1 pointer-events-none flex-shrink-0">
+                        <h3 className="text-sm font-semibold text-purple-600">Add skills</h3>
+                      </div>
                     </div>
-                    <span className="text-sm font-medium text-purple-600">Add skills</span>
                   </button>
                   {/* Edit Skills Card */}
                   <button
                     onClick={() => setEditModalOpen(true)}
-                    className="bg-white rounded-lg border-2 border-gray-300 border-dashed p-4 hover:border-gray-400 transition-colors cursor-pointer flex flex-col items-center justify-center min-h-[120px]"
+                    className="bg-white font-spartan rounded-3xl hover:bg-blue-100 hover:rounded-3xl shadow-md p-4 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer aspect-square flex flex-col border-2 border-gray-300 border-dashed hover:border-gray-400"
                   >
-                    <div className="text-gray-600 mb-2">
-                      <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
+                    <div className="flex flex-col items-center justify-center flex-1">
+                      <div className="flex justify-center mb-1 pointer-events-none flex-shrink-0">
+                        <div className="rounded-xl bg-[#FDF2F0] p-2 flex items-center justify-center text-gray-600">
+                          <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="text-center mb-1 pointer-events-none flex-shrink-0">
+                        <h3 className="text-sm font-semibold text-gray-600">Edit Skills</h3>
+                      </div>
                     </div>
-                    <span className="text-sm font-medium text-gray-600">Edit Skills</span>
                   </button>
                 </div>
               )}
@@ -845,7 +870,7 @@ export default function AwardPointsModal({
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-4 gap-3">
                   {negativeSkills.map((skill) => {
                     // Find the full category object
                     const category = categories.find(cat => cat.id === skill.id);
@@ -855,26 +880,39 @@ export default function AwardPointsModal({
                       <div
                         key={skill.id}
                         onClick={() => handleAwardSkill(category)}
-                        className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer relative"
+                        className="bg-white font-spartan rounded-3xl hover:bg-blue-100 hover:rounded-3xl shadow-md p-4 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer aspect-square flex flex-col"
                       >
-                        <div className="flex flex-col items-center text-center">
-                          <div className="mb-3 text-red-500">
-                            {skill.icon ? (
-                              <Image
-                                src={skill.icon}
-                                alt={skill.name}
-                                width={40}
-                                height={40}
-                                className="w-10 h-10 object-contain"
-                              />
-                            ) : (
-                              skill.icon
-                            )}
+                        <div className="flex flex-col items-center text-center flex-1">
+                          {/* Skill Icon */}
+                          <div className="flex justify-center mb-1 pointer-events-none flex-shrink-0">
+                            <div className="rounded-xl bg-[#FDF2F0] p-2 flex items-center justify-center text-red-500">
+                              {skill.icon ? (
+                                <Image
+                                  src={skill.icon}
+                                  alt={skill.name}
+                                  width={60}
+                                  height={60}
+                                  className="w-full h-full object-contain"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <h3 className="text-sm font-medium text-gray-900">{skill.name}</h3>
-                          <span className="text-xs font-medium text-gray-700 absolute top-2 right-3">
-                            {skill.points}
-                          </span>
+                          {/* Skill Name */}
+                          <div className="text-center mb-1 pointer-events-none flex-shrink-0">
+                            <h3 className="text-sm font-semibold text-gray-900">{skill.name}</h3>
+                          </div>
+                          {/* Points Badge */}
+                          <div className="text-center pointer-events-none mt-auto">
+                            <div className="inline-flex items-center px-2 py-1 rounded-full bg-[#FDF2F0] text-red-400 text-base font-bold">
+                              {skill.points}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );
@@ -882,27 +920,39 @@ export default function AwardPointsModal({
                   {/* Add Skills Card */}
                   <button
                     onClick={() => setManageSkillsModalOpen(true)}
-                    className="bg-white rounded-lg border-2 border-purple-500 border-dashed p-4 hover:border-purple-600 transition-colors cursor-pointer flex flex-col items-center justify-center min-h-[120px]"
+                    className="bg-white font-spartan rounded-3xl hover:bg-blue-100 hover:rounded-3xl shadow-md p-4 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer aspect-square flex flex-col border-2 border-purple-500 border-dashed hover:border-purple-600"
                   >
-                    <div className="text-purple-500 mb-2">
-                      <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
-                      </svg>
+                    <div className="flex flex-col items-center justify-center flex-1">
+                      <div className="flex justify-center mb-1 pointer-events-none flex-shrink-0">
+                        <div className="rounded-xl bg-[#FDF2F0] p-2 flex items-center justify-center text-purple-500">
+                          <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="text-center mb-1 pointer-events-none flex-shrink-0">
+                        <h3 className="text-sm font-semibold text-purple-600">Add skills</h3>
+                      </div>
                     </div>
-                    <span className="text-sm font-medium text-purple-600">Add skills</span>
                   </button>
                   {/* Edit Skills Card */}
                   <button
                     onClick={() => setEditModalOpen(true)}
-                    className="bg-white rounded-lg border-2 border-gray-300 border-dashed p-4 hover:border-gray-400 transition-colors cursor-pointer flex flex-col items-center justify-center min-h-[120px]"
+                    className="bg-white font-spartan rounded-3xl hover:bg-blue-100 hover:rounded-3xl shadow-md p-4 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer aspect-square flex flex-col border-2 border-gray-300 border-dashed hover:border-gray-400"
                   >
-                    <div className="text-gray-600 mb-2">
-                      <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
+                    <div className="flex flex-col items-center justify-center flex-1">
+                      <div className="flex justify-center mb-1 pointer-events-none flex-shrink-0">
+                        <div className="rounded-xl bg-[#FDF2F0] p-2 flex items-center justify-center text-gray-600">
+                          <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="text-center mb-1 pointer-events-none flex-shrink-0">
+                        <h3 className="text-sm font-semibold text-gray-600">Edit Skills</h3>
+                      </div>
                     </div>
-                    <span className="text-sm font-medium text-gray-600">Edit Skills</span>
                   </button>
                 </div>
               )}

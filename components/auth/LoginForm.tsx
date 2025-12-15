@@ -29,7 +29,7 @@ export default function LoginForm() {
     }}>
       {/* Email Field */}
       <div className="grid gap-2">
-        <label htmlFor="email" className="text-base font-semibold text-black font-spartan">
+        <label htmlFor="email" className="text-base font-semibold text-[24px] text-black font-spartan">
           Email address
         </label>
         <input
@@ -38,7 +38,7 @@ export default function LoginForm() {
           type="email"
           autoComplete="email"
           required
-          className="h-12 rounded-[12px] border border-black/20 bg-white px-4 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-[#4A3B8D]/30"
+          className="h-12 rounded-[12px] border border-black/20 bg-white px-4 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-[#4A3B8D]/30 font-sans"
           placeholder=""
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -47,7 +47,7 @@ export default function LoginForm() {
 
       {/* Password Field */}
       <div className="grid gap-2">
-        <label htmlFor="password" className="text-base font-semibold text-black font-spartan">
+        <label htmlFor="password" className="text-base font-semibold text-black text-[24px] font-spartan">
           Password
         </label>
         <div className="relative">
@@ -57,7 +57,7 @@ export default function LoginForm() {
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
             required
-            className="h-12 w-full rounded-[12px] border border-black/20 bg-white px-4 pr-12 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-[#4A3B8D]/30"
+            className="h-12 w-full rounded-[12px] border border-black/20 bg-white px-4 pr-12 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-[#4A3B8D]/30 font-sans"
             placeholder=""
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -75,16 +75,16 @@ export default function LoginForm() {
 
       {/* Forgot Password Link - Left Aligned */}
       <div className="text-left">
-        <Link href="#" className="text-sm text-gray-600 hover:underline font-spartan">
+        <Link href="#" className="text-[18px] text-sm text-gray-600 hover:underline font-spartan">
           Forgot your password?
         </Link>
       </div>
 
       {/* Login Button */}
-      <div className="grid gap-3">
+      <div className="flex justify-center gap-3">
         <button
           type="submit"
-          className="h-12 rounded-[12px] bg-[#D96B7B] text-white font-bold text-2xl tracking-tight hover:brightness-95 transition focus:outline-none focus:ring-4 focus:ring-[#D96B7B]/30 font-spartan"
+          className="h-12 w-[750px] px-8 rounded-[12px] bg-[#D96B7B] text-white font-bold text-2xl tracking-tight hover:brightness-95 transition focus:outline-none focus:ring-4 focus:ring-[#D96B7B]/30 font-spartan"
         >
           Login
         </button>

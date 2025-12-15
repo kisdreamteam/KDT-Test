@@ -15,7 +15,7 @@ export default function LandingCharacter() {
           height={1000}
           priority
           className="absolute left-1/2 -translate-x-1/2 max-w-[500px] w-full h-auto object-cover scale-145"
-          style={{ top: 'calc(0% + 10px)' }}
+          style={{ top: 'calc(0% + -30px)' }}
         />
       </div>
     </div>

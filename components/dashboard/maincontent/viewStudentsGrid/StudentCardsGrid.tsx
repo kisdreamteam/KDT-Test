@@ -33,8 +33,7 @@ export default function StudentCardsGrid({
       style={{
         transform: 'scale(0.67)',
         transformOrigin: 'top left',
-        width: '149.25%', // Compensate for 0.67 scale: 100% / 0.67
-        marginBottom: 'calc(2rem * 0.67)' // Scale the margin-bottom proportionally
+        width: '149.25%' // Compensate for 0.67 scale: 100% / 0.67
       }}
     >
       <div 

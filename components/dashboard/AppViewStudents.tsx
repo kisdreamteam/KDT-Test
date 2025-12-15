@@ -416,7 +416,7 @@ export default function AppViewStudents() {
   return (
     <>
       {/* Main Content Container for student cards */}
-      <div className="min-h-full">
+      <div className={currentView === 'seating' ? 'min-h-full' : ''}>
         <div className="max-w-10xl mx-auto text-white-500">
           {currentView === 'seating' ? (
             // Seating Chart View or Edit Mode
