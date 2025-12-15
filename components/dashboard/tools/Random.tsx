@@ -276,7 +276,7 @@ export default function Random({ onClose }: RandomProps) {
                   <p className="text-white text-3xl font-semibold mb-3">Selected:</p>
                   <div className="flex items-center gap-5 justify-center mb-6">
                     <Image
-                      src={selectedStudent.avatar || "/images/students/avatars/student_avatar_1.png"}
+                      src={selectedStudent.avatar || "/images/dashboard/student-avatars/avatar-01.png"}
                       alt={`${selectedStudent.first_name} ${selectedStudent.last_name}`}
                       width={75}
                       height={75}
@@ -345,7 +345,7 @@ export default function Random({ onClose }: RandomProps) {
                           >
                             <div className="mb-5">
                               <Image
-                                src={student.avatar || "/images/students/avatars/student_avatar_1.png"}
+                                src={student.avatar || "/images/dashboard/student-avatars/avatar-01.png"}
                                 alt={`${student.first_name} ${student.last_name}`}
                                 width={150}
                                 height={150}

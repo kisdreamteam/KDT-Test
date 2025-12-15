@@ -93,7 +93,7 @@ export default function StudentCard({
       {/* Student Avatar */}
       <div className="flex justify-center mb-1 pointer-events-none flex-shrink-0">
         <Image
-          src={student.avatar || "/images/students/avatars/student_avatar_1.png"}
+          src={student.avatar || "/images/dashboard/student-avatars/avatar-01.png"}
           alt={`${student.first_name} ${student.last_name} avatar`}
           width={100}
           height={100}

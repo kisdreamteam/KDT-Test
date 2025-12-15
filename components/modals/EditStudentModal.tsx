@@ -18,7 +18,7 @@ export default function EditStudentModal({ isOpen, onClose, student, onRefresh }
   const [lastName, setLastName] = useState('');
   const [studentNumber, setStudentNumber] = useState('');
   const [gender, setGender] = useState<string>('');
-  const [selectedAvatar, setSelectedAvatar] = useState<string>('/images/classes/avatars/avatar-01.png');
+  const [selectedAvatar, setSelectedAvatar] = useState<string>('/images/dashboard/student-avatars/avatar-01.png');
   const [isAvatarDropdownOpen, setIsAvatarDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -27,7 +27,7 @@ export default function EditStudentModal({ isOpen, onClose, student, onRefresh }
   // Generate array of available student avatars (avatar-01.png through avatar-40.png)
   const availableAvatars = Array.from({ length: 40 }, (_, i) => {
     const number = String(i + 1).padStart(2, '0');
-    return `/images/classes/avatars/avatar-${number}.png`;
+    return `/images/dashboard/student-avatars/avatar-${number}.png`;
   });
 
   // Close dropdown when clicking outside
@@ -51,7 +51,7 @@ export default function EditStudentModal({ isOpen, onClose, student, onRefresh }
       setLastName(student.last_name || '');
       // Convert number to string for input field
       setStudentNumber(student.student_number?.toString() || '');
-      setSelectedAvatar(student.avatar || '/images/classes/avatars/avatar-01.png');
+      setSelectedAvatar(student.avatar || '/images/dashboard/student-avatars/avatar-01.png');
       setGender(student.gender || '');
       setIsLoadingData(false);
     } else if (!isOpen) {
@@ -60,7 +60,7 @@ export default function EditStudentModal({ isOpen, onClose, student, onRefresh }
       setLastName('');
       setStudentNumber('');
       setGender('');
-      setSelectedAvatar('/images/classes/avatars/avatar-01.png');
+      setSelectedAvatar('/images/dashboard/student-avatars/avatar-01.png');
       setIsLoadingData(true);
     }
   }, [isOpen, student]);
@@ -149,7 +149,7 @@ export default function EditStudentModal({ isOpen, onClose, student, onRefresh }
                     className="w-full h-full object-cover rounded-full"
                     onError={(e) => {
                       // Fallback to default avatar if image doesn't exist
-                      e.currentTarget.src = '/images/classes/avatars/avatar-01.png';
+                      e.currentTarget.src = '/images/dashboard/student-avatars/avatar-01.png';
                     }}
                   />
                   {/* Down Arrow Indicator */}

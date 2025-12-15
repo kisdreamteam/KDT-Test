@@ -256,7 +256,7 @@ export default function AwardPointsModal({
         // Notify parent about the award for multiple students
         if (onPointsAwarded) {
           onPointsAwarded({
-            studentAvatar: classIcon || "/images/classes/avatars/avatar-01.png",
+            studentAvatar: classIcon || "/images/dashboard/student-avatars/avatar-01.png",
             studentFirstName: `${selectedStudentIds.length} ${selectedStudentIds.length === 1 ? 'Student' : 'Students'}`,
             points: points,
             categoryName: category.name,
@@ -317,7 +317,7 @@ export default function AwardPointsModal({
         // Notify parent about the award
         if (onPointsAwarded) {
           onPointsAwarded({
-            studentAvatar: classIcon || "/images/classes/avatars/avatar-01.png",
+            studentAvatar: classIcon || "/images/dashboard/student-avatars/avatar-01.png",
             studentFirstName: className || 'Whole Class',
             points: points,
             categoryName: category.name,
@@ -350,7 +350,7 @@ export default function AwardPointsModal({
           // Notify parent about the award
           if (onPointsAwarded) {
             onPointsAwarded({
-              studentAvatar: student.avatar || "/images/classes/avatars/avatar-01.png",
+              studentAvatar: student.avatar || "/images/dashboard/student-avatars/avatar-01.png",
               studentFirstName: student.first_name,
               points: points,
               categoryName: category.name,
@@ -519,7 +519,7 @@ export default function AwardPointsModal({
         // Notify parent about the award for multiple students (custom points)
         if (onPointsAwarded) {
           onPointsAwarded({
-            studentAvatar: classIcon || "/images/classes/avatars/avatar-01.png",
+            studentAvatar: classIcon || "/images/dashboard/student-avatars/avatar-01.png",
             studentFirstName: `${selectedStudentIds.length} ${selectedStudentIds.length === 1 ? 'Student' : 'Students'}`,
             points: customPoints,
             categoryName: customMemo || 'Custom Points',
@@ -602,7 +602,7 @@ export default function AwardPointsModal({
         // Notify parent about the award (custom points)
         if (onPointsAwarded) {
           onPointsAwarded({
-            studentAvatar: classIcon || "/images/classes/avatars/avatar-01.png",
+            studentAvatar: classIcon || "/images/dashboard/student-avatars/avatar-01.png",
             studentFirstName: className || 'Whole Class',
             points: customPoints,
             categoryName: customMemo || 'Custom Points',
@@ -664,7 +664,7 @@ export default function AwardPointsModal({
         // Notify parent about the award (custom points)
         if (onPointsAwarded) {
           onPointsAwarded({
-            studentAvatar: student.avatar || "/images/classes/avatars/avatar-01.png",
+            studentAvatar: student.avatar || "/images/dashboard/student-avatars/avatar-01.png",
             studentFirstName: student.first_name,
             points: customPoints,
             categoryName: customMemo || 'Custom Points',
@@ -701,7 +701,7 @@ export default function AwardPointsModal({
               <Image
                 src={isMultiClassMode || isWholeClassMode
                   ? (classIcon || "/images/dashboard/class-icons/icon-1.png")
-                  : (student?.avatar || "/images/classes/avatars/avatar-01.png")
+                  : (student?.avatar || "/images/dashboard/student-avatars/avatar-01.png")
                 }
                 alt={isMultiClassMode && selectedClassIds
                   ? `${selectedClassIds.length} Selected Classes`

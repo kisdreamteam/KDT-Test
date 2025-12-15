@@ -147,13 +147,13 @@ export default function PointsAwardedConfirmationModal({
           {/* Student Avatar */}
           <div className="relative w-40">
             <Image
-              src={studentAvatar || "/images/classes/avatars/avatar-01.png"}
+              src={studentAvatar || "/images/dashboard/student-avatars/avatar-01.png"}
               alt={`${studentFirstName} avatar`}
               width={120}
               height={120}
               className="rounded-lg object-cover"
               onError={(e) => {
-                e.currentTarget.src = '/images/classes/avatars/avatar-01.png';
+                e.currentTarget.src = '/images/dashboard/student-avatars/avatar-01.png';
               }}
             />
           </div>

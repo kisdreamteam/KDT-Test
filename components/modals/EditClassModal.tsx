@@ -796,7 +796,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                       </div>
                     ) : (
                       students.map((student) => {
-                      const imageSrc = student.avatar || "/images/students/avatars/student_avatar_1.png";
+                      const imageSrc = student.avatar || "/images/dashboard/student-avatars/avatar-01.png";
                       const currentGender = student.gender;
                       return (
                         <div

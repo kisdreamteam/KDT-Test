@@ -46,7 +46,7 @@ export default function AddStudentsModal({ isOpen, onClose, classId, onStudentAd
   const getRandomAvatar = () => {
     const avatarNumber = Math.floor(Math.random() * 40) + 1;
     const avatarName = `avatar-${String(avatarNumber).padStart(2, '0')}.png`;
-    return `/images/classes/avatars/${avatarName}`;
+    return `/images/dashboard/student-avatars/${avatarName}`;
   };
 
   // Get the next student number for the class
