@@ -29,7 +29,7 @@ export default function AppViewStudents() {
   const isEditModeFromURL = searchParams.get('mode') === 'edit';
   const [students, setStudents] = useState<Student[]>([]);
   const [className, setClassName] = useState<string>('');
-  const [classIcon, setClassIcon] = useState<string>('/images/dashboard/icons/icon-1.png');
+  const [classIcon, setClassIcon] = useState<string>('/images/dashboard/class-icons/icon-1.png');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddStudentModalOpen, setAddStudentModalOpen] = useState(false);
@@ -215,7 +215,7 @@ export default function AppViewStudents() {
 
       if (classData) {
         setClassName(classData.name);
-        setClassIcon(classData.icon || '/images/dashboard/icons/icon-1.png');
+        setClassIcon(classData.icon || '/images/dashboard/class-icons/icon-1.png');
       }
     } catch (err) {
       console.error('Unexpected error fetching class:', err instanceof Error ? err.message : err);

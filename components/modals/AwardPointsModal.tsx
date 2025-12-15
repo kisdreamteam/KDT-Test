@@ -8,6 +8,17 @@ import AddSkillModal from '@/components/modals/AddSkillModal';
 import EditSkillsModal from '@/components/modals/EditSkillsModal';
 import { PointCategory, Student } from '@/lib/types';
 
+// Helper function to add cache-busting parameter to icon URLs
+// Uses modal open state to generate a fresh cache-busting parameter
+const addCacheBuster = (iconPath: string, cacheKey?: string | number): string => {
+  if (!iconPath) return iconPath;
+  // Add cache-busting parameter to force fresh image fetch
+  // Use provided cacheKey or generate one based on current time
+  const separator = iconPath.includes('?') ? '&' : '?';
+  const version = cacheKey || Date.now();
+  return `${iconPath}${separator}v=${version}`;
+};
+
 interface AwardPointsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -54,6 +65,7 @@ export default function AwardPointsModal({
   const [customMemo, setCustomMemo] = useState<string>('');
   const [isManageSkillsModalOpen, setManageSkillsModalOpen] = useState(false);
   const [isEditModalOpen, setEditModalOpen] = useState(false);
+  const [imageCacheKey, setImageCacheKey] = useState<number>(Date.now());
 
   // Fetch categories function
   const fetchCategories = useCallback(async () => {
@@ -85,9 +97,19 @@ export default function AwardPointsModal({
         console.error('Error fetching categories:', error?.message || error);
         setCategories([]);
       } else {
+        // Normalize icon paths for categories (convert old paths to new paths)
+        const normalizedData = (data || []).map((category: any) => ({
+          ...category,
+          icon: category.icon?.includes('/images/classes/icons/icon-pos-')
+            ? category.icon.replace('/images/classes/icons/icon-pos-', '/images/dashboard/award-points-icons/icons-positive/icon-pos-')
+            : category.icon?.includes('/images/classes/icons/icon-neg-')
+            ? category.icon.replace('/images/classes/icons/icon-neg-', '/images/dashboard/award-points-icons/icons-negative/icon-neg-')
+            : category.icon
+        }));
+        
         // For multi-class mode, we might have duplicate categories, so we'll use unique ones
         // For now, we'll just use all categories (they should be class-specific anyway)
-        setCategories(data || []);
+        setCategories(normalizedData);
       }
     } catch (err) {
       console.error('Unexpected error fetching categories:', err);
@@ -99,7 +121,11 @@ export default function AwardPointsModal({
 
   // Fetch categories when modal opens or classId/selectedClassIds changes
   useEffect(() => {
-    fetchCategories();
+    if (isOpen) {
+      // Update cache key when modal opens to force fresh image loads
+      setImageCacheKey(Date.now());
+      fetchCategories();
+    }
   }, [isOpen, classId, selectedClassIds, fetchCategories]);
 
   // Debug logging for categories and loading state
@@ -674,7 +700,7 @@ export default function AwardPointsModal({
             <div className="relative">
               <Image
                 src={isMultiClassMode || isWholeClassMode
-                  ? (classIcon || "/images/1Landing Page Image.png")
+                  ? (classIcon || "/images/dashboard/class-icons/icon-1.png")
                   : (student?.avatar || "/images/classes/avatars/avatar-01.png")
                 }
                 alt={isMultiClassMode && selectedClassIds
@@ -780,38 +806,36 @@ export default function AwardPointsModal({
                       <div
                         key={skill.id}
                         onClick={() => handleAwardSkill(category)}
-                        className="bg-white font-spartan rounded-3xl hover:bg-blue-100 hover:rounded-3xl shadow-md p-4 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer aspect-square flex flex-col"
+                        className="bg-white font-spartan rounded-3xl hover:bg-blue-100 hover:rounded-3xl shadow-md p-6 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer aspect-square flex flex-col"
                       >
-                        <div className="flex flex-col items-center text-center flex-1">
-                          {/* Skill Icon */}
-                          <div className="flex justify-center mb-3 pointer-events-none flex-shrink-0">
-                            <div className="rounded-xl bg-[#FDF2F0] p-2 flex items-center justify-center" style={{ color: getSkillColor(skill.name) }}>
-                              {skill.icon ? (
-                                <Image
-                                  src={skill.icon}
-                                  alt={skill.name}
-                                  width={60}
-                                  height={60}
-                                  className="w-full h-full object-contain"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                  </svg>
-                                </div>
-                              )}
+                        {/* Skill Icon */}
+                        <div className="flex justify-center mb-1 pointer-events-none flex-shrink-0">
+                          {skill.icon ? (
+                            <Image
+                              key={`${skill.id}-${imageCacheKey}`}
+                              src={addCacheBuster(skill.icon, imageCacheKey)}
+                              alt={skill.name}
+                              width={100}
+                              height={100}
+                              className="rounded-xl bg-[#FDF2F0] object-contain"
+                              unoptimized
+                            />
+                          ) : (
+                            <div className="w-[100px] h-[100px] rounded-xl bg-[#FDF2F0] flex items-center justify-center">
+                              <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                              </svg>
                             </div>
-                          </div>
-                          {/* Skill Name */}
-                          <div className="text-center mb-0.5 pointer-events-none flex-shrink-0">
-                            <h3 className="text-sm font-semibold text-gray-900">{skill.name}</h3>
-                          </div>
-                          {/* Points Badge */}
-                          <div className="text-center pointer-events-none mt-auto">
-                            <div className="inline-flex items-center px-2 py-1 rounded-full bg-[#FDF2F0] text-red-400 text-base font-bold">
-                              +{skill.points}
-                            </div>
+                          )}
+                        </div>
+                        {/* Skill Name */}
+                        <div className="text-center mb-0 pointer-events-none flex-shrink-0">
+                          <h3 className="text-lg font-semibold text-gray-900">{skill.name}</h3>
+                        </div>
+                        {/* Points Badge */}
+                        <div className="text-center pointer-events-none mt-auto">
+                          <div className="inline-flex items-center px-3 py-0 rounded-full bg-[#FDF2F0] text-red-400 text-xl font-large font-bold">
+                            +{skill.points}
                           </div>
                         </div>
                       </div>
@@ -880,38 +904,36 @@ export default function AwardPointsModal({
                       <div
                         key={skill.id}
                         onClick={() => handleAwardSkill(category)}
-                        className="bg-white font-spartan rounded-3xl hover:bg-blue-100 hover:rounded-3xl shadow-md p-4 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer aspect-square flex flex-col"
+                        className="bg-white font-spartan rounded-3xl hover:bg-blue-100 hover:rounded-3xl shadow-md p-6 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer aspect-square flex flex-col"
                       >
-                        <div className="flex flex-col items-center text-center flex-1">
-                          {/* Skill Icon */}
-                          <div className="flex justify-center mb-1 pointer-events-none flex-shrink-0">
-                            <div className="rounded-xl bg-[#FDF2F0] p-2 flex items-center justify-center text-red-500">
-                              {skill.icon ? (
-                                <Image
-                                  src={skill.icon}
-                                  alt={skill.name}
-                                  width={60}
-                                  height={60}
-                                  className="w-full h-full object-contain"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                  </svg>
-                                </div>
-                              )}
+                        {/* Skill Icon */}
+                        <div className="flex justify-center mb-1 pointer-events-none flex-shrink-0">
+                          {skill.icon ? (
+                            <Image
+                              key={`${skill.id}-${imageCacheKey}`}
+                              src={addCacheBuster(skill.icon, imageCacheKey)}
+                              alt={skill.name}
+                              width={100}
+                              height={100}
+                              className="rounded-xl bg-[#FDF2F0] object-contain"
+                              unoptimized
+                            />
+                          ) : (
+                            <div className="w-[100px] h-[100px] rounded-xl bg-[#FDF2F0] flex items-center justify-center">
+                              <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                              </svg>
                             </div>
-                          </div>
-                          {/* Skill Name */}
-                          <div className="text-center mb-1 pointer-events-none flex-shrink-0">
-                            <h3 className="text-sm font-semibold text-gray-900">{skill.name}</h3>
-                          </div>
-                          {/* Points Badge */}
-                          <div className="text-center pointer-events-none mt-auto">
-                            <div className="inline-flex items-center px-2 py-1 rounded-full bg-[#FDF2F0] text-red-400 text-base font-bold">
-                              {skill.points}
-                            </div>
+                          )}
+                        </div>
+                        {/* Skill Name */}
+                        <div className="text-center mb-0 pointer-events-none flex-shrink-0">
+                          <h3 className="text-lg font-semibold text-gray-900">{skill.name}</h3>
+                        </div>
+                        {/* Points Badge */}
+                        <div className="text-center pointer-events-none mt-auto">
+                          <div className="inline-flex items-center px-3 py-0 rounded-full bg-[#FDF2F0] text-red-400 text-xl font-large font-bold">
+                            {skill.points}
                           </div>
                         </div>
                       </div>

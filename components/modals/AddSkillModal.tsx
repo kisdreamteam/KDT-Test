@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Modal from '@/components/modals/Modal';
 import { createClient } from '@/lib/supabase/client';
+import { useAvailablePositiveIcons, useAvailableNegativeIcons } from '@/lib/hooks/useAvailableIcons';
 
 interface AddSkillModalProps {
   isOpen: boolean;
@@ -20,14 +21,16 @@ export default function AddSkillModal({ isOpen, onClose, classId, refreshCategor
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const previousValueRef = useRef<number>(1);
-  const [selectedIcon, setSelectedIcon] = useState<string>('/images/classes/icons/icon-pos-6.png');
+  const [selectedIcon, setSelectedIcon] = useState<string>('/images/dashboard/award-points-icons/icons-positive/icon-pos-6.png');
   const [isIconDropdownOpen, setIsIconDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Generate array of available icons based on skillType
-  const availableIcons = Array.from({ length: 7 }, (_, i) => 
-    `/images/classes/icons/icon-${skillType === 'positive' ? 'pos' : 'neg'}-${i + 1}.png`
-  );
+  // Dynamically detect available positive icons, use static list for negative
+  const { availableIcons: positiveIcons, isDetecting: isDetectingPositive } = useAvailablePositiveIcons();
+  const negativeIcons = useAvailableNegativeIcons();
+  
+  // Use appropriate icon list based on skillType
+  const availableIcons = skillType === 'positive' ? positiveIcons : negativeIcons;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -52,14 +55,20 @@ export default function AddSkillModal({ isOpen, onClose, classId, refreshCategor
       setPoints(newValue);
       previousValueRef.current = newValue;
       // Reset icon to icon-6 of the type
-      setSelectedIcon(`/images/classes/icons/icon-${skillType === 'positive' ? 'pos' : 'neg'}-6.png`);
+      const iconPath = skillType === 'positive' 
+        ? '/images/dashboard/award-points-icons/icons-positive/icon-pos-6.png'
+        : '/images/dashboard/award-points-icons/icons-negative/icon-neg-6.png';
+      setSelectedIcon(iconPath);
     } else {
       // When modal opens, set points based on skillType
       const newValue = skillType === 'positive' ? 1 : -1;
       setPoints(newValue);
       previousValueRef.current = newValue;
       // Set icon to icon-6 of the type
-      setSelectedIcon(`/images/classes/icons/icon-${skillType === 'positive' ? 'pos' : 'neg'}-6.png`);
+      const iconPath = skillType === 'positive' 
+        ? '/images/dashboard/award-points-icons/icons-positive/icon-pos-6.png'
+        : '/images/dashboard/award-points-icons/icons-negative/icon-neg-6.png';
+      setSelectedIcon(iconPath);
     }
   }, [isOpen, skillType]);
 
@@ -69,7 +78,10 @@ export default function AddSkillModal({ isOpen, onClose, classId, refreshCategor
     setPoints(newValue);
     previousValueRef.current = newValue;
     // Update icon when skillType changes to icon-6
-    setSelectedIcon(`/images/classes/icons/icon-${skillType === 'positive' ? 'pos' : 'neg'}-6.png`);
+    const iconPath = skillType === 'positive' 
+      ? '/images/dashboard/award-points-icons/icons-positive/icon-pos-6.png'
+      : '/images/dashboard/award-points-icons/icons-negative/icon-neg-6.png';
+    setSelectedIcon(iconPath);
   }, [skillType]);
 
   const handleAddSkill = async () => {
@@ -204,7 +216,10 @@ export default function AddSkillModal({ isOpen, onClose, classId, refreshCategor
     setPoints(newValue);
     previousValueRef.current = newValue;
     // Reset icon to icon-6
-    setSelectedIcon(`/images/classes/icons/icon-${skillType === 'positive' ? 'pos' : 'neg'}-6.png`);
+    const iconPath = skillType === 'positive' 
+      ? '/images/dashboard/award-points-icons/icons-positive/icon-pos-6.png'
+      : '/images/dashboard/award-points-icons/icons-negative/icon-neg-6.png';
+    setSelectedIcon(iconPath);
     setShowSuccessModal(false);
   };
 
@@ -274,14 +289,23 @@ export default function AddSkillModal({ isOpen, onClose, classId, refreshCategor
                     />
                     
                     {/* Dropdown Menu */}
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-20 w-80 max-h-96 overflow-y-auto">
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-20 w-96 max-h-[500px] overflow-y-auto">
                       <div className="text-sm font-semibold text-gray-700 mb-3 text-center">
                         Choose Skill Icon
                       </div>
                       
-                      {/* Icons Grid */}
-                      <div className="grid grid-cols-5 gap-3">
-                        {availableIcons.map((icon, index) => (
+                      {/* Loading State for Positive Icons */}
+                      {skillType === 'positive' && isDetectingPositive ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-2"></div>
+                            <p className="text-sm text-gray-600">Loading icons...</p>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Icons Grid */
+                        <div className="grid grid-cols-6 gap-2">
+                          {availableIcons.map((icon, index) => (
                           <button
                             key={index}
                             type="button"
@@ -304,7 +328,8 @@ export default function AddSkillModal({ isOpen, onClose, classId, refreshCategor
                             />
                           </button>
                         ))}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   </>
                 )}

@@ -84,7 +84,7 @@ export default function LeftNav({ classes, isLoadingClasses, viewMode, setViewMo
                 {/* Class Image */}
                 <div className="w-8 h-8 flex-shrink-0">
                   <Image
-                    src={cls.icon || "/images/1Landing Page Image.png"}
+                    src={cls.icon || "/images/dashboard/class-icons/icon-1.png"}
                     alt={`${cls.name} icon`}
                     width={32}
                     height={32}

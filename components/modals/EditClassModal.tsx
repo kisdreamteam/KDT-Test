@@ -39,7 +39,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
   const [activeTab, setActiveTab] = useState<'info' | 'students' | 'teachers' | 'settings'>('info');
   const [className, setClassName] = useState('');
   const [grade, setGrade] = useState('');
-  const [selectedIcon, setSelectedIcon] = useState<string>('/images/dashboard/icons/icon-1.png');
+  const [selectedIcon, setSelectedIcon] = useState<string>('/images/dashboard/class-icons/icon-1.png');
   const [isIconDropdownOpen, setIsIconDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [students, setStudents] = useState<StudentWithPhoto[]>([]);
@@ -58,7 +58,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
 
   // Generate array of all available icons
   const availableIcons = Array.from({ length: 15 }, (_, i) => 
-    `/images/dashboard/icons/icon-${i + 1}.png`
+    `/images/dashboard/class-icons/icon-${i + 1}.png`
   );
 
   // Close dropdown when clicking outside
@@ -93,7 +93,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       if (data) {
         setClassName(data.name || '');
         setGrade(data.grade || '');
-        setSelectedIcon(data.icon || '/images/dashboard/icons/icon-1.png');
+        setSelectedIcon(data.icon || '/images/dashboard/class-icons/icon-1.png');
       }
     } catch (err) {
       console.error('Unexpected error fetching class:', err);

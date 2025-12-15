@@ -15,7 +15,7 @@ export default function CreateClassForm({ onClose }: CreateClassFormProps) {
   // Initialize with random icon
   const getRandomIcon = () => {
     const iconNumber = Math.floor(Math.random() * 15) + 1; // Random number 1-15
-    return `/images/dashboard/icons/icon-${iconNumber}.png`;
+    return `/images/dashboard/class-icons/icon-${iconNumber}.png`;
   };
 
   const [selectedIcon, setSelectedIcon] = useState<string>(() => getRandomIcon());
@@ -24,7 +24,7 @@ export default function CreateClassForm({ onClose }: CreateClassFormProps) {
 
   // Generate array of all available icons
   const availableIcons = Array.from({ length: 15 }, (_, i) => 
-    `/images/dashboard/icons/icon-${i + 1}.png`
+    `/images/dashboard/class-icons/icon-${i + 1}.png`
   );
 
   // Close dropdown when clicking outside

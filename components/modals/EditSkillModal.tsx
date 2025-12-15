@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Modal from '@/components/modals/Modal';
 import { createClient } from '@/lib/supabase/client';
 import { PointCategory } from '@/lib/types';
+import { useAvailablePositiveIcons, useAvailableNegativeIcons } from '@/lib/hooks/useAvailableIcons';
 
 interface EditSkillModalProps {
   isOpen: boolean;
@@ -17,17 +18,19 @@ export default function EditSkillModal({ isOpen, onClose, skill, refreshCategori
   const [activeTab, setActiveTab] = useState<'positive' | 'negative'>('positive');
   const [skillName, setSkillName] = useState<string>('');
   const [points, setPoints] = useState<number>(1);
-  const [selectedIcon, setSelectedIcon] = useState<string>('/images/classes/icons/icon-pos-1.png');
+  const [selectedIcon, setSelectedIcon] = useState<string>('/images/dashboard/award-points-icons/icons-positive/icon-pos-1.png');
   const [isIconDropdownOpen, setIsIconDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const previousValueRef = useRef<number>(1);
 
-  // Generate array of available icons based on activeTab
-  const availableIcons = Array.from({ length: 7 }, (_, i) => 
-    `/images/classes/icons/icon-${activeTab === 'positive' ? 'pos' : 'neg'}-${i + 1}.png`
-  );
+  // Dynamically detect available positive icons, use static list for negative
+  const { availableIcons: positiveIcons, isDetecting: isDetectingPositive } = useAvailablePositiveIcons();
+  const negativeIcons = useAvailableNegativeIcons();
+  
+  // Use appropriate icon list based on activeTab
+  const availableIcons = activeTab === 'positive' ? positiveIcons : negativeIcons;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -52,7 +55,10 @@ export default function EditSkillModal({ isOpen, onClose, skill, refreshCategori
       previousValueRef.current = pointsValue;
       setActiveTab(pointsValue > 0 ? 'positive' : 'negative');
       // Set icon from skill or default to first icon of the type
-      setSelectedIcon(skill.icon || `/images/classes/icons/icon-${pointsValue > 0 ? 'pos' : 'neg'}-1.png`);
+      const defaultIcon = pointsValue > 0
+        ? '/images/dashboard/award-points-icons/icons-positive/icon-pos-1.png'
+        : '/images/dashboard/award-points-icons/icons-negative/icon-neg-1.png';
+      setSelectedIcon(skill.icon || defaultIcon);
     }
   }, [skill]);
 
@@ -61,11 +67,18 @@ export default function EditSkillModal({ isOpen, onClose, skill, refreshCategori
     if (skill) {
       // If skill has an icon that matches the current type, keep it
       // Otherwise, default to first icon of the new type
-      const currentIconType = activeTab === 'positive' ? 'pos' : 'neg';
-      if (skill.icon && skill.icon.includes(`icon-${currentIconType}-`)) {
-        setSelectedIcon(skill.icon);
+      if (activeTab === 'positive') {
+        if (skill.icon && skill.icon.includes('icon-pos-')) {
+          setSelectedIcon(skill.icon);
+        } else {
+          setSelectedIcon('/images/dashboard/award-points-icons/icons-positive/icon-pos-1.png');
+        }
       } else {
-        setSelectedIcon(`/images/classes/icons/icon-${currentIconType}-1.png`);
+        if (skill.icon && skill.icon.includes('icon-neg-')) {
+          setSelectedIcon(skill.icon);
+        } else {
+          setSelectedIcon('/images/dashboard/award-points-icons/icons-negative/icon-neg-1.png');
+        }
       }
     }
   }, [activeTab, skill]);
@@ -78,7 +91,10 @@ export default function EditSkillModal({ isOpen, onClose, skill, refreshCategori
       setPoints(pointsValue);
       previousValueRef.current = pointsValue;
       setActiveTab(pointsValue > 0 ? 'positive' : 'negative');
-      setSelectedIcon(skill.icon || `/images/classes/icons/icon-${pointsValue > 0 ? 'pos' : 'neg'}-1.png`);
+      const defaultIcon = pointsValue > 0
+        ? '/images/dashboard/award-points-icons/icons-positive/icon-pos-1.png'
+        : '/images/dashboard/award-points-icons/icons-negative/icon-neg-1.png';
+      setSelectedIcon(skill.icon || defaultIcon);
     }
   }, [isOpen, skill]);
 
@@ -181,7 +197,10 @@ export default function EditSkillModal({ isOpen, onClose, skill, refreshCategori
       setPoints(pointsValue);
       previousValueRef.current = pointsValue;
       setActiveTab(pointsValue > 0 ? 'positive' : 'negative');
-      setSelectedIcon(skill.icon || `/images/classes/icons/icon-${pointsValue > 0 ? 'pos' : 'neg'}-1.png`);
+      const defaultIcon = pointsValue > 0
+        ? '/images/dashboard/award-points-icons/icons-positive/icon-pos-1.png'
+        : '/images/dashboard/award-points-icons/icons-negative/icon-neg-1.png';
+      setSelectedIcon(skill.icon || defaultIcon);
     }
     onClose();
   };
@@ -269,14 +288,23 @@ export default function EditSkillModal({ isOpen, onClose, skill, refreshCategori
                     />
                     
                     {/* Dropdown Menu */}
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-20 w-80 max-h-96 overflow-y-auto">
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-20 w-96 max-h-[500px] overflow-y-auto">
                       <div className="text-sm font-semibold text-gray-700 mb-3 text-center">
                         Choose Skill Icon
                       </div>
                       
-                      {/* Icons Grid */}
-                      <div className="grid grid-cols-5 gap-3">
-                        {availableIcons.map((icon, index) => (
+                      {/* Loading State for Positive Icons */}
+                      {activeTab === 'positive' && isDetectingPositive ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-2"></div>
+                            <p className="text-sm text-gray-600">Loading icons...</p>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Icons Grid */
+                        <div className="grid grid-cols-6 gap-2">
+                          {availableIcons.map((icon, index) => (
                           <button
                             key={index}
                             type="button"
@@ -299,7 +327,8 @@ export default function EditSkillModal({ isOpen, onClose, skill, refreshCategori
                             />
                           </button>
                         ))}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   </>
                 )}

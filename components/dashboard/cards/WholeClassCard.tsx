@@ -20,7 +20,7 @@ export default function WholeClassCard({
       {/* Class Icon */}
       <div className="flex justify-center mb-4 pointer-events-none flex-shrink-0">
         <Image
-          src={classIcon || "/images/1Landing Page Image.png"}
+          src={classIcon || "/images/dashboard/class-icons/icon-1.png"}
           alt="Whole Class icon"
           width={80}
           height={80}

@@ -123,7 +123,7 @@ export default function ClassCard({
         {/* Class Icon - Fixed */}
         <div className="text-center mb-4 flex-shrink-0">
           <Image
-            src={classItem.icon || "/images/1Landing Page Image.png"}
+            src={classItem.icon || "/images/dashboard/class-icons/icon-1.png"}
             alt={`${classItem.name} icon`}
             width={80}
             height={80}
