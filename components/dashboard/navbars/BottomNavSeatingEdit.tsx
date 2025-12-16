@@ -5,6 +5,8 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import IconRandomArrows from '@/components/iconsCustom/iconRandomArrows';
 import IconSettingsWheel from '@/components/iconsCustom/iconSettingsWheel';
+import IconAutoAssign from '@/components/iconsCustom/iconAutoAssign';
+import IconAddPlus from '@/components/iconsCustom/iconAddPlus';
 
 interface BottomNavSeatingEditProps {
   currentClassName: string | null;
@@ -410,19 +412,7 @@ export default function BottomNavSeatingEdit({
                 className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2"
               >
                 {/* Add/Plus icon */}
-                <svg 
-                  className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-gray-400" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M12 4v16m8-8H4" 
-                  />
-                </svg>
+                <IconAddPlus />
                 <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Add Groups</h2>
                 <svg
                   className={`w-3 h-3 sm:w-4 sm:h-4 transition-transform ${isAddGroupsMenuOpen ? 'rotate-180' : ''}`}
@@ -475,19 +465,7 @@ export default function BottomNavSeatingEdit({
               className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
             >
               {/* Auto Assign icon */}
-              <svg 
-                className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-gray-400" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
-                />
-              </svg>
+              <IconAutoAssign />
               <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Auto Assign Seats</h2>
             </div>
           )}
@@ -563,19 +541,7 @@ export default function BottomNavSeatingEdit({
             className="w-16 sm:w-24 md:w-32 lg:w-[200px] rounded-xl bg-red-400 text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
           >
             {/* Add/Plus icon */}
-            <svg 
-              className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-white" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M12 4v16m8-8H4" 
-              />
-            </svg>
+            <IconAddPlus className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-white" />
             <h2 className="font-semibold text-white text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Add group</h2>
           </div>
         </div>
