@@ -210,7 +210,7 @@ export default function EditSkillsModal({
                 <p>No {skillType === 'positive' ? 'positive' : skillType === 'negative' ? 'negative' : ''} skills found.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-3">
                 {filteredSkills.map((category) => {
                   const pointsValue = getPointsValue(category);
                   const isPositive = pointsValue > 0;
@@ -223,40 +223,50 @@ export default function EditSkillsModal({
                       onClick={() => handleEditSkill(category)}
                       onMouseEnter={() => setHoveredSkillId(category.id)}
                       onMouseLeave={() => setHoveredSkillId(null)}
-                      className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-all cursor-pointer relative group min-h-[120px] flex items-center justify-center"
+                      className="bg-white font-spartan rounded-3xl hover:bg-blue-100 hover:rounded-3xl shadow-md p-6 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer aspect-square flex flex-col"
                     >
                       {isHovered ? (
                         // Show "Edit" text on hover
-                        <div className="flex flex-col items-center">
+                        <div className="flex flex-col items-center justify-center flex-1">
                           <div className="text-purple-600 mb-2">
-                            <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                            <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                           </div>
-                          <span className="text-sm font-medium text-purple-600">Edit</span>
+                          <span className="text-lg font-semibold text-purple-600">Edit</span>
                         </div>
                       ) : (
                         // Show skill info normally
-                        <div className="flex flex-col items-center text-center w-full">
-                          <div className="mb-3" style={{ color: isPositive ? getSkillColor(category.name) : '#EF4444' }}>
+                        <>
+                          {/* Skill Icon */}
+                          <div className="flex justify-center mb-1 pointer-events-none flex-shrink-0">
                             {category.icon ? (
                               <Image
                                 src={category.icon}
                                 alt={category.name}
-                                width={40}
-                                height={40}
-                                className="w-10 h-10 object-contain"
+                                width={100}
+                                height={100}
+                                className="rounded-xl bg-[#FDF2F0] object-contain"
                               />
                             ) : (
-                              getSkillIcon(category.name)
+                              <div className="w-[100px] h-[100px] rounded-xl bg-[#FDF2F0] flex items-center justify-center">
+                                <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                              </div>
                             )}
                           </div>
-                          <h3 className="text-sm font-medium text-gray-900">{category.name}</h3>
-                          <span className={`text-xs font-medium absolute top-2 right-3 ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                            {isPositive ? '+' : ''}
-                            {pointsValue}
-                          </span>
-                        </div>
+                          {/* Skill Name */}
+                          <div className="text-center mb-0 pointer-events-none flex-shrink-0">
+                            <h3 className="text-lg font-semibold text-gray-900">{category.name}</h3>
+                          </div>
+                          {/* Points Badge */}
+                          <div className="text-center pointer-events-none mt-auto">
+                            <div className={`inline-flex items-center px-3 py-0 rounded-full bg-[#FDF2F0] ${isPositive ? 'text-red-400' : 'text-red-600'} text-xl font-large font-bold`}>
+                              {isPositive ? '+' : ''}{pointsValue}
+                            </div>
+                          </div>
+                        </>
                       )}
                       
                       {/* Delete button - always visible in corner */}
@@ -277,7 +287,7 @@ export default function EditSkillsModal({
                       </button>
                       
                       {isDeletingThis && (
-                        <div className="absolute inset-0 bg-gray-100 bg-opacity-90 flex items-center justify-center rounded-lg z-20">
+                        <div className="absolute inset-0 bg-gray-100 bg-opacity-90 flex items-center justify-center rounded-3xl z-20">
                           <span className="text-sm text-gray-600">Deleting...</span>
                         </div>
                       )}

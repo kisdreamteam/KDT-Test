@@ -2360,7 +2360,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
           <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
             {/* Whiteboard and TV - Centered at top (always visible) */}
             <div
-              className="absolute bg-white border-2 border-gray-400 rounded-lg flex items-center justify-center"
+              className="absolute bg-gray-700 border-2 border-black rounded-lg flex items-center justify-center"
               style={{
                 top: '0px',
                 left: '50%',
@@ -2370,7 +2370,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                 zIndex: 0
               }}
             >
-              <span className="text-gray-700 font-semibold text-lg">Whiteboard and TV</span>
+              <span className="text-white font-semibold text-lg">Whiteboard and TV</span>
             </div>
             
             {/* Furniture (Teacher's Desk and Doors) - Only show if showObjects is true */}
@@ -2378,7 +2378,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
               <>
                 {/* Teacher's Desk - Position based on layoutOrientation */}
                 <div
-                  className="absolute bg-white border-2 border-gray-400 rounded-lg flex items-center justify-center"
+                  className="absolute bg-gray-700 border-2 border-black rounded-lg flex items-center justify-center"
                   style={{
                     top: '55px',
                     ...(layoutOrientation === 'Left' 
