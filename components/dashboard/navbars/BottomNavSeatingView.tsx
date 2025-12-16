@@ -5,6 +5,8 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useBottomNavPosition } from '@/hooks/useBottomNavPosition';
 import ViewPopup from './ViewPopup';
 import IconViewDots from '@/components/iconsCustom/iconViewDots';
+import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
+import BotNavGrayButton from './botNavGrayButton';
 
 interface BottomNavSeatingViewProps {
   currentClassName: string | null;
@@ -81,17 +83,15 @@ export default function BottomNavSeatingView({
           {/* View Button - Always show */}
           {currentClassName && (
             <div className="relative flex-shrink-0" ref={viewButtonRef}>
-              <div 
+              <BotNavGrayButton
+                icon={<IconViewDots />}
+                label="View"
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsViewPopupOpen(!isViewPopupOpen);
                 }}
-                className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2"
-              >
-                {/* 9 dots grid icon */}
-                <IconViewDots />
-                <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">View</h2>
-              </div>
+                stopPropagation={true}
+              />
               <ViewPopup 
                 isOpen={isViewPopupOpen} 
                 position={viewPopupPosition} 
@@ -101,26 +101,11 @@ export default function BottomNavSeatingView({
           )}
 
           {/* Edit Seating Chart Button */}
-          <div 
+          <BotNavGrayButton
+            icon={<IconEditPencil />}
+            label="Seating Editor View"
             onClick={handleEditSeatingChart}
-            className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
-          >
-            {/* Edit/Pencil icon */}
-            <svg 
-              className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-gray-400" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-              />
-            </svg>
-            <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Seating Editor View</h2>
-          </div>
+          />
         </div>
       </div>
     </div>

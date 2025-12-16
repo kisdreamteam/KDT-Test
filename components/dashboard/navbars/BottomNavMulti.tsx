@@ -7,6 +7,8 @@ import IconRandomArrows from '@/components/iconsCustom/iconRandomArrows';
 import IconCheckCircle from '@/components/iconsCustom/iconCheckCircle';
 import IconCircleX from '@/components/iconsCustom/iconCircleX';
 import IconNoCircleX from '@/components/iconsCustom/iconNoCircleX';
+import IconStarTrophy from '@/components/iconsCustom/iconStarTrophy';
+import BotNavGrayButton from './botNavGrayButton';
 
 interface BottomNavMultiProps {
   sidebarOpen: boolean;
@@ -91,56 +93,35 @@ export default function BottomNavMulti({ sidebarOpen }: BottomNavMultiProps) {
         {/* Left side buttons */}
         <div className="flex flex-row items-center gap-2 sm:gap-4 md:gap-8 lg:gap-15">
           {/* Select All Button */}
-          <div 
+          <BotNavGrayButton
+            icon={<IconCheckCircle />}
+            label="Select All"
             onClick={handleSelectAll}
-            className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
-          >
-            {/* Check all icon */}
-            <IconCheckCircle />
-            <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Select All</h2>
-          </div>
+          />
 
           {/* Select None Button */}
-          <div 
+          <BotNavGrayButton
+            icon={<IconCircleX className={`w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 ${selectedCount > 0 ? 'text-gray-400' : 'text-gray-300'}`} />}
+            label="Select None"
             onClick={handleSelectNone}
-            className={`w-16 sm:w-24 md:w-32 lg:w-[200px] p-1 sm:p-2 md:p-2.5 lg:p-3 transition-colors flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0 ${
-              selectedCount > 0
-                ? 'bg-white text-white hover:bg-pink-50 hover:shadow-sm cursor-pointer'
-                : 'bg-gray-100 cursor-not-allowed opacity-50'
-            }`}
-          >
-            {/* Uncheck all icon */}
-            <IconCircleX className={`w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 ${selectedCount > 0 ? 'text-gray-400' : 'text-gray-300'}`} />
-            <h2 className={`font-semibold text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline ${selectedCount > 0 ? 'text-gray-400' : 'text-gray-300'}`}>Select None</h2>
-          </div>
+            enabled={selectedCount > 0}
+          />
 
           {/* Recently Select Button */}
-          <div 
+          <BotNavGrayButton
+            icon={<IconTimerClock className={`w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 ${hasRecentlySelected ? 'text-gray-400' : 'text-gray-300'}`} />}
+            label="Recently Selected"
             onClick={handleRecentlySelect}
-            className={`w-16 sm:w-24 md:w-32 lg:w-[200px] p-1 sm:p-2 md:p-2.5 lg:p-3 transition-colors flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0 ${
-              hasRecentlySelected
-                ? 'bg-white text-white hover:bg-pink-50 hover:shadow-sm cursor-pointer'
-                : 'bg-gray-100 cursor-not-allowed opacity-50'
-            }`}
-          >
-            {/* Clock/History icon */}
-            <IconTimerClock className={`w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 ${hasRecentlySelected ? 'text-gray-400' : 'text-gray-300'}`} />
-            <h2 className={`font-semibold text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline ${hasRecentlySelected ? 'text-gray-400' : 'text-gray-300'}`}>Recently Select</h2>
-          </div>
+            enabled={hasRecentlySelected}
+          />
 
           {/* Inverse Select Button */}
-          <div 
+          <BotNavGrayButton
+            icon={<IconRandomArrows className={`w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 ${selectedCount > 0 ? 'text-gray-400' : 'text-gray-300'}`} />}
+            label="Inverse Select"
             onClick={handleInverseSelect}
-            className={`w-16 sm:w-24 md:w-32 lg:w-[200px] p-1 sm:p-2 md:p-2.5 lg:p-3 transition-colors flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0 ${
-              selectedCount > 0
-                ? 'bg-white text-white hover:bg-pink-50 hover:shadow-sm cursor-pointer'
-                : 'bg-gray-100 cursor-not-allowed opacity-50'
-            }`}
-          >
-            {/* Swap/Inverse icon */}
-            <IconRandomArrows className={`w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 ${selectedCount > 0 ? 'text-gray-400' : 'text-gray-300'}`} />
-            <h2 className={`font-semibold text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline ${selectedCount > 0 ? 'text-gray-400' : 'text-gray-300'}`}>Inverse Select</h2>
-          </div>
+            enabled={selectedCount > 0}
+          />
         </div>
 
         {/* Right side buttons */}
@@ -161,19 +142,7 @@ export default function BottomNavMulti({ sidebarOpen }: BottomNavMultiProps) {
             className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-[#4A3B8D] rounded-xl text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
           >
             {/* Star/Trophy icon */}
-            <svg 
-              className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-white" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" 
-              />
-            </svg>
+            <IconStarTrophy className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-white" />
             <h2 className="font-semibold text-white text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Award Points</h2>
           </div>
         </div>

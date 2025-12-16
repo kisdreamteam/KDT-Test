@@ -7,6 +7,7 @@ import IconRandomArrows from '@/components/iconsCustom/iconRandomArrows';
 import IconSettingsWheel from '@/components/iconsCustom/iconSettingsWheel';
 import IconAutoAssign from '@/components/iconsCustom/iconAutoAssign';
 import IconAddPlus from '@/components/iconsCustom/iconAddPlus';
+import BotNavGrayButton from './botNavGrayButton';
 
 interface BottomNavSeatingEditProps {
   currentClassName: string | null;
@@ -272,17 +273,15 @@ export default function BottomNavSeatingEdit({
           {/* View Settings Button */}
           {currentClassName && (
             <div className="relative flex-shrink-0" ref={viewSettingsButtonRef}>
-              <div 
+              <BotNavGrayButton
+                icon={<IconSettingsWheel />}
+                label="View Settings"
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsViewSettingsMenuOpen(!isViewSettingsMenuOpen);
                 }}
-                className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2"
-              >
-                {/* Settings/Gear icon */}
-                <IconSettingsWheel />
-                <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">View Settings</h2>
-              </div>
+                stopPropagation={true}
+              />
               
               {/* View Settings Dropdown Menu */}
               {isViewSettingsMenuOpen && (
@@ -401,33 +400,19 @@ export default function BottomNavSeatingEdit({
             </div>
           )}
 
+
           {/* Add Groups Button */}
           {currentClassName && (
             <div className="relative flex-shrink-0" ref={addGroupsButtonRef}>
-              <div 
+              <BotNavGrayButton
+                icon={<IconAddPlus />}
+                label="Add Groups"
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsAddGroupsMenuOpen(!isAddGroupsMenuOpen);
                 }}
-                className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2"
-              >
-                {/* Add/Plus icon */}
-                <IconAddPlus />
-                <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Add Groups</h2>
-                <svg
-                  className={`w-3 h-3 sm:w-4 sm:h-4 transition-transform ${isAddGroupsMenuOpen ? 'rotate-180' : ''}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </div>
+                stopPropagation={true}
+              />
               
               {/* Add Groups Dropdown Menu */}
               {isAddGroupsMenuOpen && (
@@ -460,40 +445,32 @@ export default function BottomNavSeatingEdit({
 
           {/* Auto Assign Seats Button */}
           {currentClassName && (
-            <div 
+            <BotNavGrayButton
+              icon={<IconAutoAssign />}
+              label="Auto Assign Seats"
               onClick={handleAutoAssignSeats}
-              className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
-            >
-              {/* Auto Assign icon */}
-              <IconAutoAssign />
-              <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Auto Assign Seats</h2>
-            </div>
+            />
           )}
 
           {/* Randomize Button */}
-          <div 
+          <BotNavGrayButton
+            icon={<IconRandomArrows />}
+            label="Randomize Seats"
             onClick={handleRandomizeSeating}
-            className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
-          >
-            {/* Shuffle/Randomize icon */}
-            <IconRandomArrows />
-            <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Randomize Seats</h2>
-          </div>
+          />
 
           {/* Settings Button */}
           {currentClassName && (
             <div className="relative flex-shrink-0" ref={settingsButtonRef}>
-              <div 
+              <BotNavGrayButton
+                icon={<IconSettingsWheel />}
+                label="Settings"
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsSettingsMenuOpen(!isSettingsMenuOpen);
                 }}
-                className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2"
-              >
-                {/* Settings/Gear icon */}
-                <IconSettingsWheel />
-                <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Settings</h2>
-              </div>
+                stopPropagation={true}
+              />
               
               {/* Settings Dropdown Menu */}
               {isSettingsMenuOpen && (
