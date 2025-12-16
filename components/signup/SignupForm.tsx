@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import EyeIcon from './EyeIcon';
+import EyeIcon from '@/components/auth/EyeIcon';
 
 export default function SignupForm() {
   const router = useRouter();

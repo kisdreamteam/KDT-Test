@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import EyeIcon from './EyeIcon';
+import EyeIcon from '@/components/auth/EyeIcon';
 
 export default function LoginForm() {
   const router = useRouter();
