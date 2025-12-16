@@ -1,3 +1,5 @@
+import IconPlus from '@/components/iconsCustom/iconPlus';
+
 interface AddClassCardProps {
   onClick: () => void;
 }
@@ -12,7 +14,7 @@ export default function AddClassCard({ onClick }: AddClassCardProps) {
         {/* Add Icon */}
         <div className="text-center mb-4">
           <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto">
-            <span className="text-white text-2xl font-bold">+</span>
+            <IconPlus className="w-10 h-10 text-white" />
           </div>
         </div>
 

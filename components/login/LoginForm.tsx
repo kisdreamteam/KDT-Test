@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import EyeIcon from '@/components/auth/EyeIcon';
+import IconEye from '@/components/iconsCustom/iconEye';
 
 export default function LoginForm() {
   const router = useRouter();
@@ -68,7 +68,7 @@ export default function LoginForm() {
             className="absolute right-3 top-1/2 -translate-y-1/2 text-black/50 hover:text-black/80 "
             aria-label={showPassword ? 'Hide password' : 'Show password'}
           >
-            <EyeIcon hidden={showPassword} />
+            <IconEye hidden={showPassword} />
           </button>
         </div>
       </div>

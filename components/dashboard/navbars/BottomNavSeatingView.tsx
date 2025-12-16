@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useBottomNavPosition } from '@/hooks/useBottomNavPosition';
 import ViewPopup from './ViewPopup';
+import IconViewDots from '@/components/iconsCustom/iconViewDots';
 
 interface BottomNavSeatingViewProps {
   currentClassName: string | null;
@@ -88,21 +89,7 @@ export default function BottomNavSeatingView({
                 className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2"
               >
                 {/* 9 dots grid icon */}
-                <svg 
-                  className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-gray-400" 
-                  viewBox="0 0 24 24" 
-                  fill="currentColor"
-                >
-                  <rect x="3" y="3" width="5" height="5" rx="1" />
-                  <rect x="9.5" y="3" width="5" height="5" rx="1" />
-                  <rect x="16" y="3" width="5" height="5" rx="1" />
-                  <rect x="3" y="9.5" width="5" height="5" rx="1" />
-                  <rect x="9.5" y="9.5" width="5" height="5" rx="1" />
-                  <rect x="16" y="9.5" width="5" height="5" rx="1" />
-                  <rect x="3" y="16" width="5" height="5" rx="1" />
-                  <rect x="9.5" y="16" width="5" height="5" rx="1" />
-                  <rect x="16" y="16" width="5" height="5" rx="1" />
-                </svg>
+                <IconViewDots />
                 <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">View</h2>
               </div>
               <ViewPopup 

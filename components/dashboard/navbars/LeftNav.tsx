@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { normalizeClassIconPath } from '@/lib/iconUtils';
+import IconTimerClock from '@/components/iconsCustom/iconTimerClock';
 
 interface Class {
   id: string;
@@ -118,19 +119,7 @@ export default function LeftNav({ classes, isLoadingClasses, viewMode, setViewMo
               >
                 {/* Clock Icon for Archived Classes */}
                 <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
-                  <svg
-                    className="w-6 h-6 text-gray-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
+                  <IconTimerClock className="w-6 h-6 text-gray-600" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="text-xl font-medium text-gray-800 block truncate">

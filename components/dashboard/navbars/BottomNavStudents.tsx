@@ -6,6 +6,12 @@ import { createClient } from '@/lib/supabase/client';
 import { useStudentSort } from '@/context/StudentSortContext';
 import { useBottomNavPosition } from '@/hooks/useBottomNavPosition';
 import ViewPopup from './ViewPopup';
+import IconViewDots from '@/components/iconsCustom/iconViewDots';
+import IconRandomArrows from '@/components/iconsCustom/iconRandomArrows';
+import IconTimerClock from '@/components/iconsCustom/iconTimerClock';
+import IconSortingArrows from '@/components/iconsCustom/iconSortingArrows';
+import IconCheckBox from '@/components/iconsCustom/iconCheckBox';
+import IconSettingsWheel from '@/components/iconsCustom/iconSettingsWheel';
 
 interface BottomNavStudentsProps {
   currentClassName: string | null;
@@ -130,21 +136,7 @@ export default function BottomNavStudents({
             className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2"
           >
             {/* 9 dots grid icon */}
-            <svg 
-              className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-gray-400" 
-              viewBox="0 0 24 24" 
-              fill="currentColor"
-            >
-              <rect x="3" y="3" width="5" height="5" rx="1" />
-              <rect x="9.5" y="3" width="5" height="5" rx="1" />
-              <rect x="16" y="3" width="5" height="5" rx="1" />
-              <rect x="3" y="9.5" width="5" height="5" rx="1" />
-              <rect x="9.5" y="9.5" width="5" height="5" rx="1" />
-              <rect x="16" y="9.5" width="5" height="5" rx="1" />
-              <rect x="3" y="16" width="5" height="5" rx="1" />
-              <rect x="9.5" y="16" width="5" height="5" rx="1" />
-              <rect x="16" y="16" width="5" height="5" rx="1" />
-            </svg>
+            <IconViewDots />
             <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">View</h2>
           </div>
           <ViewPopup 
@@ -161,19 +153,7 @@ export default function BottomNavStudents({
         className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
       >
         {/* Shuffle icon */}
-        <svg 
-          className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-gray-400" 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            strokeWidth={2} 
-            d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" 
-          />
-        </svg>
+        <IconRandomArrows />
         <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Random</h2>
       </div>
 
@@ -182,19 +162,7 @@ export default function BottomNavStudents({
         onClick={onTimerClick}
         className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
       >
-        <svg 
-          className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-gray-400" 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            strokeWidth={2} 
-            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
-          />
-        </svg>
+        <IconTimerClock />
         <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Timer</h2>
       </div>
 
@@ -209,19 +177,7 @@ export default function BottomNavStudents({
             className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2"
           >
             {/* Sort icon */}
-            <svg 
-              className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-gray-400" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
-              />
-            </svg>
+            <IconSortingArrows />
             <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Sorting</h2>
           </div>
 
@@ -283,14 +239,7 @@ export default function BottomNavStudents({
         className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
       >
         {/* Checkbox with checkmark icon */}
-        <svg 
-          className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-gray-400" 
-          viewBox="0 0 24 24" 
-          fill="none"
-        >
-          <rect x="4" y="4" width="16" height="16" rx="2" fill="currentColor"/>
-          <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
+        <IconCheckBox />
         <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Multiple Select</h2>
       </div>
 
@@ -304,25 +253,7 @@ export default function BottomNavStudents({
           className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2"
         >
           {/* Settings/Gear icon */}
-          <svg 
-            className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-gray-400" 
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-            />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-            />
-          </svg>
+          <IconSettingsWheel />
           <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Settings</h2>
         </div>
 

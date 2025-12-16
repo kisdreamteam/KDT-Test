@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useBottomNavPosition } from '@/hooks/useBottomNavPosition';
+import IconTimerClock from '@/components/iconsCustom/iconTimerClock';
+import IconRandomArrows from '@/components/iconsCustom/iconRandomArrows';
 
 interface BottomNavMultiProps {
   sidebarOpen: boolean;
@@ -143,19 +145,7 @@ export default function BottomNavMulti({ sidebarOpen }: BottomNavMultiProps) {
             }`}
           >
             {/* Clock/History icon */}
-            <svg 
-              className={`w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 ${hasRecentlySelected ? 'text-gray-400' : 'text-gray-300'}`}
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
-              />
-            </svg>
+            <IconTimerClock className={`w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 ${hasRecentlySelected ? 'text-gray-400' : 'text-gray-300'}`} />
             <h2 className={`font-semibold text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline ${hasRecentlySelected ? 'text-gray-400' : 'text-gray-300'}`}>Recently Select</h2>
           </div>
 
@@ -169,19 +159,7 @@ export default function BottomNavMulti({ sidebarOpen }: BottomNavMultiProps) {
             }`}
           >
             {/* Swap/Inverse icon */}
-            <svg 
-              className={`w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 ${selectedCount > 0 ? 'text-gray-400' : 'text-gray-300'}`}
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" 
-              />
-            </svg>
+            <IconRandomArrows className={`w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 ${selectedCount > 0 ? 'text-gray-400' : 'text-gray-300'}`} />
             <h2 className={`font-semibold text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline ${selectedCount > 0 ? 'text-gray-400' : 'text-gray-300'}`}>Inverse Select</h2>
           </div>
         </div>
