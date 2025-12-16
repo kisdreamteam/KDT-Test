@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { useBottomNavPosition } from '@/hooks/useBottomNavPosition';
 import IconTimerClock from '@/components/iconsCustom/iconTimerClock';
 import IconRandomArrows from '@/components/iconsCustom/iconRandomArrows';
+import IconCheckCircle from '@/components/iconsCustom/iconCheckCircle';
+import IconCircleX from '@/components/iconsCustom/iconCircleX';
+import IconNoCircleX from '@/components/iconsCustom/iconNoCircleX';
 
 interface BottomNavMultiProps {
   sidebarOpen: boolean;
@@ -93,19 +96,7 @@ export default function BottomNavMulti({ sidebarOpen }: BottomNavMultiProps) {
             className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
           >
             {/* Check all icon */}
-            <svg 
-              className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-gray-400" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
-              />
-            </svg>
+            <IconCheckCircle />
             <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Select All</h2>
           </div>
 
@@ -119,19 +110,7 @@ export default function BottomNavMulti({ sidebarOpen }: BottomNavMultiProps) {
             }`}
           >
             {/* Uncheck all icon */}
-            <svg 
-              className={`w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 ${selectedCount > 0 ? 'text-gray-400' : 'text-gray-300'}`}
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" 
-              />
-            </svg>
+            <IconCircleX className={`w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 ${selectedCount > 0 ? 'text-gray-400' : 'text-gray-300'}`} />
             <h2 className={`font-semibold text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline ${selectedCount > 0 ? 'text-gray-400' : 'text-gray-300'}`}>Select None</h2>
           </div>
 
@@ -172,19 +151,7 @@ export default function BottomNavMulti({ sidebarOpen }: BottomNavMultiProps) {
             className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-[#dd7f81] rounded-xl text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
           >
             {/* X icon */}
-            <svg 
-              className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-white" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M6 18L18 6M6 6l12 12" 
-              />
-            </svg>
+            <IconNoCircleX />
             <h2 className="font-semibold text-white text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Cancel</h2>
           </div>
 

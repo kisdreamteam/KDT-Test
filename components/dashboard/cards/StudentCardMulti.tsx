@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import { Student } from '@/lib/types';
 import { normalizeAvatarPath } from '@/lib/iconUtils';
+import IconCheckCircle from '@/components/iconsCustom/iconCheckCircle';
 
 interface StudentCardMultiProps {
   student: Student;
@@ -49,19 +50,7 @@ export default function StudentCardMulti({
               />
             </svg>
           ) : (
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              strokeWidth={3}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
+            <IconCheckCircle className="w-6 h-6" strokeWidth={3} />
           )}
         </button>
       </div>
