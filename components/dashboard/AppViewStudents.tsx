@@ -9,6 +9,7 @@ import EditStudentModal from '@/components/modals/EditStudentModal';
 import PointsAwardedConfirmationModal from '@/components/modals/PointsAwardedConfirmationModal';
 import { Student } from '@/lib/types';
 import { useStudentSort } from '@/context/StudentSortContext';
+import { normalizeClassIconPath } from '@/lib/iconUtils';
 import LoadingState from './maincontent/LoadingState';
 import ErrorState from './maincontent/ErrorState';
 import EmptyState from './maincontent/EmptyState';
@@ -215,7 +216,7 @@ export default function AppViewStudents() {
 
       if (classData) {
         setClassName(classData.name);
-        setClassIcon(classData.icon || '/images/dashboard/class-icons/icon-1.png');
+        setClassIcon(normalizeClassIconPath(classData.icon));
       }
     } catch (err) {
       console.error('Unexpected error fetching class:', err instanceof Error ? err.message : err);

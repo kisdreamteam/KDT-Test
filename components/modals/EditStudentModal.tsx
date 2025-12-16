@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Modal from '@/components/modals/Modal';
 import { createClient } from '@/lib/supabase/client';
 import { Student } from '@/lib/types';
+import { normalizeAvatarPath } from '@/lib/iconUtils';
 
 interface EditStudentModalProps {
   isOpen: boolean;
@@ -51,7 +52,7 @@ export default function EditStudentModal({ isOpen, onClose, student, onRefresh }
       setLastName(student.last_name || '');
       // Convert number to string for input field
       setStudentNumber(student.student_number?.toString() || '');
-      setSelectedAvatar(student.avatar || '/images/dashboard/student-avatars/avatar-01.png');
+      setSelectedAvatar(normalizeAvatarPath(student.avatar));
       setGender(student.gender || '');
       setIsLoadingData(false);
     } else if (!isOpen) {

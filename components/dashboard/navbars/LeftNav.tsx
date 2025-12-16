@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { normalizeClassIconPath } from '@/lib/iconUtils';
 
 interface Class {
   id: string;
@@ -84,7 +85,7 @@ export default function LeftNav({ classes, isLoadingClasses, viewMode, setViewMo
                 {/* Class Image */}
                 <div className="w-8 h-8 flex-shrink-0">
                   <Image
-                    src={cls.icon || "/images/dashboard/class-icons/icon-1.png"}
+                    src={normalizeClassIconPath(cls.icon)}
                     alt={`${cls.name} icon`}
                     width={32}
                     height={32}

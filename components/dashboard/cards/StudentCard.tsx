@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import { Student } from '@/lib/types';
+import { normalizeAvatarPath } from '@/lib/iconUtils';
 
 interface StudentCardProps {
   student: Student;
@@ -93,7 +94,7 @@ export default function StudentCard({
       {/* Student Avatar */}
       <div className="flex justify-center mb-1 pointer-events-none flex-shrink-0">
         <Image
-          src={student.avatar || "/images/dashboard/student-avatars/avatar-01.png"}
+          src={normalizeAvatarPath(student.avatar)}
           alt={`${student.first_name} ${student.last_name} avatar`}
           width={100}
           height={100}

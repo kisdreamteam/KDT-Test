@@ -7,6 +7,7 @@ import Modal from '@/components/modals/Modal';
 import { createClient } from '@/lib/supabase/client';
 import { Student } from '@/lib/types';
 import AddStudentsModal from '@/components/modals/AddStudentsModal';
+import { normalizeAvatarPath } from '@/lib/iconUtils';
 
 interface Teacher {
   id: string;
@@ -796,7 +797,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                       </div>
                     ) : (
                       students.map((student) => {
-                      const imageSrc = student.avatar || "/images/dashboard/student-avatars/avatar-01.png";
+                      const imageSrc = normalizeAvatarPath(student.avatar);
                       const currentGender = student.gender;
                       return (
                         <div

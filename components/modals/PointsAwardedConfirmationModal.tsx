@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import Image from 'next/image';
 import Modal from '@/components/modals/Modal';
+import { normalizeAvatarPath } from '@/lib/iconUtils';
 
 interface PointsAwardedConfirmationModalProps {
   isOpen: boolean;
@@ -147,7 +148,7 @@ export default function PointsAwardedConfirmationModal({
           {/* Student Avatar */}
           <div className="relative w-40">
             <Image
-              src={studentAvatar || "/images/dashboard/student-avatars/avatar-01.png"}
+              src={normalizeAvatarPath(studentAvatar)}
               alt={`${studentFirstName} avatar`}
               width={120}
               height={120}

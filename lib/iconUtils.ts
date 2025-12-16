@@ -132,3 +132,72 @@ export function normalizeIconPath(iconPath: string | null | undefined): string |
   return iconPath;
 }
 
+/**
+ * Normalizes student avatar paths
+ * Converts old paths (/images/classes/avatars/) to new paths (/images/dashboard/student-avatars/)
+ * If the avatar is just a filename (e.g., "avatar-01.png"), prepends the full path
+ * If it's already a full path, returns it as-is
+ * Returns default avatar path if avatar is null/undefined/empty
+ */
+export function normalizeAvatarPath(avatar: string | null | undefined): string {
+  if (!avatar) {
+    return '/images/dashboard/student-avatars/avatar-01.png';
+  }
+  
+  // Convert old path format to new path format
+  if (avatar.includes('/images/classes/avatars/')) {
+    const filename = avatar.split('/').pop(); // Get the filename (e.g., avatar-01.png)
+    return `/images/dashboard/student-avatars/${filename}`;
+  }
+  
+  // If it's already the correct full path, return it
+  if (avatar.startsWith('/images/dashboard/student-avatars/')) {
+    return avatar;
+  }
+  
+  // If it's just a filename (e.g., "avatar-01.png"), prepend the path
+  if (avatar.startsWith('avatar-') && avatar.endsWith('.png')) {
+    return `/images/dashboard/student-avatars/${avatar}`;
+  }
+  
+  // If it's an unexpected path format, try to extract filename
+  const filename = avatar.split('/').pop();
+  if (filename && filename.startsWith('avatar-') && filename.endsWith('.png')) {
+    return `/images/dashboard/student-avatars/${filename}`;
+  }
+  
+  // Fallback to default
+  return '/images/dashboard/student-avatars/avatar-01.png';
+}
+
+/**
+ * Normalizes class icon paths
+ * If the icon is just a filename (e.g., "icon-1.png"), prepends the full path
+ * If it's already a full path, returns it as-is
+ * Returns default icon path if icon is null/undefined/empty
+ */
+export function normalizeClassIconPath(icon: string | null | undefined): string {
+  if (!icon) {
+    return '/images/dashboard/class-icons/icon-1.png';
+  }
+  
+  // If it's already a full path, return it
+  if (icon.startsWith('/images/dashboard/class-icons/')) {
+    return icon;
+  }
+  
+  // If it's just a filename (e.g., "icon-1.png"), prepend the path
+  if (icon.startsWith('icon-') && icon.endsWith('.png')) {
+    return `/images/dashboard/class-icons/${icon}`;
+  }
+  
+  // If it's an old path format or unexpected format, try to extract filename
+  const filename = icon.split('/').pop();
+  if (filename && filename.startsWith('icon-') && filename.endsWith('.png')) {
+    return `/images/dashboard/class-icons/${filename}`;
+  }
+  
+  // Fallback to default
+  return '/images/dashboard/class-icons/icon-1.png';
+}
+

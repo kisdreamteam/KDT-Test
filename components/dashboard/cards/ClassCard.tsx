@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { normalizeClassIconPath } from '@/lib/iconUtils';
 
 interface Class {
   id: string;
@@ -123,7 +124,7 @@ export default function ClassCard({
         {/* Class Icon - Fixed */}
         <div className="text-center mb-4 flex-shrink-0">
           <Image
-            src={classItem.icon || "/images/dashboard/class-icons/icon-1.png"}
+            src={normalizeClassIconPath(classItem.icon)}
             alt={`${classItem.name} icon`}
             width={80}
             height={80}

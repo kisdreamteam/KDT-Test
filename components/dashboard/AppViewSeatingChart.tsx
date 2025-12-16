@@ -682,7 +682,7 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
                     zIndex: 0
                   }}
                 >
-                  <span className="text-gray-700 font-semibold">Teacher's Desk</span>
+                  <span className="text-white font-semibold">Teacher's Desk</span>
                 </div>
                 
                 {/* Door 1 - Top - Position based on layoutOrientation */}
