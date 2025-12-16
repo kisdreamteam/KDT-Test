@@ -12,6 +12,7 @@ import IconTimerClock from '@/components/iconsCustom/iconTimerClock';
 import IconSortingArrows from '@/components/iconsCustom/iconSortingArrows';
 import IconCheckBox from '@/components/iconsCustom/iconCheckBox';
 import IconSettingsWheel from '@/components/iconsCustom/iconSettingsWheel';
+import BotNavGrayButton from './botNavGrayButton';
 
 interface BottomNavStudentsProps {
   currentClassName: string | null;
@@ -128,17 +129,15 @@ export default function BottomNavStudents({
       {/* View Button - Only show when on a class page */}
       {currentClassName && (
         <div className="relative flex-shrink-0" ref={viewButtonRef}>
-          <div 
+          <BotNavGrayButton
+            icon={<IconViewDots />}
+            label="View"
             onClick={(e) => {
               e.stopPropagation();
               setIsViewPopupOpen(!isViewPopupOpen);
             }}
-            className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2"
-          >
-            {/* 9 dots grid icon */}
-            <IconViewDots />
-            <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">View</h2>
-          </div>
+            stopPropagation={true}
+          />
           <ViewPopup 
             isOpen={isViewPopupOpen} 
             position={viewPopupPosition} 
@@ -148,39 +147,31 @@ export default function BottomNavStudents({
       )}
 
       {/* Random Button */}
-      <div 
+      <BotNavGrayButton
+        icon={<IconRandomArrows />}
+        label="Random"
         onClick={onRandomClick}
-        className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
-      >
-        {/* Shuffle icon */}
-        <IconRandomArrows />
-        <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Random</h2>
-      </div>
+      />
 
       {/* Timer Button */}
-      <div 
+      <BotNavGrayButton
+        icon={<IconTimerClock />}
+        label="Timer"
         onClick={onTimerClick}
-        className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
-      >
-        <IconTimerClock />
-        <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Timer</h2>
-      </div>
+      />
 
       {/* Sorting Button - Only show when on a class page */}
       {currentClassName && (
         <div className="relative flex-shrink-0" ref={sortButtonRef}>
-          <div 
+          <BotNavGrayButton
+            icon={<IconSortingArrows />}
+            label="Sorting"
             onClick={(e) => {
               e.stopPropagation();
               setIsSortPopupOpen(!isSortPopupOpen);
             }}
-            className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2"
-          >
-            {/* Sort icon */}
-            <IconSortingArrows />
-            <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Sorting</h2>
-          </div>
-
+            stopPropagation={true}
+          />
           {/* Sort Popup */}
           {isSortPopupOpen && (
             <div 
@@ -232,30 +223,25 @@ export default function BottomNavStudents({
       )}
 
       {/* Multiple Select Button */}
-      <div 
+      <BotNavGrayButton
+        icon={<IconCheckBox />}
+        label="Multiple Select"
         onClick={() => {
           window.dispatchEvent(new CustomEvent('toggleMultiSelect'));
         }}
-        className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
-      >
-        {/* Checkbox with checkmark icon */}
-        <IconCheckBox />
-        <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Multiple Select</h2>
-      </div>
+      />
 
       {/* Settings Button */}
       <div className="relative flex-shrink-0" ref={settingsButtonRef}>
-        <div 
+        <BotNavGrayButton
+          icon={<IconSettingsWheel />}
+          label="Settings"
           onClick={(e) => {
             e.stopPropagation();
             setIsSettingsPopupOpen(!isSettingsPopupOpen);
           }}
-          className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-white text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2"
-        >
-          {/* Settings/Gear icon */}
-          <IconSettingsWheel />
-          <h2 className="font-semibold text-gray-400 text-xs sm:text-sm md:text-base lg:text-base hidden sm:inline">Settings</h2>
-        </div>
+          stopPropagation={true}
+        />
 
         {/* Settings Popup */}
         {isSettingsPopupOpen && (
