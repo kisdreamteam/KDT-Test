@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { DashboardProvider } from '@/context/DashboardContext';
@@ -119,11 +119,13 @@ function DashboardLayoutContent({
       console.log('Fetching classes for sidebar, user:', user.id, 'viewMode:', viewMode);
 
       // Fetch classes for the current teacher based on viewMode
+      // For sidebar, we fetch all classes to show both active and archived
+      // For main content, we filter based on viewMode
       const { data, error } = await supabase
         .from('classes')
         .select('*')
         .eq('teacher_id', user.id)
-        .eq('is_archived', viewMode === 'archived')
+        .order('is_archived', { ascending: true })
         .order('created_at', { ascending: false });
 
       console.log('Sidebar classes data:', data);
@@ -140,8 +142,14 @@ function DashboardLayoutContent({
     } finally {
       setIsLoadingClasses(false);
     }
-  }, [viewMode]);
-
+  }, []);
+  
+  // Filter classes for main content based on viewMode
+  const filteredClasses = useMemo(() => {
+    return classes.filter(cls => 
+      viewMode === 'archived' ? cls.is_archived : !cls.is_archived
+    );
+  }, [classes, viewMode]);
 
   const fetchClassName = useCallback(async (classId: string) => {
     try {
@@ -252,7 +260,7 @@ function DashboardLayoutContent({
 
               {/* Main Content */}
               <DashboardProvider value={{ 
-                classes, 
+                classes: filteredClasses, 
                 isLoadingClasses, 
                 teacherProfile, 
                 isLoadingProfile,
