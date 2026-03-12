@@ -37,6 +37,7 @@ interface SeatingGroup {
 
 interface StudentSeatAssignment {
   seating_group_id: string;
+  seat_index: number | null;
   students: Student | null;
 }
 
@@ -71,6 +72,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   const [editingGroup, setEditingGroup] = useState<SeatingGroup | null>(null);
   const [groupStudents, setGroupStudents] = useState<Map<string, Student[]>>(new Map());
   const groupStudentsRef = useRef<Map<string, Student[]>>(new Map());
+  const addStudentToGroupInFlightRef = useRef<{ studentId: string; groupId: string } | null>(null);
   const [targetGroupId, setTargetGroupId] = useState<string | null>(null);
   
   // Keep ref in sync with state
@@ -102,6 +104,20 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   const showSuccessNotification = (title: string, message: string) => {
     setSuccessNotification({ isOpen: true, title, message });
   };
+
+  // Renumber seat_index to 1..N for a group (after remove or column change). Keeps display order.
+  const renumberSeatIndicesForGroup = useCallback(async (groupId: string) => {
+    const supabase = createClient();
+    const { data: assignments, error } = await supabase
+      .from('student_seat_assignments')
+      .select('id')
+      .eq('seating_group_id', groupId)
+      .order('seat_index', { ascending: true, nullsFirst: false });
+    if (error || !assignments?.length) return;
+    for (let i = 0; i < assignments.length; i++) {
+      await supabase.from('student_seat_assignments').update({ seat_index: i + 1 }).eq('id', assignments[i].id);
+    }
+  }, []);
 
   // Handle close button - navigate back to seating chart view (remove mode=edit)
   const handleClose = () => {
@@ -370,30 +386,44 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
           const { data: assignmentsData, error: assignmentsError } = await supabase
             .from('student_seat_assignments')
             .select('*, students(*)')
-            .in('seating_group_id', groupIds);
+            .in('seating_group_id', groupIds)
+            .order('seating_group_id', { ascending: true })
+            .order('seat_index', { ascending: true });
 
           if (assignmentsError) {
             console.error('Error fetching student seat assignments:', assignmentsError);
             // Continue with empty assignments
           }
 
-          // Organize students by group
+          // Organize students by group with correct sort: seat_index (1..N) or first_name for legacy nulls
           const newGroupStudents = new Map<string, Student[]>();
           groupsData.forEach(group => {
             newGroupStudents.set(group.id, []);
           });
 
           if (assignmentsData) {
-            assignmentsData.forEach((assignment: StudentSeatAssignment) => {
-              const groupId = assignment.seating_group_id;
-              const student = assignment.students;
-              if (student && newGroupStudents.has(groupId)) {
-                const currentStudents = newGroupStudents.get(groupId) || [];
-                // Check for duplicates before adding
-                if (!currentStudents.find(s => s.id === student.id)) {
-                  newGroupStudents.set(groupId, [...currentStudents, student]);
+            const byGroup = new Map<string, StudentSeatAssignment[]>();
+            for (const a of assignmentsData as StudentSeatAssignment[]) {
+              const gid = a.seating_group_id;
+              if (!byGroup.has(gid)) byGroup.set(gid, []);
+              byGroup.get(gid)!.push(a);
+            }
+            byGroup.forEach((assignments, groupId) => {
+              const withStudent = assignments.filter((a): a is StudentSeatAssignment & { students: Student } =>
+                a.students != null
+              );
+              const hasNull = withStudent.some(a => a.seat_index == null);
+              const sorted = [...withStudent].sort((a, b) => {
+                if (hasNull) {
+                  const cmp = (a.students.first_name ?? '').localeCompare(b.students.first_name ?? '');
+                  return cmp !== 0 ? cmp : (a.students.last_name ?? '').localeCompare(b.students.last_name ?? '');
                 }
-              }
+                const sa = a.seat_index ?? Infinity;
+                const sb = b.seat_index ?? Infinity;
+                if (sa !== sb) return sa - sb;
+                return (a.students.first_name ?? '').localeCompare(b.students.first_name ?? '');
+              });
+              newGroupStudents.set(groupId, sorted.map(a => a.students));
             });
           }
 
@@ -625,11 +655,14 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
           .in('student_id', allStudentIds);
       }
       
-      // Insert new assignments
-      const assignmentsToInsert = newAssignments.map(({ student, newGroupId }) => ({
-        student_id: student.id,
-        seating_group_id: newGroupId,
-      }));
+      // Insert new assignments with seat_index 1, 2, 3, ... per group
+      const nextSeatIndexByGroup = new Map<string, number>();
+      groups.forEach(g => nextSeatIndexByGroup.set(g.id, 1));
+      const assignmentsToInsert = newAssignments.map(({ student, newGroupId }) => {
+        const seat_index = nextSeatIndexByGroup.get(newGroupId) ?? 1;
+        nextSeatIndexByGroup.set(newGroupId, seat_index + 1);
+        return { student_id: student.id, seating_group_id: newGroupId, seat_index };
+      });
       
       if (assignmentsToInsert.length > 0) {
         await supabase
@@ -665,20 +698,43 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
 
   // Listen for add student to group event
   const addStudentToGroup = useCallback(async (student: Student, groupId: string) => {
+    // Prevent double invocation (e.g. React Strict Mode or duplicate event) so we don't try to insert twice and hit duplicate key
+    if (addStudentToGroupInFlightRef.current?.studentId === student.id && addStudentToGroupInFlightRef.current?.groupId === groupId) {
+      return;
+    }
+    addStudentToGroupInFlightRef.current = { studentId: student.id, groupId };
+
     try {
+      const currentInGroup = groupStudentsRef.current.get(groupId) ?? [];
+      if (currentInGroup.some((s) => s.id === student.id)) {
+        // Already in this group (e.g. double-click or stale state) — avoid duplicate insert
+        setSelectedStudentForGroup(null);
+        return;
+      }
+
       const supabase = createClient();
-      
-      // Insert assignment into database
+      // Compute next seat_index from DB so we never conflict with existing/orphaned rows (e.g. first student to "empty" group that has stale rows)
+      const { data: existing } = await supabase
+        .from('student_seat_assignments')
+        .select('seat_index')
+        .eq('seating_group_id', groupId);
+      const maxIndex = existing?.length
+        ? Math.max(...existing.map((r) => r.seat_index ?? 0))
+        : 0;
+      const nextSeatIndex = maxIndex + 1;
+
       const { error: insertError } = await supabase
         .from('student_seat_assignments')
         .insert({
           student_id: student.id,
           seating_group_id: groupId,
+          seat_index: nextSeatIndex,
         });
 
       if (insertError) {
-        console.error('Error assigning student to group:', insertError);
-        alert('Failed to assign student. Please try again.');
+        const msg = insertError.message ?? insertError.code ?? JSON.stringify(insertError);
+        console.error('Error assigning student to group:', msg, insertError);
+        alert(`Failed to assign student. ${insertError.message ?? 'Please try again.'}`);
         return;
       }
 
@@ -702,6 +758,10 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     } catch (err) {
       console.error('Unexpected error assigning student:', err);
       alert('An unexpected error occurred. Please try again.');
+    } finally {
+      if (addStudentToGroupInFlightRef.current?.studentId === student.id && addStudentToGroupInFlightRef.current?.groupId === groupId) {
+        addStudentToGroupInFlightRef.current = null;
+      }
     }
   }, [setUnseatedStudents, setSelectedStudentForGroup]);
 
@@ -784,6 +844,9 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         alert('Failed to remove student. Please try again.');
         return;
       }
+
+      // Renumber remaining assignments in this group so seat_index stays 1..N
+      await renumberSeatIndicesForGroup(groupId);
 
       // Update local state
       let removedStudent: Student | undefined;
@@ -1156,6 +1219,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
           .insert({
             student_id: studentId,
             seating_group_id: fromGroupId,
+            seat_index: 1,
           })
           .select('id')
           .single();
@@ -1216,12 +1280,14 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
             return;
           }
 
-          // Create new assignment in target group
+          // Create new assignment in target group (at end of group)
+          const nextSeatIndex = (groupStudents.get(toGroupId)?.length ?? 0) + 1;
           const { error: insertError } = await supabase
             .from('student_seat_assignments')
             .insert({
               student_id: studentId,
               seating_group_id: toGroupId,
+              seat_index: nextSeatIndex,
             });
 
           if (insertError) {
@@ -1295,12 +1361,14 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
           return;
         }
 
-        // Create new assignment
+        // Create new assignment (at end of target group)
+        const nextSeatIndex = (groupStudents.get(toGroupId)?.length ?? 0) + 1;
         const { error: insertError } = await supabase
           .from('student_seat_assignments')
           .insert({
             student_id: studentId,
             seating_group_id: toGroupId,
+            seat_index: nextSeatIndex,
           });
 
         if (insertError) {
@@ -1378,11 +1446,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     try {
       const supabase = createClient();
       
-      // If students are in the same group, swap their positions in the local state array
-      // This changes their visual order within the group
+      // If students are in the same group, swap their positions (local state + persist seat_index in DB)
       if (groupId1 === groupId2) {
-        console.log('Students are in the same group - swapping positions in local state');
-        
         // Get the current students array for this group
         const currentStudents = groupStudents.get(groupId1) || [];
         const student1Index = currentStudents.findIndex(s => s.id === studentId1);
@@ -1393,18 +1458,55 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
           return;
         }
         
-        // Swap the students in the array
+        // Optimistic: swap in local state
         const newStudents = [...currentStudents];
         [newStudents[student1Index], newStudents[student2Index]] = [newStudents[student2Index], newStudents[student1Index]];
-        
-        // Update local state
         setGroupStudents(prev => {
           const newMap = new Map(prev);
           newMap.set(groupId1, newStudents);
           return newMap;
         });
         
-        console.log('Same-group swap completed in local state');
+        // Persist: fetch both assignments and swap their seat_index in the database
+        const { data: a1, error: err1 } = await supabase
+          .from('student_seat_assignments')
+          .select('id, seat_index')
+          .eq('student_id', studentId1)
+          .eq('seating_group_id', groupId1)
+          .single();
+        const { data: a2, error: err2 } = await supabase
+          .from('student_seat_assignments')
+          .select('id, seat_index')
+          .eq('student_id', studentId2)
+          .eq('seating_group_id', groupId2)
+          .single();
+        if (err1 || err2 || !a1 || !a2) {
+          console.error('Failed to fetch assignments for same-group swap:', err1 ?? err2);
+          await fetchGroups();
+          return;
+        }
+        const s1 = a1.seat_index ?? 0;
+        const s2 = a2.seat_index ?? 0;
+        const SENTINEL = 999999;
+        const { error: u1 } = await supabase.from('student_seat_assignments').update({ seat_index: SENTINEL }).eq('id', a1.id);
+        if (u1) {
+          console.error('Failed to swap seat_index (step 1):', u1);
+          await fetchGroups();
+          return;
+        }
+        const { error: u2 } = await supabase.from('student_seat_assignments').update({ seat_index: s1 }).eq('id', a2.id);
+        if (u2) {
+          console.error('Failed to swap seat_index (step 2):', u2);
+          await supabase.from('student_seat_assignments').update({ seat_index: s1 }).eq('id', a1.id);
+          await fetchGroups();
+          return;
+        }
+        const { error: u3 } = await supabase.from('student_seat_assignments').update({ seat_index: s2 }).eq('id', a1.id);
+        if (u3) {
+          console.error('Failed to swap seat_index (step 3):', u3);
+          await fetchGroups();
+          return;
+        }
         return;
       }
 
@@ -1434,17 +1536,16 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       // Different groups - swap ONLY these two students' assignments
       // All other students remain in their exact positions
       
-      // First, get current assignments to verify they exist
-      // Query without maybeSingle to get array and check length
+      // First, get current assignments (id and seat_index for swap)
       const { data: assignment1Array, error: error1 } = await supabase
         .from('student_seat_assignments')
-        .select('id')
+        .select('id, seat_index')
         .eq('student_id', studentId1)
         .eq('seating_group_id', groupId1);
 
       const { data: assignment2Array, error: error2 } = await supabase
         .from('student_seat_assignments')
-        .select('id')
+        .select('id, seat_index')
         .eq('student_id', studentId2)
         .eq('seating_group_id', groupId2);
 
@@ -1545,12 +1646,14 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
           return;
         }
 
-        // Create ONLY two new assignments with swapped group IDs
+        // Create ONLY two new assignments with swapped group IDs and swapped seat_index (take each other's position)
+        const seatIndex1 = assignment1Data.seat_index;
+        const seatIndex2 = assignment2Data.seat_index;
         const { error: insertError } = await supabase
           .from('student_seat_assignments')
           .insert([
-            { student_id: studentId1, seating_group_id: groupId2 },
-            { student_id: studentId2, seating_group_id: groupId1 },
+            { student_id: studentId1, seating_group_id: groupId2, seat_index: seatIndex2 },
+            { student_id: studentId2, seating_group_id: groupId1, seat_index: seatIndex1 },
           ]);
 
         if (insertError) {
@@ -1635,8 +1738,12 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       // Shuffle unseated students randomly
       const shuffledStudents = [...unseatedStudents].sort(() => Math.random() - 0.5);
       
+      // Next seat_index per group (new students go after existing ones)
+      const nextSeatIndexByGroup = new Map<string, number>();
+      groupCurrentCounts.forEach(({ groupId, currentCount }) => nextSeatIndexByGroup.set(groupId, currentCount + 1));
+      
       // Distribute unseated students to fill groups up to their target size
-      const assignments: Array<{ student_id: string; seating_group_id: string }> = [];
+      const assignments: Array<{ student_id: string; seating_group_id: string; seat_index: number }> = [];
       let studentIndex = 0;
       
       // Sort groups by how many students they need (most needed first)
@@ -1645,9 +1752,12 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       for (const groupNeed of sortedGroupNeeds) {
         // Assign students to this group until it reaches its target
         for (let i = 0; i < groupNeed.needed && studentIndex < shuffledStudents.length; i++) {
+          const seat_index = nextSeatIndexByGroup.get(groupNeed.groupId) ?? 1;
+          nextSeatIndexByGroup.set(groupNeed.groupId, seat_index + 1);
           assignments.push({
             student_id: shuffledStudents[studentIndex].id,
             seating_group_id: groupNeed.groupId,
+            seat_index,
           });
           studentIndex++;
         }
@@ -1734,6 +1844,9 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         alert('Failed to update team. Please try again.');
         return;
       }
+
+      // Renumber seat_index for this group so indices stay 1..N in row-major order
+      await renumberSeatIndicesForGroup(editingGroup.id);
 
       // Update local state
       setGroups(prev => prev.map(g => 
@@ -1838,6 +1951,9 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         alert('Failed to update group columns. Please try again.');
         return;
       }
+
+      // Renumber seat_index for this group so indices stay 1..N in row-major order
+      await renumberSeatIndicesForGroup(groupId);
 
       // Update local state
       setGroups(prev => prev.map(g => 

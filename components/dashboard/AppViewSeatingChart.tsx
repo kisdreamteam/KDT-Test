@@ -34,6 +34,7 @@ interface SeatingGroup {
 
 interface StudentSeatAssignment {
   seating_group_id: string;
+  seat_index: number | null;
   students: Student | null;
 }
 
@@ -256,30 +257,47 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
           const { data: assignmentsData, error: assignmentsError } = await supabase
             .from('student_seat_assignments')
             .select('*, students(*)')
-            .in('seating_group_id', groupIds);
+            .in('seating_group_id', groupIds)
+            .order('seating_group_id', { ascending: true })
+            .order('seat_index', { ascending: true });
 
           if (assignmentsError) {
             console.error('Error fetching student seat assignments:', assignmentsError);
             // Continue with empty assignments
           }
 
-          // Organize students by group
+          // Organize students by group with correct sort: seat_index (1..N) or first_name for legacy nulls
           const newGroupStudents = new Map<string, Student[]>();
           groupsData.forEach(group => {
             newGroupStudents.set(group.id, []);
           });
 
           if (assignmentsData) {
-            assignmentsData.forEach((assignment: StudentSeatAssignment) => {
-              const groupId = assignment.seating_group_id;
-              const student = assignment.students;
-              if (student && newGroupStudents.has(groupId)) {
-                const currentStudents = newGroupStudents.get(groupId) || [];
-                // Check for duplicates before adding
-                if (!currentStudents.find(s => s.id === student.id)) {
-                  newGroupStudents.set(groupId, [...currentStudents, student]);
+            // Group assignments by seating_group_id
+            const byGroup = new Map<string, StudentSeatAssignment[]>();
+            for (const a of assignmentsData as StudentSeatAssignment[]) {
+              const gid = a.seating_group_id;
+              if (!byGroup.has(gid)) byGroup.set(gid, []);
+              byGroup.get(gid)!.push(a);
+            }
+            // For each group: sort by seat_index or first_name (legacy null), then set student list
+            byGroup.forEach((assignments, groupId) => {
+              const withStudent = assignments.filter((a): a is StudentSeatAssignment & { students: Student } =>
+                a.students != null
+              );
+              const hasNull = withStudent.some(a => a.seat_index == null);
+              const sorted = [...withStudent].sort((a, b) => {
+                if (hasNull) {
+                  const cmp = (a.students.first_name ?? '').localeCompare(b.students.first_name ?? '');
+                  return cmp !== 0 ? cmp : (a.students.last_name ?? '').localeCompare(b.students.last_name ?? '');
                 }
-              }
+                const sa = a.seat_index ?? Infinity;
+                const sb = b.seat_index ?? Infinity;
+                if (sa !== sb) return sa - sb;
+                return (a.students.first_name ?? '').localeCompare(b.students.first_name ?? '');
+              });
+              const students = sorted.map(a => a.students);
+              newGroupStudents.set(groupId, students);
             });
           }
 

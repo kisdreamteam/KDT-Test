@@ -24,14 +24,16 @@ export default function LeftNavSeatingChartEdit() {
         </p>
       </div>
 
-      {/* Students List */}
+      {/* Students List - deduplicate by id to avoid duplicate React keys */}
       <div className="space-y-2 flex-1 overflow-y-auto">
         {unseatedStudents.length === 0 ? (
           <div className="text-center py-4">
             <p className="text-sm text-center">All students are seated</p>
           </div>
         ) : (
-          unseatedStudents.map((student) => (
+          unseatedStudents
+            .filter((student, index, self) => self.findIndex((s) => s.id === student.id) === index)
+            .map((student) => (
             <div
               key={student.id}
               onClick={() => handleStudentClick(student)}
