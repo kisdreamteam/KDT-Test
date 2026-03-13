@@ -531,7 +531,7 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
     }
   };
 
-  // Handle group click to open award points modal
+  // Handle group click to open award points modal (header only)
   const handleGroupClick = (groupId: string) => {
     const studentsInGroup = groupStudents.get(groupId) || [];
     if (studentsInGroup.length === 0) {
@@ -540,6 +540,12 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
     }
     const studentIds = studentsInGroup.map(student => student.id);
     setSelectedGroupStudentIds(studentIds);
+    setIsAwardPointsModalOpen(true);
+  };
+
+  // Handle single student click to open award points modal for that student only
+  const handleStudentClick = (student: Student) => {
+    setSelectedGroupStudentIds([student.id]);
     setIsAwardPointsModalOpen(true);
   };
 
@@ -858,8 +864,12 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
                         return (
                           <div
                             key={student.id}
-                            className={`flex items-center justify-between gap-1 p-1.5 rounded border ${bgColor}`}
-                            style={{ 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStudentClick(student);
+                            }}
+                            className={`flex items-center justify-between gap-1 p-1.5 rounded border cursor-pointer hover:opacity-90 transition-opacity ${bgColor}`}
+                            style={{
                               width: '100%',
                               minHeight: '32px',
                               height: 'auto'
@@ -889,8 +899,7 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
                       return (
                         <div
                           key={group.id}
-                          onClick={() => handleGroupClick(group.id)}
-                          className="bg-white rounded-lg border-2 border-gray-300 shadow-lg flex flex-col cursor-pointer hover:shadow-xl transition-shadow"
+                          className="bg-white rounded-lg border-2 border-gray-300 shadow-lg flex flex-col transition-shadow"
                           style={{
                             position: 'absolute',
                             left: `${groupX}px`,
@@ -904,9 +913,13 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
                             pointerEvents: 'auto'
                           }}
                         >
-                          {/* Group Header - Row 1 */}
+                          {/* Group Header - Row 1 (clickable: award points to whole group) */}
                           <div
-                            className="border-b border-gray-200 bg-purple-50 rounded-t-lg"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleGroupClick(group.id);
+                            }}
+                            className="border-b border-gray-200 bg-purple-50 rounded-t-lg cursor-pointer hover:bg-purple-100 transition-colors"
                             style={{
                               height: '50px',
                               minHeight: '50px',
@@ -1038,7 +1051,7 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
         onSave={handleEditLayoutSave}
       />
 
-      {/* Award Points Modal for Group */}
+      {/* Award Points Modal for Group or Single Student */}
       {selectedGroupStudentIds.length > 0 && (
         <AwardPointsModal
           isOpen={isAwardPointsModalOpen}
@@ -1046,7 +1059,7 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
             setIsAwardPointsModalOpen(false);
             setSelectedGroupStudentIds([]);
           }}
-          student={null}
+          student={selectedGroupStudentIds.length === 1 ? (allStudents.find(s => s.id === selectedGroupStudentIds[0]) ?? null) : null}
           classId={classId}
           selectedStudentIds={selectedGroupStudentIds}
           onAwardComplete={() => {

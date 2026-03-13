@@ -703,20 +703,22 @@ export default function AwardPointsModal({
                   ? (classIcon || "/images/dashboard/class-icons/icon-1.png")
                   : (student?.avatar || "/images/dashboard/student-avatars/avatar-01.png")
                 }
-                alt={isMultiClassMode && selectedClassIds
+                alt={student
+                  ? `${student.first_name} ${student.last_name}`
+                  : isMultiClassMode && selectedClassIds
                   ? `${selectedClassIds.length} Selected Classes`
                   : isMultiStudentMode && selectedStudentIds
                   ? `${selectedStudentIds.length} Selected Students`
                   : isWholeClassMode 
                   ? (className || "Whole Class")
-                  : `${student?.first_name} ${student?.last_name}`
+                  : ''
                 }
                 width={48}
                 height={48}
                 className="rounded-full"
               />
-              {/* Crown icon overlay - only for single student */}
-              {!isWholeClassMode && !isMultiClassMode && !isMultiStudentMode && (
+              {/* Crown icon overlay - only for single student (including single student from seating chart) */}
+              {(student || (!isWholeClassMode && !isMultiClassMode && !isMultiStudentMode)) && (
                 <div className="absolute -top-1 -right-1">
                   <svg className="w-5 h-5 text-yellow-400" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 2L8.5 8.5 2 9.5l5 5-1 7 6-3.5 6 3.5-1-7 5-5-6.5-1L12 2z"/>
@@ -725,25 +727,29 @@ export default function AwardPointsModal({
               )}
             </div>
             <span className="text-5xl font-bold text-gray-900">
-              {isMultiClassMode && selectedClassIds
+              {student
+                ? `${student.first_name} ${student.last_name}`
+                : isMultiClassMode && selectedClassIds
                 ? `${selectedClassIds.length} Selected ${selectedClassIds.length === 1 ? 'Class' : 'Classes'}`
                 : isMultiStudentMode && selectedStudentIds
                 ? `${selectedStudentIds.length} Selected ${selectedStudentIds.length === 1 ? 'Student' : 'Students'}`
                 : isWholeClassMode 
                 ? (className || 'Whole Class')
-                : `${student?.first_name} ${student?.last_name}`
+                : ''
               }
             </span>
             
             {/* Point Totals */}
             <div className="flex items-left gap-2 ml-4">
               <span className="px-0 py-1 rounded-full text-3xl font-bold text-red-600 translate-y-2/12">
-                {isMultiClassMode || isMultiStudentMode
+                {student
+                  ? `${student.points || 0} Points`
+                  : isMultiClassMode || isMultiStudentMode
                   ? 'Multiple'
                   : isWholeClassMode 
                   ? 'Class Points'
-                  : `${student?.points || 0} Points`
-                }
+                  : '0 Points'
+              }
               </span>
              </div>
           </div>
