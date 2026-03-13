@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useSeatingChart } from '@/context/SeatingChartContext';
 import { Student } from '@/lib/types';
+import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
 
 interface SeatingChart {
   id: string;
@@ -16,6 +17,7 @@ interface LeftNavSeatingChartViewProps {
   layouts?: SeatingChart[];
   selectedLayoutId?: string | null;
   onSelectLayout?: (layoutId: string) => void;
+  onEditLayout?: (layoutId: string, layoutName: string, e: React.MouseEvent) => void;
   onDeleteLayout?: (layoutId: string, layoutName: string, e: React.MouseEvent) => void;
   isLoadingLayouts?: boolean;
 }
@@ -25,6 +27,7 @@ export default function LeftNavSeatingChartView({
   layouts = [], 
   selectedLayoutId, 
   onSelectLayout,
+  onEditLayout,
   onDeleteLayout,
   isLoadingLayouts = false
 }: LeftNavSeatingChartViewProps) {
@@ -97,6 +100,16 @@ export default function LeftNavSeatingChartView({
                   </span>
                 </div>
               </button>
+              {/* Edit (pencil) icon - to the left of trash */}
+              {onEditLayout && (
+                <button
+                  onClick={(e) => onEditLayout(layout.id, layout.name, e)}
+                  className="absolute top-2.5 right-9 w-6 h-6 bg-gray-400 hover:bg-gray-500 text-white rounded-full flex items-center justify-center transition-colors z-10"
+                  title={`Edit name: ${layout.name}`}
+                >
+                  <IconEditPencil className="w-4 h-4 text-white" strokeWidth={2} />
+                </button>
+              )}
               {/* Trash can icon */}
               {onDeleteLayout && (
                 <button

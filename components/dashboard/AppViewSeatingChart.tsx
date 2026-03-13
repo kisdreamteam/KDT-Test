@@ -7,6 +7,7 @@ import { Student } from '@/lib/types';
 import LeftNavSeatingChartView from '@/components/dashboard/navbars/LeftNavSeatingChartView';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import CreateLayoutModal from '@/components/modals/CreateLayoutModal';
+import EditLayoutModal from '@/components/modals/EditLayoutModal';
 import AwardPointsModal from '@/components/modals/AwardPointsModal';
 import PointsAwardedConfirmationModal from '@/components/modals/PointsAwardedConfirmationModal';
 
@@ -65,6 +66,8 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
   const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [layoutToDelete, setLayoutToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [layoutToEdit, setLayoutToEdit] = useState<{ id: string; name: string } | null>(null);
+  const [isEditLayoutModalOpen, setIsEditLayoutModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAwardPointsModalOpen, setIsAwardPointsModalOpen] = useState(false);
   const [selectedGroupStudentIds, setSelectedGroupStudentIds] = useState<string[]>([]);
@@ -429,6 +432,29 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
     e.stopPropagation(); // Prevent button click from selecting the layout
     setLayoutToDelete({ id: layoutId, name: layoutName });
     setIsDeleteModalOpen(true);
+  };
+
+  // Handle edit layout name
+  const handleEditLayout = (layoutId: string, layoutName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLayoutToEdit({ id: layoutId, name: layoutName });
+    setIsEditLayoutModalOpen(true);
+  };
+
+  const handleEditLayoutSave = async (newName: string) => {
+    if (!layoutToEdit) return;
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('seating_charts')
+      .update({ name: newName })
+      .eq('id', layoutToEdit.id);
+    if (error) {
+      console.error('Error updating layout name:', error);
+      throw new Error('Failed to update layout name.');
+    }
+    await fetchLayouts();
+    setLayoutToEdit(null);
+    setIsEditLayoutModalOpen(false);
   };
 
   const handleDeleteConfirmed = async () => {
@@ -956,6 +982,7 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
           layouts={layouts}
           selectedLayoutId={selectedLayoutId}
           onSelectLayout={setSelectedLayoutId}
+          onEditLayout={handleEditLayout}
           onDeleteLayout={handleDeleteLayout}
           isLoadingLayouts={isLoading}
         />
@@ -998,6 +1025,17 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onCreateLayout={handleCreateLayout}
+      />
+
+      {/* Edit Layout Name Modal */}
+      <EditLayoutModal
+        isOpen={isEditLayoutModalOpen && layoutToEdit !== null}
+        onClose={() => {
+          setIsEditLayoutModalOpen(false);
+          setLayoutToEdit(null);
+        }}
+        currentName={layoutToEdit?.name ?? ''}
+        onSave={handleEditLayoutSave}
       />
 
       {/* Award Points Modal for Group */}
