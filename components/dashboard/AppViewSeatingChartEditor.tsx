@@ -2688,7 +2688,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                   lineHeight: '1.2'
                                 }}
                               >
-                                {student.first_name} {student.last_name}
+                                {student.first_name}
                               </p>
                               <span className="text-red-600 font-semibold flex-shrink-0" style={{
                                 fontSize: 'clamp(0.875rem, 120%, 1.5rem)', // Fixed font size for all groups (same as 1-column groups)
