@@ -298,6 +298,7 @@ function DashboardLayoutContent({
                     <BottomNavSeatingView
                       currentClassName={currentClassName}
                       sidebarOpen={sidebarOpen}
+                      onRandomClick={() => setIsRandomOpen(true)}
                     />
                   ) : isMultiSelectMode ? (
                     <BottomNavMulti

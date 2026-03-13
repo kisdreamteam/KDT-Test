@@ -6,16 +6,19 @@ import { useBottomNavPosition } from '@/hooks/useBottomNavPosition';
 import ViewPopup from './ViewPopup';
 import IconViewDots from '@/components/iconsCustom/iconViewDots';
 import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
+import IconRandomArrows from '@/components/iconsCustom/iconRandomArrows';
 import BotNavGrayButton from './botNavGrayButton';
 
 interface BottomNavSeatingViewProps {
   currentClassName: string | null;
   sidebarOpen: boolean;
+  onRandomClick: () => void;
 }
 
 export default function BottomNavSeatingView({ 
   currentClassName, 
-  sidebarOpen
+  sidebarOpen,
+  onRandomClick
 }: BottomNavSeatingViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -99,6 +102,13 @@ export default function BottomNavSeatingView({
               />
             </div>
           )}
+
+          {/* Random Button */}
+          <BotNavGrayButton
+            icon={<IconRandomArrows />}
+            label="Random"
+            onClick={onRandomClick}
+          />
 
           {/* Edit Seating Chart Button */}
           <BotNavGrayButton
