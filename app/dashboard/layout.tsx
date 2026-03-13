@@ -294,15 +294,15 @@ function DashboardLayoutContent({
                       currentClassName={currentClassName}
                       sidebarOpen={sidebarOpen}
                     />
+                  ) : isMultiSelectMode ? (
+                    <BottomNavMulti
+                      sidebarOpen={sidebarOpen}
+                    />
                   ) : isSeatingView ? (
                     <BottomNavSeatingView
                       currentClassName={currentClassName}
                       sidebarOpen={sidebarOpen}
                       onRandomClick={() => setIsRandomOpen(true)}
-                    />
-                  ) : isMultiSelectMode ? (
-                    <BottomNavMulti
-                      sidebarOpen={sidebarOpen}
                     />
                   ) : (
                     <BottomNavStudents

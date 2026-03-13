@@ -425,7 +425,12 @@ export default function AppViewStudents() {
             (isSeatingEditMode || isEditModeFromURL) ? (
               <AppViewSeatingChartEditor classId={classId} />
             ) : (
-              <AppViewSeatingChart classId={classId} />
+              <AppViewSeatingChart
+                classId={classId}
+                isMultiSelectMode={isMultiSelectMode}
+                selectedStudentIds={selectedStudentIds}
+                onSelectStudent={handleSelectStudent}
+              />
             )
           ) : (
             // Student Grid View (default)

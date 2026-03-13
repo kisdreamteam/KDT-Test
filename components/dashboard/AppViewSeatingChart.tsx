@@ -47,9 +47,12 @@ interface Class {
 
 interface AppViewSeatingChartProps {
   classId: string;
+  isMultiSelectMode?: boolean;
+  selectedStudentIds?: string[];
+  onSelectStudent?: (studentId: string) => void;
 }
 
-export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProps) {
+export default function AppViewSeatingChart({ classId, isMultiSelectMode = false, selectedStudentIds = [], onSelectStudent }: AppViewSeatingChartProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [layouts, setLayouts] = useState<SeatingChart[]>([]);
@@ -851,14 +854,19 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
                       
                       // Render student card component (read-only)
                       const renderStudentCard = (student: Student) => {
-                        // Determine background color based on gender
-                        let bgColor = 'bg-white border-gray-200';
-                        if (student.gender === null || student.gender === undefined || student.gender === '') {
+                        // In multi-select mode: yellow when selected, otherwise gender-based
+                        const isSelected = isMultiSelectMode && selectedStudentIds.includes(student.id);
+                        let bgColor: string;
+                        if (isSelected) {
+                          bgColor = 'bg-yellow-200 border-yellow-400';
+                        } else if (student.gender === null || student.gender === undefined || student.gender === '') {
                           bgColor = 'bg-white border-gray-200';
                         } else if (student.gender === 'Boy') {
                           bgColor = 'bg-blue-200 border-blue-300';
                         } else if (student.gender === 'Girl') {
                           bgColor = 'bg-pink-200 border-pink-300';
+                        } else {
+                          bgColor = 'bg-white border-gray-200';
                         }
                         
                         return (
@@ -866,7 +874,11 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
                             key={student.id}
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleStudentClick(student);
+                              if (isMultiSelectMode && onSelectStudent) {
+                                onSelectStudent(student.id);
+                              } else {
+                                handleStudentClick(student);
+                              }
                             }}
                             className={`flex items-center justify-between gap-1 p-1.5 rounded border cursor-pointer hover:opacity-90 transition-opacity ${bgColor}`}
                             style={{
@@ -913,13 +925,15 @@ export default function AppViewSeatingChart({ classId }: AppViewSeatingChartProp
                             pointerEvents: 'auto'
                           }}
                         >
-                          {/* Group Header - Row 1 (clickable: award points to whole group) */}
+                          {/* Group Header - Row 1 (clickable: award points to whole group, only when not in multi-select) */}
                           <div
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleGroupClick(group.id);
+                              if (!isMultiSelectMode) {
+                                handleGroupClick(group.id);
+                              }
                             }}
-                            className="border-b border-gray-200 bg-purple-50 rounded-t-lg cursor-pointer hover:bg-purple-100 transition-colors"
+                            className={`border-b border-gray-200 bg-purple-50 rounded-t-lg transition-colors ${!isMultiSelectMode ? 'cursor-pointer hover:bg-purple-100' : ''}`}
                             style={{
                               height: '50px',
                               minHeight: '50px',

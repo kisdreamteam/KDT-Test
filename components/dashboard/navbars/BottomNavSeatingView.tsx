@@ -7,6 +7,7 @@ import ViewPopup from './ViewPopup';
 import IconViewDots from '@/components/iconsCustom/iconViewDots';
 import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
 import IconRandomArrows from '@/components/iconsCustom/iconRandomArrows';
+import IconCheckBox from '@/components/iconsCustom/iconCheckBox';
 import BotNavGrayButton from './botNavGrayButton';
 
 interface BottomNavSeatingViewProps {
@@ -115,6 +116,15 @@ export default function BottomNavSeatingView({
             icon={<IconEditPencil />}
             label="Seating Editor View"
             onClick={handleEditSeatingChart}
+          />
+
+          {/* Multiple Select Button */}
+          <BotNavGrayButton
+            icon={<IconCheckBox />}
+            label="Multiple Select"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('toggleMultiSelect'));
+            }}
           />
         </div>
       </div>
