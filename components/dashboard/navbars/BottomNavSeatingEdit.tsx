@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useBottomNavPosition } from '@/hooks/useBottomNavPosition';
 import IconRandomArrows from '@/components/iconsCustom/iconRandomArrows';
 import IconSettingsWheel from '@/components/iconsCustom/iconSettingsWheel';
 import IconAutoAssign from '@/components/iconsCustom/iconAutoAssign';
@@ -16,11 +17,12 @@ interface BottomNavSeatingEditProps {
 
 export default function BottomNavSeatingEdit({ 
   currentClassName,
-  sidebarOpen: _sidebarOpen
+  sidebarOpen
 }: BottomNavSeatingEditProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const leftPosition = useBottomNavPosition(sidebarOpen);
   const [isViewSettingsMenuOpen, setIsViewSettingsMenuOpen] = useState(false);
   const [viewSettingsMenuPosition, setViewSettingsMenuPosition] = useState({ left: 0, bottom: 0 });
   const viewSettingsButtonRef = useRef<HTMLDivElement>(null);
@@ -264,8 +266,8 @@ export default function BottomNavSeatingEdit({
 
   return (
     <div 
-      className="fixed bottom-0 font-spartan bg-white h-12 sm:h-14 md:h-16 lg:h-20 flex items-center justify-start gap-2 sm:gap-4 md:gap-8 lg:gap-15 pr-4 sm:pr-6 md:pr-8 lg:pr-10 z-50 transition-all duration-300 border-t border-[#4A3B8D] overflow-hidden"
-      style={{ left: 0, right: 0, width: '100vw' }}
+      className="fixed bottom-0 font-spartan bg-white h-12 sm:h-14 md:h-16 lg:h-20 flex items-center justify-start gap-2 sm:gap-4 md:gap-8 lg:gap-15 pr-4 sm:pr-6 md:pr-8 lg:pr-10 z-50 border-t border-[#4A3B8D] overflow-hidden"
+      style={{ left: `${leftPosition}px`, right: '0.5rem' }}
     >
       <div className="flex items-center justify-between w-full">
         {/* Left side buttons */}

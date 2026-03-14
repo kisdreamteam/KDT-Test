@@ -16,6 +16,7 @@ export function useBottomNavPosition(sidebarOpen: boolean) {
 
       requestAnimationFrame(() => {
         const topNav = document.querySelector('[data-top-nav]') as HTMLElement;
+        const sidebarContainer = document.querySelector('[data-sidebar-container]') as HTMLElement;
         if (topNav) {
           const rect = topNav.getBoundingClientRect();
           const newPosition = rect.left;
@@ -24,13 +25,20 @@ export function useBottomNavPosition(sidebarOpen: boolean) {
             setLeftPosition(newPosition);
             lastPosition = newPosition;
           }
+        } else if (sidebarContainer) {
+          // TopNav hidden (e.g. seating chart view): align to main content = sidebar right + gap
+          const rect = sidebarContainer.getBoundingClientRect();
+          const newPosition = rect.right + 8; // main content pl-2
+          if (Math.abs(newPosition - lastPosition) > 0.1) {
+            setLeftPosition(newPosition);
+            lastPosition = newPosition;
+          }
         } else {
-          // Fallback calculation if TopNav not found
-          const baseLeft = 8; // Outer container pl-2
-          const sidebarWidth = sidebarOpen ? 304 : 0; // w-76 = 304px
-          const mainContentPadding = 8; // Main content pl-2
-          const topNavPadding = 28; // TopNav pl-7
-          const newPosition = baseLeft + sidebarWidth + mainContentPadding + topNavPadding;
+          // Fallback when neither exists (e.g. initial mount)
+          const baseLeft = 8;
+          const sidebarWidth = sidebarOpen ? 304 : 0;
+          const mainContentPadding = 8;
+          const newPosition = baseLeft + sidebarWidth + mainContentPadding;
           if (Math.abs(newPosition - lastPosition) > 0.1) {
             setLeftPosition(newPosition);
             lastPosition = newPosition;

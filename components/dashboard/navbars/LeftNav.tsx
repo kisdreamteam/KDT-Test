@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { normalizeClassIconPath } from '@/lib/iconUtils';
 import IconTimerClock from '@/components/iconsCustom/iconTimerClock';
+import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
+import type { SeatingLayoutNavData } from '@/context/SeatingLayoutNavContext';
 
 interface Class {
   id: string;
@@ -18,9 +20,10 @@ interface LeftNavProps {
   isLoadingClasses: boolean;
   viewMode?: 'active' | 'archived';
   setViewMode?: (mode: 'active' | 'archived') => void;
+  seatingLayoutData?: SeatingLayoutNavData | null;
 }
 
-export default function LeftNav({ classes, isLoadingClasses, viewMode, setViewMode }: LeftNavProps) {
+export default function LeftNav({ classes, isLoadingClasses, viewMode, setViewMode, seatingLayoutData }: LeftNavProps) {
   const router = useRouter();
 
   const handleAllClassesClick = () => {
@@ -67,7 +70,8 @@ export default function LeftNav({ classes, isLoadingClasses, viewMode, setViewMo
         >
           <h2 className="text-center font-semibold">All Classes</h2>
         </button>
-      </div>
+
+        
 
       {/* Classes List - Scrollable Area */}
       <div className="flex-1 overflow-y-auto space-y-2 min-h-0 bg-[#fcf1f0] rounded-xl mb-4">
@@ -131,6 +135,64 @@ export default function LeftNav({ classes, isLoadingClasses, viewMode, setViewMo
           </>
         )}
       </div>
+ 
+      {/* Seating chart layouts section - when viewing seating chart (not edit mode) */}
+      {seatingLayoutData && (
+          <>
+            <div className="w-full p-3 mb-2">
+              <h2 className="text-center font-semibold text-gray-800">Layouts</h2>
+            </div>
+            <div className="space-y-2 mb-4 max-h-90 overflow-y-auto">
+              {seatingLayoutData.isLoadingLayouts ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+                  <span className="ml-2 text-sm text-gray-600">Loading layouts...</span>
+                </div>
+              ) : seatingLayoutData.layouts.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-sm text-gray-500">No layouts yet</p>
+                </div>
+              ) : (
+                seatingLayoutData.layouts.map((layout) => (
+                  <div key={layout.id} className="relative">
+                    <button
+                      onClick={() => seatingLayoutData.onSelectLayout(layout.id)}
+                      className={`w-full flex items-center justify-between space-x-3 p-2 rounded cursor-pointer transition-colors ${
+                        seatingLayoutData.selectedLayoutId === layout.id
+                          ? 'bg-purple-400 text-white hover:bg-purple-500'
+                          : 'hover:bg-blue-200'
+                      }`}
+                    >
+                      <span className={`text-xl font-medium block truncate flex-1 min-w-0 text-left ${
+                        seatingLayoutData.selectedLayoutId === layout.id ? 'text-white' : 'text-gray-800'
+                      }`}>
+                        Layout: {layout.name}
+                      </span>
+                    </button>
+                    <button
+                      onClick={(e) => seatingLayoutData.onEditLayout(layout.id, layout.name, e)}
+                      className="absolute top-2.5 right-9 w-6 h-6 bg-gray-400 hover:bg-gray-500 text-white rounded-full flex items-center justify-center transition-colors z-10"
+                      title={`Edit name: ${layout.name}`}
+                    >
+                      <IconEditPencil className="w-4 h-4 text-white" strokeWidth={2} />
+                    </button>
+                    <button
+                      onClick={(e) => seatingLayoutData.onDeleteLayout(layout.id, layout.name, e)}
+                      className="absolute top-2.5 right-1 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors z-10"
+                      title={`Delete ${layout.name}`}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
 
       {/* Bottom Section - Fixed */}
       <div className="flex-shrink-0 mt-auto">

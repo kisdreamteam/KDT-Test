@@ -6,11 +6,11 @@ import { createClient } from '@/lib/supabase/client';
 import { DashboardProvider } from '@/context/DashboardContext';
 import { StudentSortProvider } from '@/context/StudentSortContext';
 import { SeatingChartProvider } from '@/context/SeatingChartContext';
+import { SeatingLayoutNavProvider, SeatingLayoutNavData } from '@/context/SeatingLayoutNavContext';
 import LeftNav from '@/components/dashboard/navbars/LeftNav';
 import TopNav from '@/components/dashboard/navbars/TopNav';
 import BottomNavStudents from '@/components/dashboard/navbars/BottomNavStudents';
 import BottomNavMulti from '@/components/dashboard/navbars/BottomNavMulti';
-import BottomNavSeatingView from '@/components/dashboard/navbars/BottomNavSeatingView';
 import BottomNavSeatingEdit from '@/components/dashboard/navbars/BottomNavSeatingEdit';
 import MainContent from '@/components/dashboard/maincontent/MainContent';
 import Timer from '@/components/dashboard/tools/Timer';
@@ -49,6 +49,7 @@ function DashboardLayoutContent({
   const [isRandomOpen, setIsRandomOpen] = useState(false);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
+  const [seatingLayoutData, setSeatingLayoutData] = useState<SeatingLayoutNavData | null>(null);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
@@ -237,26 +238,30 @@ function DashboardLayoutContent({
     <div className="flex flex-row h-screen bg-[#4A3B8D] pl-2 pb-0 pt-0">
       {/* Wrap everything in SeatingChartProvider so sidebar and editor can share state */}
       <SeatingChartProvider>
-        {/* Left Sidebar - Always show LeftNav with classes */}
+        <SeatingLayoutNavProvider setSeatingLayoutData={setSeatingLayoutData}>
+        {/* Left Sidebar - Always show LeftNav with classes; when in seating view (not edit), include layout list */}
         <div className={`${sidebarOpen ? 'w-76' : 'w-0'} transition-all duration-300 overflow-hidden bg-white flex flex-col`} data-sidebar-container>
           <LeftNav 
             classes={classes}
             isLoadingClasses={isLoadingClasses}
             viewMode={viewMode}
             setViewMode={setViewMode}
+            seatingLayoutData={isSeatingView && !isEditMode ? seatingLayoutData : null}
           />
         </div>
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col relative pl-2 pr-2 pt-2">
             <StudentSortProvider>
-              {/* Top Bar */}
-              <TopNav
-                isLoadingProfile={isLoadingProfile}
-                currentClassName={currentClassName}
-                teacherProfile={teacherProfile}
-                onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-              />
+              {/* Top Bar - hidden in seating chart view so canvas matches editor size */}
+              {!(isSeatingView && !isEditMode) && (
+                <TopNav
+                  isLoadingProfile={isLoadingProfile}
+                  currentClassName={currentClassName}
+                  teacherProfile={teacherProfile}
+                  onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+                />
+              )}
 
               {/* Main Content */}
               <DashboardProvider value={{ 
@@ -298,24 +303,20 @@ function DashboardLayoutContent({
                     <BottomNavMulti
                       sidebarOpen={sidebarOpen}
                     />
-                  ) : isSeatingView ? (
-                    <BottomNavSeatingView
-                      currentClassName={currentClassName}
-                      sidebarOpen={sidebarOpen}
-                      onRandomClick={() => setIsRandomOpen(true)}
-                    />
                   ) : (
                     <BottomNavStudents
                       currentClassName={currentClassName}
                       sidebarOpen={sidebarOpen}
                       onTimerClick={() => setIsTimerOpen(true)}
                       onRandomClick={() => setIsRandomOpen(true)}
+                      sortingDisabled={isSeatingView}
                     />
                   )}
                 </>
               )}
           </StudentSortProvider>
         </div>
+        </SeatingLayoutNavProvider>
       </SeatingChartProvider>
     </div>
   );

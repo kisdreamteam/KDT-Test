@@ -19,13 +19,16 @@ interface BottomNavStudentsProps {
   sidebarOpen: boolean;
   onTimerClick: () => void;
   onRandomClick: () => void;
+  /** When true (e.g. seating chart view), Sorting button is shown but disabled */
+  sortingDisabled?: boolean;
 }
 
 export default function BottomNavStudents({ 
   currentClassName, 
   sidebarOpen,
   onTimerClick,
-  onRandomClick
+  onRandomClick,
+  sortingDisabled = false,
 }: BottomNavStudentsProps) {
   const { sortBy, setSortBy } = useStudentSort();
   const router = useRouter();
@@ -160,7 +163,7 @@ export default function BottomNavStudents({
         onClick={onTimerClick}
       />
 
-      {/* Sorting Button - Only show when on a class page */}
+      {/* Sorting Button - Only show when on a class page; disabled in seating view */}
       {currentClassName && (
         <div className="relative flex-shrink-0" ref={sortButtonRef}>
           <BotNavGrayButton
@@ -168,9 +171,10 @@ export default function BottomNavStudents({
             label="Sorting"
             onClick={(e) => {
               e.stopPropagation();
-              setIsSortPopupOpen(!isSortPopupOpen);
+              if (!sortingDisabled) setIsSortPopupOpen(!isSortPopupOpen);
             }}
             stopPropagation={true}
+            enabled={!sortingDisabled}
           />
           {/* Sort Popup */}
           {isSortPopupOpen && (

@@ -1,15 +1,17 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Student } from '@/lib/types';
-import LeftNavSeatingChartView from '@/components/dashboard/navbars/LeftNavSeatingChartView';
+import { useSeatingLayoutNav } from '@/context/SeatingLayoutNavContext';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import CreateLayoutModal from '@/components/modals/CreateLayoutModal';
 import EditLayoutModal from '@/components/modals/EditLayoutModal';
 import AwardPointsModal from '@/components/modals/AwardPointsModal';
 import PointsAwardedConfirmationModal from '@/components/modals/PointsAwardedConfirmationModal';
+import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
+import IconAddPlus from '@/components/iconsCustom/iconAddPlus';
 
 interface SeatingChart {
   id: string;
@@ -39,12 +41,6 @@ interface StudentSeatAssignment {
   students: Student | null;
 }
 
-interface Class {
-  id: string;
-  name: string;
-  icon?: string;
-}
-
 interface AppViewSeatingChartProps {
   classId: string;
   isMultiSelectMode?: boolean;
@@ -55,6 +51,7 @@ interface AppViewSeatingChartProps {
 export default function AppViewSeatingChart({ classId, isMultiSelectMode = false, selectedStudentIds = [], onSelectStudent }: AppViewSeatingChartProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [layouts, setLayouts] = useState<SeatingChart[]>([]);
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,10 +61,8 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
   const [groupStudents, setGroupStudents] = useState<Map<string, Student[]>>(new Map());
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [groupPositions, setGroupPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [isLoadingClasses, setIsLoadingClasses] = useState(true);
-  const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const setSeatingLayoutData = useSeatingLayoutNav();
   const [layoutToDelete, setLayoutToDelete] = useState<{ id: string; name: string } | null>(null);
   const [layoutToEdit, setLayoutToEdit] = useState<{ id: string; name: string } | null>(null);
   const [isEditLayoutModalOpen, setIsEditLayoutModalOpen] = useState(false);
@@ -83,13 +78,33 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
     categoryIcon?: string;
   } | null>(null);
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
-  const mainContentRef = useRef<HTMLDivElement | null>(null);
-  const leftSidebarRef = useRef<HTMLDivElement | null>(null);
-  const [canvasLeft, setCanvasLeft] = useState(320); // Default left position (8px sidebar left + 304px width + 8px spacing)
+  const [canvasLeft, setCanvasLeft] = useState(320); // Same as editor: sidebar right edge + 8px
   // View settings from database
   const [showGrid, setShowGrid] = useState<boolean>(true);
   const [showObjects, setShowObjects] = useState<boolean>(true);
   const [layoutOrientation, setLayoutOrientation] = useState<string>('Left');
+
+  // Match editor canvas position: compute left from layout sidebar (data-sidebar-container)
+  useEffect(() => {
+    const updateCanvasLeft = () => {
+      const sidebar = document.querySelector('[data-sidebar-container]');
+      if (sidebar) {
+        const rect = sidebar.getBoundingClientRect();
+        setCanvasLeft(rect.right + 8);
+      } else {
+        setCanvasLeft(320);
+      }
+    };
+    const timeoutId = setTimeout(updateCanvasLeft, 10);
+    updateCanvasLeft();
+    window.addEventListener('resize', updateCanvasLeft);
+    const interval = setInterval(updateCanvasLeft, 100);
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', updateCanvasLeft);
+      clearInterval(interval);
+    };
+  }, []);
 
   const fetchLayouts = useCallback(async () => {
     try {
@@ -147,6 +162,21 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
     }
   }, [selectedLayoutId, classId]);
 
+  // Provide layout data to left nav (for seating view)
+  useEffect(() => {
+    setSeatingLayoutData({
+      layouts,
+      selectedLayoutId,
+      onSelectLayout: setSelectedLayoutId,
+      onAddLayout: () => setIsCreateModalOpen(true),
+      onEditLayout: handleEditLayout,
+      onDeleteLayout: handleDeleteLayout,
+      isLoadingLayouts: isLoading,
+    });
+    return () => setSeatingLayoutData(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handlers are stable enough; avoid running on every render
+  }, [layouts, selectedLayoutId, isLoading, setSeatingLayoutData]);
+
   // Fetch all students for the class
   const fetchAllStudents = useCallback(async () => {
     try {
@@ -176,46 +206,6 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
       fetchAllStudents();
     }
   }, [classId, fetchAllStudents]);
-
-  // Fetch classes for LeftNav
-  const fetchClasses = useCallback(async () => {
-    try {
-      setIsLoadingClasses(true);
-      const supabase = createClient();
-      
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        console.error('User not authenticated:', userError);
-        return;
-      }
-
-      // Fetch classes for the current teacher based on viewMode
-      const { data, error } = await supabase
-        .from('classes')
-        .select('*')
-        .eq('teacher_id', user.id)
-        .eq('is_archived', viewMode === 'archived')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching classes for sidebar:', error);
-        return;
-      }
-
-      setClasses(data || []);
-    } catch (err) {
-      console.error('Unexpected error fetching classes for sidebar:', err);
-    } finally {
-      setIsLoadingClasses(false);
-    }
-  }, [viewMode]);
-
-  // Fetch classes on mount and when viewMode changes
-  useEffect(() => {
-    fetchClasses();
-  }, [fetchClasses]);
 
   const fetchGroups = useCallback(async () => {
     if (!selectedLayoutId) return;
@@ -398,38 +388,6 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
     return () => clearInterval(interval);
   }, [selectedLayoutId]);
 
-  // Calculate canvas left position based on left sidebar position
-  useEffect(() => {
-    const updateCanvasLeft = () => {
-      if (leftSidebarRef.current) {
-        const rect = leftSidebarRef.current.getBoundingClientRect();
-        // Start canvas right after the sidebar with 8px spacing
-        // Sidebar: left: 8px, width: 304px (w-76), so right edge is at 312px
-        // Canvas should start at 312px + 8px spacing = 320px
-        const sidebarRight = rect.left + rect.width;
-        const newLeft = sidebarRight + 8;
-        setCanvasLeft(newLeft);
-      } else {
-        // Fallback: sidebar is 8px left + 304px width (w-76) + 8px spacing = 320px
-        setCanvasLeft(320);
-      }
-    };
-    
-    // Initial update with a small delay to ensure sidebar is rendered
-    const timeoutId = setTimeout(updateCanvasLeft, 10);
-    updateCanvasLeft();
-    
-    window.addEventListener('resize', updateCanvasLeft);
-    const interval = setInterval(updateCanvasLeft, 100); // Update periodically to catch sidebar changes
-    
-    return () => {
-      clearTimeout(timeoutId);
-      window.removeEventListener('resize', updateCanvasLeft);
-      clearInterval(interval);
-    };
-  }, []);
-
-
   // Handle delete layout
   const handleDeleteLayout = (layoutId: string, layoutName: string, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent button click from selecting the layout
@@ -458,6 +416,16 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
     await fetchLayouts();
     setLayoutToEdit(null);
     setIsEditLayoutModalOpen(false);
+  };
+
+  const handleOpenSeatingEditor = () => {
+    const storageKey = `seatingChart_selectedLayout_${classId}`;
+    const layoutId = typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null;
+    window.dispatchEvent(new CustomEvent('seatingChartEditMode', { detail: { isEditMode: true } }));
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('mode', 'edit');
+    if (layoutId) params.set('layout', layoutId);
+    router.push(params.toString() ? `${pathname}?${params.toString()}` : `${pathname}?mode=edit`);
   };
 
   const handleDeleteConfirmed = async () => {
@@ -641,52 +609,73 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
 
   if (layouts.length === 0) {
     return (
-      <div className="p-6 sm:p-8 md:p-10">
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
-          <div className="text-center">
-            <h2 className="text-white text-2xl font-semibold mb-2">No seating charts yet</h2>
-            <p className="text-white/80 text-lg">
-              Click on Seating Editor View in the bottom navigation to create a new layout.
-            </p>
+      <div className="font-spartan w-full min-h-full bg-[#4A3B8D] relative">
+        {/* Top right: + (create layout) and pencil (grayed out, nothing to edit) */}
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          className="fixed top-10 right-24 w-12 h-12 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-colors z-50 shadow-lg"
+          title="Create new layout"
+        >
+          <IconAddPlus className="w-8 h-8 text-black" />
+        </button>
+        <button
+          className="fixed top-10 right-10 w-12 h-12 rounded-full bg-white/60 flex items-center justify-center z-50 shadow-lg cursor-not-allowed opacity-60"
+          title="Seating Editor (create a layout first)"
+          disabled
+          aria-disabled="true"
+        >
+          <IconEditPencil className="w-8 h-8 text-gray-500" strokeWidth={2} />
+        </button>
+
+        <div className="p-6 sm:p-8 md:p-10">
+          <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+            <div className="text-center">
+              <h2 className="text-white text-2xl font-semibold mb-2">No seating charts yet</h2>
+              <p className="text-white/80 text-lg">
+                Click the + button (top right) to create a new layout, or the pencil to open the Seating Editor after you have one.
+              </p>
+            </div>
           </div>
         </div>
+
+        <CreateLayoutModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onCreateLayout={handleCreateLayout}
+        />
       </div>
     );
   }
 
   return (
-    <div 
-      className="flex flex-row bg-red-600 font-spartan relative w-full h-screen" 
-      style={{ 
-        height: '100vh',
-        width: '100vw',
-        position: 'fixed',
-        top: 0,
-        left: 0
-      }}
-    >
-      {/* Main Content Area - Add left padding to account for left sidebar (w-76 = 304px) + spacing (8px) */}
-      <div ref={mainContentRef} className="flex-1 p-1 bg-[#4A3B8D] sm:p-11md:p-2 relative" style={{ paddingLeft: '312px', minHeight: '100%', overflow: 'visible' }}>
-        <div className="space-y-8 relative" style={{ zIndex: 1 }}>
+    <div className="font-spartan w-full min-h-full bg-[#4A3B8D] relative">
+      {/* Top right: + (create layout) and pencil (open Seating Editor) */}
+      <button
+        onClick={() => setIsCreateModalOpen(true)}
+        className="fixed top-10 right-24 w-12 h-12 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-colors z-50 shadow-lg"
+        title="Create new layout"
+      >
+        <IconAddPlus className="w-8 h-8 text-black" />
+      </button>
+      <button
+        onClick={handleOpenSeatingEditor}
+        className="fixed top-10 right-10 w-12 h-12 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-colors z-50 shadow-lg"
+        title="Seating Editor View"
+      >
+        <IconEditPencil className="w-8 h-8 text-black" strokeWidth={2} />
+      </button>
 
-        {/* Seating Groups Canvas */}
-        <div className="flex-1 flex flex-col relative" style={{ minHeight: 'calc(100vh - 300px)' }}>
-          {/* Canvas for groups display */}
-          <div 
-            className="bg-[#fcfcfc] fixed border-2 border-white rounded-lg pt-2"
-            style={{
-              top: '6px', // Start at the top of the screen
-              left: `${canvasLeft}px`, // Dynamically calculated from left sidebar right edge + spacing
-              right: '8px', // Small padding from right edge
-              bottom: '85px', // Always extend to bottom nav (80px height) - this ensures it reaches the nav regardless of zoom
-              overflow: 'auto',
-              zIndex: 1, // Lower than sidebar (z-40) so sidebar appears on top
-              width: 'auto', // Width is constrained by left and right
-              height: 'auto', // Height is constrained by top and bottom
-              maxWidth: '100%', // Prevent overflow
-              maxHeight: '100%' // Prevent overflow
-            }}
-          >
+      {/* Canvas - fixed position, same size as AppViewSeatingChartEditor (no top nav) */}
+      <div
+        className="bg-[#fcf1f0] fixed border-2 border-black rounded-lg pt-2 overflow-auto"
+        style={{
+          top: '6px',
+          left: `${canvasLeft}px`,
+          right: '8px',
+          bottom: '85px',
+          zIndex: 1,
+        }}
+      >
           {/* Grid Lines Overlay - Visual guide only (only show if show_grid is true) */}
           {showGrid && (
             <div
@@ -988,31 +977,6 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
                     })}
             </div>
           )}
-          </div>
-        </div>
-        </div>
-      </div>
-
-      {/* Left Sidebar - Full height without top/bottom navs */}
-      <div 
-        ref={leftSidebarRef}
-        className="fixed w-76 bg-white flex flex-col overflow-y-auto z-40" 
-        style={{ 
-          left: '8px',
-          top: '8px', // Small padding from top
-          bottom: '8px', // Small padding from bottom
-          height: 'calc(100vh - 16px)' // Full viewport minus small padding
-        }}
-      >
-        <LeftNavSeatingChartView 
-          onAddLayout={() => setIsCreateModalOpen(true)}
-          layouts={layouts}
-          selectedLayoutId={selectedLayoutId}
-          onSelectLayout={setSelectedLayoutId}
-          onEditLayout={handleEditLayout}
-          onDeleteLayout={handleDeleteLayout}
-          isLoadingLayouts={isLoading}
-        />
       </div>
 
       {/* Delete Layout Confirmation Modal */}
