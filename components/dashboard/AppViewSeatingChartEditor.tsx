@@ -2929,12 +2929,12 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       {/* Left Sidebar - Unseated Students - Full height without top/bottom navs */}
       <div 
         ref={leftSidebarRef}
-        className="fixed w-76 bg-white flex flex-col overflow-y-auto z-40" 
+        className="fixed w-76 bg-white flex flex-col h-screen overflow-y-auto z-40" 
         style={{ 
           left: '8px',
-          top: '8px', // Small padding from top
-          bottom: '8px', // Small padding from bottom
-          height: 'calc(100vh - 16px)' // Full viewport minus small padding
+          top: '0px', // Small padding from top
+          bottom: '0px', // Small padding from bottom
+          height: 'calc(100vh - 0px)' // Full viewport minus small padding
         }}
       >
         <LeftNavSeatingChartEdit />
