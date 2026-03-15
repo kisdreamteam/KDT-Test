@@ -139,11 +139,10 @@ export default function LeftNav({ classes, isLoadingClasses, viewMode, setViewMo
       {/* Seating chart layouts section - when viewing seating chart (not edit mode) */}
       {seatingLayoutData && (
           <>
-            <div className="w-full p-3 mb-2">
+            <div className="w-full p-2 mb-2">
               <h2 className="text-center font-semibold text-gray-800">Layouts</h2>
             </div>
-            <div className="space-y-2 mb-4 max-h-90 overflow-y-auto">
-              {seatingLayoutData.isLoadingLayouts ? (
+            <div className="space-y-2 mb-4 max-h-90 bg-[#fcf1f0] rounded-xl overflow-y-auto">               {seatingLayoutData.isLoadingLayouts ? (
                 <div className="flex items-center justify-center py-4">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
                   <span className="ml-2 text-sm text-gray-600">Loading layouts...</span>
