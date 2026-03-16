@@ -21,6 +21,10 @@ interface BottomNavStudentsProps {
   onRandomClick: () => void;
   /** When true (e.g. seating chart view), Sorting button is shown but disabled */
   sortingDisabled?: boolean;
+  /** Current class ID (when on a class page) for opening Edit Class modal */
+  classId?: string | null;
+  /** Called when user chooses Edit Class from settings menu */
+  onEditClass?: () => void;
 }
 
 export default function BottomNavStudents({ 
@@ -29,6 +33,8 @@ export default function BottomNavStudents({
   onTimerClick,
   onRandomClick,
   sortingDisabled = false,
+  classId = null,
+  onEditClass,
 }: BottomNavStudentsProps) {
   const { sortBy, setSortBy } = useStudentSort();
   const router = useRouter();
@@ -256,6 +262,17 @@ export default function BottomNavStudents({
               bottom: `${settingsPopupPosition.bottom}px`,
             }}
           >
+            {classId && onEditClass && (
+              <button
+                onClick={() => {
+                  onEditClass();
+                  setIsSettingsPopupOpen(false);
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                Edit Class
+              </button>
+            )}
             <button
               onClick={handleLogout}
               className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"

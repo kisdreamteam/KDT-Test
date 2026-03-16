@@ -15,6 +15,7 @@ import BottomNavSeatingEdit from '@/components/dashboard/navbars/BottomNavSeatin
 import MainContent from '@/components/dashboard/maincontent/MainContent';
 import Timer from '@/components/dashboard/tools/Timer';
 import Random from '@/components/dashboard/tools/Random';
+import EditClassModal from '@/components/modals/EditClassModal';
 
 interface TeacherProfile {
   id: string;
@@ -50,8 +51,12 @@ function DashboardLayoutContent({
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
   const [seatingLayoutData, setSeatingLayoutData] = useState<SeatingLayoutNavData | null>(null);
+  const [isEditClassModalOpen, setIsEditClassModalOpen] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  // Current class ID from URL (when on a class detail page)
+  const currentClassId = pathname ? (pathname.match(/\/dashboard\/classes\/([^/]+)/)?.[1] ?? null) : null;
   
   // Check if we're in seating chart edit mode
   const isEditMode = searchParams.get('mode') === 'edit';
@@ -298,6 +303,8 @@ function DashboardLayoutContent({
                     <BottomNavSeatingEdit
                       currentClassName={currentClassName}
                       sidebarOpen={sidebarOpen}
+                      classId={currentClassId}
+                      onEditClass={() => setIsEditClassModalOpen(true)}
                     />
                   ) : isMultiSelectMode ? (
                     <BottomNavMulti
@@ -310,6 +317,8 @@ function DashboardLayoutContent({
                       onTimerClick={() => setIsTimerOpen(true)}
                       onRandomClick={() => setIsRandomOpen(true)}
                       sortingDisabled={isSeatingView}
+                      classId={currentClassId}
+                      onEditClass={() => setIsEditClassModalOpen(true)}
                     />
                   )}
                 </>
@@ -318,6 +327,16 @@ function DashboardLayoutContent({
         </div>
         </SeatingLayoutNavProvider>
       </SeatingChartProvider>
+
+      {/* Edit Class Modal (opened from bottom nav settings) */}
+      {currentClassId && (
+        <EditClassModal
+          isOpen={isEditClassModalOpen}
+          onClose={() => setIsEditClassModalOpen(false)}
+          classId={currentClassId}
+          onRefresh={fetchClasses}
+        />
+      )}
     </div>
   );
 }

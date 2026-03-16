@@ -13,11 +13,17 @@ import BotNavGrayButton from './botNavGrayButton';
 interface BottomNavSeatingEditProps {
   currentClassName: string | null;
   sidebarOpen: boolean;
+  /** Current class ID (when on a class page) for opening Edit Class modal */
+  classId?: string | null;
+  /** Called when user chooses Edit Class from settings menu */
+  onEditClass?: () => void;
 }
 
 export default function BottomNavSeatingEdit({ 
   currentClassName,
-  sidebarOpen
+  sidebarOpen,
+  classId = null,
+  onEditClass,
 }: BottomNavSeatingEditProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -486,6 +492,19 @@ export default function BottomNavSeatingEdit({
                   onClick={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
                 >
+                  {/* Edit Class Option */}
+                  {classId && onEditClass && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEditClass();
+                        setIsSettingsMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 first:rounded-t-lg transition-colors"
+                    >
+                      Edit Class
+                    </button>
+                  )}
                   {/* Clear All Groups Option */}
                   <button
                     onClick={(e) => {
