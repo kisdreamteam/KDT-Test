@@ -122,12 +122,13 @@ export default function AddSkillModal({ isOpen, onClose, classId, refreshCategor
       const supabase = createClient();
       console.log('Supabase client initialized');
 
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const user = session?.user;
       console.log('User fetch - user:', user ? { id: user.id, email: user.email } : null);
-      console.log('User fetch - error:', userError);
+      console.log('User fetch - error:', sessionError);
 
-      if (userError || !user) {
-        console.error('Authentication failed:', userError);
+      if (sessionError || !user) {
+        if (sessionError) console.error('Authentication failed:', sessionError);
         alert('You must be logged in to add skills.');
         setIsLoading(false);
         return;

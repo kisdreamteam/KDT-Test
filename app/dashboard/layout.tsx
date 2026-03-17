@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { DashboardProvider } from '@/context/DashboardContext';
 import { StudentSortProvider } from '@/context/StudentSortContext';
@@ -54,6 +54,7 @@ function DashboardLayoutContent({
   const [isEditClassModalOpen, setIsEditClassModalOpen] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   // Current class ID from URL (when on a class detail page)
   const currentClassId = pathname ? (pathname.match(/\/dashboard\/classes\/([^/]+)/)?.[1] ?? null) : null;
@@ -69,12 +70,13 @@ function DashboardLayoutContent({
     try {
       setIsLoadingProfile(true);
       const supabase = createClient();
-      
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        console.error('User not authenticated:', userError);
+      // Use getSession() to avoid "Refresh Token Not Found" when no session exists
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const user = session?.user;
+
+      if (sessionError || !user) {
+        if (sessionError) console.error('Session error:', sessionError);
+        router.replace('/login');
         return;
       }
 
@@ -113,12 +115,13 @@ function DashboardLayoutContent({
     try {
       setIsLoadingClasses(true);
       const supabase = createClient();
-      
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        console.error('User not authenticated:', userError);
+      // Use getSession() to avoid "Refresh Token Not Found" when no session exists
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const user = session?.user;
+
+      if (sessionError || !user) {
+        if (sessionError) console.error('Session error:', sessionError);
+        router.replace('/login');
         return;
       }
 
@@ -148,7 +151,7 @@ function DashboardLayoutContent({
     } finally {
       setIsLoadingClasses(false);
     }
-  }, []);
+  }, [router]);
   
   // Filter classes for main content based on viewMode
   const filteredClasses = useMemo(() => {

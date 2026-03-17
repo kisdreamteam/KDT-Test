@@ -49,13 +49,13 @@ export default function CreateClassForm({ onClose }: CreateClassFormProps) {
       // Initialize Supabase client
       const supabase = createClient();
 
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      // Use getSession() to avoid "Refresh Token Not Found" when no session exists
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const user = session?.user;
       console.log('Current User:', user); // Debug log for user object
-      
-      if (userError || !user) {
-        console.error('User not authenticated:', userError);
-        console.error('User error details:', userError?.message || userError);
+
+      if (sessionError || !user) {
+        if (sessionError) console.error('Session error:', sessionError);
         alert('You must be logged in to create a class.');
         return;
       }

@@ -379,11 +379,12 @@ export default function AwardPointsModal({
     try {
       const supabase = createClient();
       
-      // Get current authenticated user (required for teacher_id and RLS policy)
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        console.error('User not authenticated:', userError);
+      // Use getSession() to avoid "Refresh Token Not Found" when no session exists
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const user = session?.user;
+
+      if (sessionError || !user) {
+        if (sessionError) console.error('Session error:', sessionError);
         alert('You must be logged in to award custom points.');
         return;
       }

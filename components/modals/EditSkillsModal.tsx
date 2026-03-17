@@ -85,10 +85,11 @@ export default function EditSkillsModal({
     try {
       const supabase = createClient();
       
-      // Get authenticated user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      // Use getSession() to avoid "Refresh Token Not Found" when no session exists
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const user = session?.user;
 
-      if (userError || !user) {
+      if (sessionError || !user) {
         alert('You must be logged in to delete skills.');
         setIsDeleting(null);
         setSkillToDelete(null); // Close confirmation modal
