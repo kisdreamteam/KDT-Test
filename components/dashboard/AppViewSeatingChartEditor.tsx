@@ -41,6 +41,9 @@ interface StudentSeatAssignment {
   students: Student | null;
 }
 
+/** Per-group assignment with seat_index for fixed-slot grid. */
+type GroupAssignment = { student: Student; seat_index: number };
+
 interface AppViewSeatingChartEditorProps {
   classId: string;
 }
@@ -70,15 +73,43 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     message: '',
   });
   const [editingGroup, setEditingGroup] = useState<SeatingGroup | null>(null);
-  const [groupStudents, setGroupStudents] = useState<Map<string, Student[]>>(new Map());
-  const groupStudentsRef = useRef<Map<string, Student[]>>(new Map());
+  /** Fixed-slot: groupId -> list of { student, seat_index } (may have gaps). */
+  const [groupAssignments, setGroupAssignments] = useState<Map<string, GroupAssignment[]>>(new Map());
+  const groupAssignmentsRef = useRef<Map<string, GroupAssignment[]>>(new Map());
   const addStudentToGroupInFlightRef = useRef<{ studentId: string; groupId: string } | null>(null);
   const [targetGroupId, setTargetGroupId] = useState<string | null>(null);
-  
+
   // Keep ref in sync with state
   useEffect(() => {
-    groupStudentsRef.current = groupStudents;
-  }, [groupStudents]);
+    groupAssignmentsRef.current = groupAssignments;
+  }, [groupAssignments]);
+
+  // Helpers for fixed-slot grid (derived from groupAssignments)
+  const getAssignmentsInGroup = useCallback((groupId: string): GroupAssignment[] => {
+    return groupAssignments.get(groupId) ?? [];
+  }, [groupAssignments]);
+  const getStudentsInGroup = useCallback((groupId: string): Student[] => {
+    return (groupAssignments.get(groupId) ?? []).map(a => a.student);
+  }, [groupAssignments]);
+  const studentAtSlot = useCallback((groupId: string, seatIndex: number): Student | null => {
+    const list = groupAssignments.get(groupId) ?? [];
+    const found = list.find(a => a.seat_index === seatIndex);
+    return found ? found.student : null;
+  }, [groupAssignments]);
+  const maxSeatIndex = useCallback((groupId: string): number => {
+    const list = groupAssignments.get(groupId) ?? [];
+    if (list.length === 0) return 0;
+    return Math.max(...list.map(a => a.seat_index));
+  }, [groupAssignments]);
+  const maxSeatIndexInColumn = useCallback((groupId: string, col: number, C: number): number => {
+    const list = groupAssignments.get(groupId) ?? [];
+    const inCol = list.filter(a => (a.seat_index - 1) % C === col);
+    return inCol.length === 0 ? 0 : Math.max(...inCol.map(a => a.seat_index));
+  }, [groupAssignments]);
+  const nextSeatIndexInColumn = useCallback((groupId: string, col: number, C: number): number => {
+    const maxInCol = maxSeatIndexInColumn(groupId, col, C);
+    return maxInCol === 0 ? col + 1 : maxInCol + C;
+  }, [maxSeatIndexInColumn]);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [openSettingsMenuId, setOpenSettingsMenuId] = useState<string | null>(null);
   const [settingsMenuPosition, setSettingsMenuPosition] = useState<{ top: number; right: number } | null>(null);
@@ -395,10 +426,10 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
             // Continue with empty assignments
           }
 
-          // Organize students by group with correct sort: seat_index (1..N) or first_name for legacy nulls
-          const newGroupStudents = new Map<string, Student[]>();
+          // Fixed-slot: store per-group list of { student, seat_index } (preserve holes)
+          const newGroupAssignments = new Map<string, GroupAssignment[]>();
           groupsData.forEach(group => {
-            newGroupStudents.set(group.id, []);
+            newGroupAssignments.set(group.id, []);
           });
 
           if (assignmentsData) {
@@ -423,11 +454,14 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                 if (sa !== sb) return sa - sb;
                 return (a.students.first_name ?? '').localeCompare(b.students.first_name ?? '');
               });
-              newGroupStudents.set(groupId, sorted.map(a => a.students));
+              newGroupAssignments.set(
+                groupId,
+                sorted.map((a, i) => ({ student: a.students, seat_index: a.seat_index ?? i + 1 }))
+              );
             });
           }
 
-          setGroupStudents(newGroupStudents);
+          setGroupAssignments(newGroupAssignments);
 
           // Calculate unseated students: all students minus assigned students
           const assignedStudentIds = new Set(
@@ -437,12 +471,12 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
           setUnseatedStudents(unseated);
         } else {
           // No groups, all students are unseated
-          setGroupStudents(new Map());
+          setGroupAssignments(new Map());
           setUnseatedStudents(allStudents);
         }
       } else {
         setGroups([]);
-        setGroupStudents(new Map());
+        setGroupAssignments(new Map());
         setUnseatedStudents(allStudents);
       }
     } catch (err) {
@@ -458,7 +492,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       fetchGroups();
     } else if (!selectedLayoutId) {
       setGroups([]);
-      setGroupStudents(new Map());
+      setGroupAssignments(new Map());
     }
   }, [selectedLayoutId, fetchGroups, allStudents.length]);
 
@@ -485,13 +519,10 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       
       // Calculate and prepare updates for all groups
       const updates = groups.map(group => {
-        const studentsInGroup = groupStudents.get(group.id) || [];
+        const assignmentsInGroup = getAssignmentsInGroup(group.id);
         const studentsPerRow = group.group_columns || 2;
-        
-        // Calculate student rows needed (always at least 1)
-        const studentRowCount = studentsInGroup.length === 0 
-          ? 1  // Empty group: 1 student row
-          : Math.ceil(studentsInGroup.length / studentsPerRow);
+        const maxIdx = assignmentsInGroup.length === 0 ? 0 : Math.max(...assignmentsInGroup.map(a => a.seat_index));
+        const studentRowCount = maxIdx === 0 ? 1 : Math.ceil(maxIdx / studentsPerRow);
         
         // Total rows = 1 header + student rows (minimum 2)
         const totalRowCount = Math.max(2, 1 + studentRowCount);
@@ -538,7 +569,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       console.error('Unexpected error saving group sizes:', err);
       alert('Failed to save changes. Please try again.');
     }
-  }, [groups, groupStudents]);
+  }, [groups, getAssignmentsInGroup]);
 
   // Handle randomize seating - animated swap of all seated students
   const handleRandomizeSeating = useCallback(async () => {
@@ -549,14 +580,14 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     try {
       // First, record the size of each group (to maintain group sizes after randomization)
       const groupSizes: Map<string, number> = new Map();
-      groupStudents.forEach((students, groupId) => {
-        groupSizes.set(groupId, students.length);
+      groupAssignments.forEach((assignments, groupId) => {
+        groupSizes.set(groupId, assignments.length);
       });
 
       // Collect all seated students with their current groups
       const seatedStudents: Array<{ student: Student; currentGroupId: string }> = [];
-      groupStudents.forEach((students, groupId) => {
-        students.forEach(student => {
+      groupAssignments.forEach((assignments, groupId) => {
+        assignments.forEach(({ student }) => {
           seatedStudents.push({ student, currentGroupId: groupId });
         });
       });
@@ -616,19 +647,14 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         });
         setStudentsBeingPlaced(prev => new Set(prev).add(student.id));
         
-        // Update local state immediately for visual feedback
-        setGroupStudents(prev => {
+        // Update local state immediately for visual feedback (randomize uses 1..N per group)
+        setGroupAssignments(prev => {
           const newMap = new Map(prev);
-          
-          // Remove from old group
-          const oldGroupStudents = newMap.get(currentGroupId) || [];
-          const filteredOld = oldGroupStudents.filter(s => s.id !== student.id);
-          newMap.set(currentGroupId, filteredOld);
-          
-          // Add to new group
-          const newGroupStudents = newMap.get(newGroupId) || [];
-          newMap.set(newGroupId, [...newGroupStudents, student]);
-          
+          const oldList = newMap.get(currentGroupId) ?? [];
+          const newList = newMap.get(newGroupId) ?? [];
+          const newIndexInNewGroup = newList.length + 1;
+          newMap.set(currentGroupId, oldList.filter(a => a.student.id !== student.id));
+          newMap.set(newGroupId, [...newList, { student, seat_index: newIndexInNewGroup }]);
           return newMap;
         });
         
@@ -682,7 +708,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       setStudentsBeingPlaced(new Set());
       setIsRandomizing(false);
     }
-  }, [isRandomizing, groups, groupStudents, fetchGroups]);
+  }, [isRandomizing, groups, groupAssignments, fetchGroups]);
 
   // Listen for randomize event
   useEffect(() => {
@@ -696,8 +722,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     };
   }, [handleRandomizeSeating]);
 
-  // Listen for add student to group event
-  const addStudentToGroup = useCallback(async (student: Student, groupId: string) => {
+  // Listen for add student to group event. targetSeatIndex = fill hole / expand; omit = append at end.
+  const addStudentToGroup = useCallback(async (student: Student, groupId: string, targetSeatIndex?: number) => {
     // Prevent double invocation (e.g. React Strict Mode or duplicate event) so we don't try to insert twice and hit duplicate key
     if (addStudentToGroupInFlightRef.current?.studentId === student.id && addStudentToGroupInFlightRef.current?.groupId === groupId) {
       return;
@@ -705,7 +731,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     addStudentToGroupInFlightRef.current = { studentId: student.id, groupId };
 
     try {
-      const currentInGroup = groupStudentsRef.current.get(groupId) ?? [];
+      const currentInGroup = (groupAssignmentsRef.current.get(groupId) ?? []).map(a => a.student);
       if (currentInGroup.some((s) => s.id === student.id)) {
         // Already in this group (e.g. double-click or stale state) — avoid duplicate insert
         setSelectedStudentForGroup(null);
@@ -713,22 +739,26 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       }
 
       const supabase = createClient();
-      // Compute next seat_index from DB so we never conflict with existing/orphaned rows (e.g. first student to "empty" group that has stale rows)
-      const { data: existing } = await supabase
-        .from('student_seat_assignments')
-        .select('seat_index')
-        .eq('seating_group_id', groupId);
-      const maxIndex = existing?.length
-        ? Math.max(...existing.map((r) => r.seat_index ?? 0))
-        : 0;
-      const nextSeatIndex = maxIndex + 1;
+      let seatIndexToUse: number;
+      if (targetSeatIndex != null) {
+        seatIndexToUse = targetSeatIndex;
+      } else {
+        const { data: existing } = await supabase
+          .from('student_seat_assignments')
+          .select('seat_index')
+          .eq('seating_group_id', groupId);
+        const maxIndex = existing?.length
+          ? Math.max(...existing.map((r) => r.seat_index ?? 0))
+          : 0;
+        seatIndexToUse = maxIndex + 1;
+      }
 
       const { error: insertError } = await supabase
         .from('student_seat_assignments')
         .insert({
           student_id: student.id,
           seating_group_id: groupId,
-          seat_index: nextSeatIndex,
+          seat_index: seatIndexToUse,
         });
 
       if (insertError) {
@@ -737,24 +767,19 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         alert(`Failed to assign student. ${insertError.message ?? 'Please try again.'}`);
         return;
       }
-
-      // Update local state
-      setGroupStudents(prev => {
+      // Update local state (fixed-slot: add with exact seat_index)
+      setGroupAssignments(prev => {
         const newMap = new Map(prev);
-        const groupStudentsList = newMap.get(groupId) || [];
-        // Check if student is already in this group
-        if (!groupStudentsList.find(s => s.id === student.id)) {
-          newMap.set(groupId, [...groupStudentsList, student]);
+        const list = newMap.get(groupId) ?? [];
+        if (!list.some(a => a.student.id === student.id)) {
+          newMap.set(groupId, [...list, { student, seat_index: seatIndexToUse }]);
         }
         return newMap;
       });
-      
+
       // Remove from unseated list
       setUnseatedStudents((prev: Student[]) => prev.filter(s => s.id !== student.id));
       setSelectedStudentForGroup(null);
-      
-      // Note: group_rows is calculated on the fly for responsiveness
-      // Database will be updated when user clicks "Save Changes" button
     } catch (err) {
       console.error('Unexpected error assigning student:', err);
       alert('An unexpected error occurred. Please try again.');
@@ -845,23 +870,22 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         return;
       }
 
-      // Renumber remaining assignments in this group so seat_index stays 1..N
-      await renumberSeatIndicesForGroup(groupId);
+      // Fixed-slot: do not renumber; leave the hole.
 
       // Update local state
       let removedStudent: Student | undefined;
-      setGroupStudents(prev => {
+      setGroupAssignments(prev => {
         const newMap = new Map(prev);
-        const groupStudentsList = newMap.get(groupId) || [];
-        removedStudent = groupStudentsList.find(s => s.id === studentId);
-        
+        const list = newMap.get(groupId) ?? [];
+        const found = list.find(a => a.student.id === studentId);
+        if (found) removedStudent = found.student;
         if (removedStudent) {
-          newMap.set(groupId, groupStudentsList.filter(s => s.id !== studentId));
+          newMap.set(groupId, list.filter(a => a.student.id !== studentId));
         }
         return newMap;
       });
       
-      // Add back to unseated list (check for duplicates first) - outside of setGroupStudents callback
+      // Add back to unseated list (check for duplicates first) - outside of setGroupAssignments callback
       if (removedStudent) {
           setUnseatedStudents((prev: Student[]) => {
             // Check if student is already in the list
@@ -1172,8 +1196,47 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     dragOffsetRef.current = null; // Clear drag offset
   };
 
-  const moveStudentToGroup = async (studentId: string, fromGroupId: string, toGroupId: string) => {
-    // If moving to the same group, do nothing
+  const moveStudentToGroup = async (studentId: string, fromGroupId: string, toGroupId: string, targetSeatIndex?: number) => {
+    // Same group + target slot = move to empty seat within group (student changing seats in real life)
+    if (fromGroupId === toGroupId && targetSeatIndex != null) {
+      try {
+        const supabase = createClient();
+        const { data: assignmentArray, error: fetchErr } = await supabase
+          .from('student_seat_assignments')
+          .select('id')
+          .eq('student_id', studentId)
+          .eq('seating_group_id', fromGroupId);
+        if (fetchErr || !assignmentArray?.length) {
+          console.error('Error finding assignment for same-group move:', fetchErr);
+          setSelectedStudentForSwap(null);
+          return;
+        }
+        const { error: updateErr } = await supabase
+          .from('student_seat_assignments')
+          .update({ seat_index: targetSeatIndex })
+          .eq('id', assignmentArray[0].id);
+        if (updateErr) {
+          console.error('Error updating seat_index for same-group move:', updateErr);
+          alert('Failed to move seat. Please try again.');
+          setSelectedStudentForSwap(null);
+          return;
+        }
+        setGroupAssignments(prev => {
+          const newMap = new Map(prev);
+          const list = (newMap.get(fromGroupId) ?? []).map(a =>
+            a.student.id === studentId ? { ...a, seat_index: targetSeatIndex } : a
+          );
+          newMap.set(fromGroupId, list);
+          return newMap;
+        });
+        setSelectedStudentForSwap(null);
+      } catch (err) {
+        console.error('Unexpected error moving seat within group:', err);
+        setSelectedStudentForSwap(null);
+      }
+      return;
+    }
+
     if (fromGroupId === toGroupId) {
       setSelectedStudentForSwap(null);
       return;
@@ -1181,10 +1244,9 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
 
     try {
       const supabase = createClient();
-      
-      // Get the student data from the current group
-      const studentsInSourceGroup = groupStudents.get(fromGroupId) || [];
-      const studentToMove = studentsInSourceGroup.find(s => s.id === studentId);
+      const fromList = groupAssignmentsRef.current.get(fromGroupId) ?? [];
+      const foundFrom = fromList.find(a => a.student.id === studentId);
+      const studentToMove = foundFrom?.student;
 
       if (!studentToMove) {
         console.error('Student not found in source group');
@@ -1233,163 +1295,82 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         
         // Use the newly created assignment
         const tempAssignmentData = { id: newAssignment.id };
-        
-        // Continue with the move using the new assignment
-        // OPTIMISTIC UPDATE: Update local state FIRST for instant UI response
-        let rollbackState: Map<string, Student[]> | null = null;
-        
-        setGroupStudents(prev => {
-          // Save current state for potential rollback
+        const toList = groupAssignmentsRef.current.get(toGroupId) ?? [];
+        const nextSeat = targetSeatIndex != null ? targetSeatIndex : (toList.length === 0 ? 1 : Math.max(...toList.map(a => a.seat_index), 0) + 1);
+        let rollbackState: Map<string, GroupAssignment[]> | null = null;
+        setGroupAssignments(prev => {
           rollbackState = new Map(prev);
-          
           const newMap = new Map(prev);
-          const sourceGroupStudents = [...(newMap.get(fromGroupId) || [])];
-          const targetGroupStudents = [...(newMap.get(toGroupId) || [])];
-          
-          // Remove student from source group
-          const studentIndex = sourceGroupStudents.findIndex(s => s.id === studentId);
-          if (studentIndex !== -1) {
-            sourceGroupStudents.splice(studentIndex, 1);
-          }
-          
-          // Add student to target group (at the end)
-          targetGroupStudents.push(studentToMove);
-          
-          newMap.set(fromGroupId, sourceGroupStudents);
-          newMap.set(toGroupId, targetGroupStudents);
-          
+          const src = (newMap.get(fromGroupId) ?? []).filter(a => a.student.id !== studentId);
+          const tgt = [...(newMap.get(toGroupId) ?? []), { student: studentToMove, seat_index: nextSeat }];
+          newMap.set(fromGroupId, src);
+          newMap.set(toGroupId, tgt);
           return newMap;
         });
-
-        // Update database in the background
         try {
-          // Delete the assignment we just created (since we're moving to a new group)
           const { error: deleteError } = await supabase
             .from('student_seat_assignments')
             .delete()
             .eq('id', tempAssignmentData.id);
-
           if (deleteError) {
-            console.error('Error deleting assignment:', deleteError);
-            // Rollback optimistic update
-            if (rollbackState) {
-              setGroupStudents(rollbackState);
-            }
+            if (rollbackState) setGroupAssignments(rollbackState);
             alert('Failed to move student. Please try again.');
             setSelectedStudentForSwap(null);
             return;
           }
-
-          // Create new assignment in target group (at end of group)
-          const nextSeatIndex = (groupStudents.get(toGroupId)?.length ?? 0) + 1;
           const { error: insertError } = await supabase
             .from('student_seat_assignments')
-            .insert({
-              student_id: studentId,
-              seating_group_id: toGroupId,
-              seat_index: nextSeatIndex,
-            });
-
+            .insert({ student_id: studentId, seating_group_id: toGroupId, seat_index: nextSeat });
           if (insertError) {
-            console.error('Error moving student:', insertError);
-            // Rollback optimistic update
-            if (rollbackState) {
-              setGroupStudents(rollbackState);
-            }
+            if (rollbackState) setGroupAssignments(rollbackState);
             alert('Failed to move student. Please try again.');
             setSelectedStudentForSwap(null);
             return;
           }
-
-          // Success - clear selection
           setSelectedStudentForSwap(null);
         } catch (err) {
-          console.error('Unexpected error during database move:', err);
-          // Rollback optimistic update
-          if (rollbackState) {
-            setGroupStudents(rollbackState);
-          }
+          if (rollbackState) setGroupAssignments(rollbackState);
           alert('An unexpected error occurred. The move has been reverted.');
           setSelectedStudentForSwap(null);
         }
-        
-        return; // Exit early since we handled the case where assignment didn't exist
+        return;
       }
 
-      // OPTIMISTIC UPDATE: Update local state FIRST for instant UI response
-      let rollbackState: Map<string, Student[]> | null = null;
-      
-      setGroupStudents(prev => {
-        // Save current state for potential rollback
+      const toList = groupAssignmentsRef.current.get(toGroupId) ?? [];
+      const nextSeat = targetSeatIndex != null ? targetSeatIndex : (toList.length === 0 ? 1 : Math.max(...toList.map(a => a.seat_index), 0) + 1);
+      let rollbackState: Map<string, GroupAssignment[]> | null = null;
+      setGroupAssignments(prev => {
         rollbackState = new Map(prev);
-        
         const newMap = new Map(prev);
-        const sourceGroupStudents = [...(newMap.get(fromGroupId) || [])];
-        const targetGroupStudents = [...(newMap.get(toGroupId) || [])];
-        
-        // Remove student from source group
-        const studentIndex = sourceGroupStudents.findIndex(s => s.id === studentId);
-        if (studentIndex !== -1) {
-          sourceGroupStudents.splice(studentIndex, 1);
-        }
-        
-        // Add student to target group (at the end)
-        targetGroupStudents.push(studentToMove);
-        
-        newMap.set(fromGroupId, sourceGroupStudents);
-        newMap.set(toGroupId, targetGroupStudents);
-        
+        const src = (newMap.get(fromGroupId) ?? []).filter(a => a.student.id !== studentId);
+        const tgt = [...(newMap.get(toGroupId) ?? []), { student: studentToMove, seat_index: nextSeat }];
+        newMap.set(fromGroupId, src);
+        newMap.set(toGroupId, tgt);
         return newMap;
       });
-
-      // Update database in the background
       try {
-        // Delete old assignment
         const { error: deleteError } = await supabase
           .from('student_seat_assignments')
           .delete()
           .eq('id', assignmentData.id);
-
         if (deleteError) {
-          console.error('Error deleting assignment:', deleteError);
-          // Rollback optimistic update
-          if (rollbackState) {
-            setGroupStudents(rollbackState);
-          }
+          if (rollbackState) setGroupAssignments(rollbackState);
           alert('Failed to move student. Please try again.');
           setSelectedStudentForSwap(null);
           return;
         }
-
-        // Create new assignment (at end of target group)
-        const nextSeatIndex = (groupStudents.get(toGroupId)?.length ?? 0) + 1;
         const { error: insertError } = await supabase
           .from('student_seat_assignments')
-          .insert({
-            student_id: studentId,
-            seating_group_id: toGroupId,
-            seat_index: nextSeatIndex,
-          });
-
+          .insert({ student_id: studentId, seating_group_id: toGroupId, seat_index: nextSeat });
         if (insertError) {
-          console.error('Error moving student:', insertError);
-          // Rollback optimistic update
-          if (rollbackState) {
-            setGroupStudents(rollbackState);
-          }
+          if (rollbackState) setGroupAssignments(rollbackState);
           alert('Failed to move student. Please try again.');
           setSelectedStudentForSwap(null);
           return;
         }
-
-        // Success - clear selection
         setSelectedStudentForSwap(null);
       } catch (err) {
-        console.error('Unexpected error during database move:', err);
-        // Rollback optimistic update
-        if (rollbackState) {
-          setGroupStudents(rollbackState);
-        }
+        if (rollbackState) setGroupAssignments(rollbackState);
         alert('An unexpected error occurred. The move has been reverted.');
         setSelectedStudentForSwap(null);
       }
@@ -1400,13 +1381,36 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     }
   };
 
+  const handleSlotClick = (groupId: string, seatIndex: number) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (selectedStudentForGroup) {
+      addStudentToGroup(selectedStudentForGroup, groupId, seatIndex);
+      return;
+    }
+    if (selectedStudentForSwap) {
+      moveStudentToGroup(selectedStudentForSwap.studentId, selectedStudentForSwap.groupId, groupId, seatIndex);
+      return;
+    }
+  };
+
+  const handleExpandInColumn = (groupId: string, col: number, C: number) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextSeat = nextSeatIndexInColumn(groupId, col, C);
+    if (selectedStudentForGroup) {
+      addStudentToGroup(selectedStudentForGroup, groupId, nextSeat);
+      return;
+    }
+    if (selectedStudentForSwap) {
+      moveStudentToGroup(selectedStudentForSwap.studentId, selectedStudentForSwap.groupId, groupId, nextSeat);
+      return;
+    }
+  };
+
   const handleGroupClick = (groupId: string) => {
-    // If a student is selected for swap, move it to the clicked group
     if (selectedStudentForSwap) {
       moveStudentToGroup(selectedStudentForSwap.studentId, selectedStudentForSwap.groupId, groupId);
       return;
     }
-    
     if (selectedStudentForGroup) {
       addStudentToGroup(selectedStudentForGroup, groupId);
     } else {
@@ -1446,62 +1450,61 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     try {
       const supabase = createClient();
       
-      // If students are in the same group, swap their positions (local state + persist seat_index in DB)
+      // If students are in the same group, swap their positions (local state: swap seat_index values)
       if (groupId1 === groupId2) {
-        // Get the current students array for this group
-        const currentStudents = groupStudents.get(groupId1) || [];
-        const student1Index = currentStudents.findIndex(s => s.id === studentId1);
-        const student2Index = currentStudents.findIndex(s => s.id === studentId2);
-        
-        if (student1Index === -1 || student2Index === -1) {
+        const assignments = groupAssignments.get(groupId1) ?? [];
+        const a1 = assignments.find(a => a.student.id === studentId1);
+        const a2 = assignments.find(a => a.student.id === studentId2);
+        if (!a1 || !a2) {
           console.error('One or both students not found in group');
           return;
         }
-        
-        // Optimistic: swap in local state
-        const newStudents = [...currentStudents];
-        [newStudents[student1Index], newStudents[student2Index]] = [newStudents[student2Index], newStudents[student1Index]];
-        setGroupStudents(prev => {
+        const s1 = a1.seat_index;
+        const s2 = a2.seat_index;
+        setGroupAssignments(prev => {
           const newMap = new Map(prev);
-          newMap.set(groupId1, newStudents);
+          const list = (newMap.get(groupId1) ?? []).map(a => {
+            if (a.student.id === studentId1) return { ...a, seat_index: s2 };
+            if (a.student.id === studentId2) return { ...a, seat_index: s1 };
+            return a;
+          });
+          newMap.set(groupId1, list);
           return newMap;
         });
         
         // Persist: fetch both assignments and swap their seat_index in the database
-        const { data: a1, error: err1 } = await supabase
+        const { data: row1, error: err1 } = await supabase
           .from('student_seat_assignments')
           .select('id, seat_index')
           .eq('student_id', studentId1)
           .eq('seating_group_id', groupId1)
           .single();
-        const { data: a2, error: err2 } = await supabase
+        const { data: row2, error: err2 } = await supabase
           .from('student_seat_assignments')
           .select('id, seat_index')
           .eq('student_id', studentId2)
           .eq('seating_group_id', groupId2)
           .single();
-        if (err1 || err2 || !a1 || !a2) {
+        if (err1 || err2 || !row1 || !row2) {
           console.error('Failed to fetch assignments for same-group swap:', err1 ?? err2);
           await fetchGroups();
           return;
         }
-        const s1 = a1.seat_index ?? 0;
-        const s2 = a2.seat_index ?? 0;
         const SENTINEL = 999999;
-        const { error: u1 } = await supabase.from('student_seat_assignments').update({ seat_index: SENTINEL }).eq('id', a1.id);
+        const { error: u1 } = await supabase.from('student_seat_assignments').update({ seat_index: SENTINEL }).eq('id', row1.id);
         if (u1) {
           console.error('Failed to swap seat_index (step 1):', u1);
           await fetchGroups();
           return;
         }
-        const { error: u2 } = await supabase.from('student_seat_assignments').update({ seat_index: s1 }).eq('id', a2.id);
+        const { error: u2 } = await supabase.from('student_seat_assignments').update({ seat_index: s1 }).eq('id', row2.id);
         if (u2) {
           console.error('Failed to swap seat_index (step 2):', u2);
-          await supabase.from('student_seat_assignments').update({ seat_index: s1 }).eq('id', a1.id);
+          await supabase.from('student_seat_assignments').update({ seat_index: s1 }).eq('id', row1.id);
           await fetchGroups();
           return;
         }
-        const { error: u3 } = await supabase.from('student_seat_assignments').update({ seat_index: s2 }).eq('id', a1.id);
+        const { error: u3 } = await supabase.from('student_seat_assignments').update({ seat_index: s2 }).eq('id', row1.id);
         if (u3) {
           console.error('Failed to swap seat_index (step 3):', u3);
           await fetchGroups();
@@ -1510,9 +1513,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         return;
       }
 
-      // Verify students are actually in these groups in our local state
-      const studentsInGroup1 = groupStudents.get(groupId1) || [];
-      const studentsInGroup2 = groupStudents.get(groupId2) || [];
+      const studentsInGroup1 = getStudentsInGroup(groupId1);
+      const studentsInGroup2 = getStudentsInGroup(groupId2);
       const student1Exists = studentsInGroup1.some(s => s.id === studentId1);
       const student2Exists = studentsInGroup2.some(s => s.id === studentId2);
 
@@ -1571,54 +1573,23 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         return;
       }
 
-      // OPTIMISTIC UPDATE: Update local state FIRST for instant UI response
-      // Then update database in the background
-      let rollbackState: Map<string, Student[]> | null = null;
-      
-      setGroupStudents(prev => {
-        // Save current state for potential rollback
+      const seatIndex1 = assignment1Data.seat_index ?? 0;
+      const seatIndex2 = assignment2Data.seat_index ?? 0;
+      const student1 = (groupAssignments.get(groupId1) ?? []).find(a => a.student.id === studentId1)?.student;
+      const student2 = (groupAssignments.get(groupId2) ?? []).find(a => a.student.id === studentId2)?.student;
+      if (!student1 || !student2) {
+        alert('Failed to swap students. The student data may be out of sync.');
+        await fetchGroups();
+        return;
+      }
+      let rollbackState: Map<string, GroupAssignment[]> | null = null;
+      setGroupAssignments(prev => {
         rollbackState = new Map(prev);
-        
         const newMap = new Map(prev);
-        const studentsInGroup1 = [...(newMap.get(groupId1) || [])];
-        const studentsInGroup2 = [...(newMap.get(groupId2) || [])];
-        
-        // Find and remove student1 from group1
-        const student1Index = studentsInGroup1.findIndex(s => s.id === studentId1);
-        const student1 = student1Index !== -1 ? studentsInGroup1[student1Index] : null;
-        if (student1) {
-          studentsInGroup1.splice(student1Index, 1);
-        }
-        
-        // Find and remove student2 from group2
-        const student2Index = studentsInGroup2.findIndex(s => s.id === studentId2);
-        const student2 = student2Index !== -1 ? studentsInGroup2[student2Index] : null;
-        if (student2) {
-          studentsInGroup2.splice(student2Index, 1);
-        }
-        
-        // Add student1 to group2 and student2 to group1 (maintaining their relative positions)
-        if (student1) {
-          // Insert student1 at the same position student2 was (or at the end)
-          if (student2Index !== -1 && student2Index < studentsInGroup2.length) {
-            studentsInGroup2.splice(student2Index, 0, student1);
-          } else {
-            studentsInGroup2.push(student1);
-          }
-        }
-        
-        if (student2) {
-          // Insert student2 at the same position student1 was (or at the end)
-          if (student1Index !== -1 && student1Index < studentsInGroup1.length) {
-            studentsInGroup1.splice(student1Index, 0, student2);
-          } else {
-            studentsInGroup1.push(student2);
-          }
-        }
-        
-        newMap.set(groupId1, studentsInGroup1);
-        newMap.set(groupId2, studentsInGroup2);
-        
+        const list1 = (newMap.get(groupId1) ?? []).filter(a => a.student.id !== studentId1);
+        const list2 = (newMap.get(groupId2) ?? []).filter(a => a.student.id !== studentId2);
+        newMap.set(groupId1, [...list1, { student: student2, seat_index: seatIndex1 }]);
+        newMap.set(groupId2, [...list2, { student: student1, seat_index: seatIndex2 }]);
         return newMap;
       });
 
@@ -1638,17 +1609,11 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
 
         if (deleteError1 || deleteError2) {
           console.error('Error deleting assignments:', deleteError1 || deleteError2);
-          // Rollback optimistic update
-          if (rollbackState) {
-            setGroupStudents(rollbackState);
-          }
+          if (rollbackState) setGroupAssignments(rollbackState);
           alert('Failed to swap students. Please try again.');
           return;
         }
 
-        // Create ONLY two new assignments with swapped group IDs and swapped seat_index (take each other's position)
-        const seatIndex1 = assignment1Data.seat_index;
-        const seatIndex2 = assignment2Data.seat_index;
         const { error: insertError } = await supabase
           .from('student_seat_assignments')
           .insert([
@@ -1658,10 +1623,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
 
         if (insertError) {
           console.error('Error swapping students:', insertError);
-          // Rollback optimistic update
-          if (rollbackState) {
-            setGroupStudents(rollbackState);
-          }
+          if (rollbackState) setGroupAssignments(rollbackState);
           alert('Failed to swap students. Please try again.');
           return;
         }
@@ -1670,10 +1632,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         // Database will be updated when user clicks "Save Changes" button
       } catch (err) {
         console.error('Unexpected error during database swap:', err);
-        // Rollback optimistic update
-        if (rollbackState) {
-          setGroupStudents(rollbackState);
-        }
+        if (rollbackState) setGroupAssignments(rollbackState);
         alert('An unexpected error occurred. The swap has been reverted.');
       }
     } catch (err) {
@@ -1696,25 +1655,19 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     try {
       const supabase = createClient();
       
-      // Get current groupStudents value from ref (always latest)
-      const currentGroupStudents = groupStudentsRef.current;
-      
-      // Calculate total students (seated + unseated)
-      const totalSeatedStudents = Array.from(currentGroupStudents.values()).reduce(
-        (sum, students) => sum + students.length,
+      const currentAssignments = groupAssignmentsRef.current;
+      const totalSeatedStudents = Array.from(currentAssignments.values()).reduce(
+        (sum, assignments) => sum + assignments.length,
         0
       );
       const totalStudents = totalSeatedStudents + unseatedStudents.length;
-      
-      // Calculate target students per group (allowing ±1 difference)
       const targetPerGroup = Math.floor(totalStudents / groups.length);
       const remainder = totalStudents % groups.length;
-      
-      // Calculate how many students each group currently has
-      const groupCurrentCounts = groups.map(group => ({
-        groupId: group.id,
-        currentCount: currentGroupStudents.get(group.id)?.length || 0
-      }));
+      const groupCurrentCounts = groups.map(group => {
+        const list = currentAssignments.get(group.id) ?? [];
+        const maxIdx = list.length === 0 ? 0 : Math.max(...list.map(a => a.seat_index));
+        return { groupId: group.id, currentCount: list.length, nextSeatIndex: maxIdx + 1 };
+      });
       
       // Calculate how many students each group needs to reach target
       // Groups with index < remainder should have targetPerGroup + 1, others should have targetPerGroup
@@ -1735,22 +1688,13 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         };
       });
       
-      // Shuffle unseated students randomly
       const shuffledStudents = [...unseatedStudents].sort(() => Math.random() - 0.5);
-      
-      // Next seat_index per group (new students go after existing ones)
       const nextSeatIndexByGroup = new Map<string, number>();
-      groupCurrentCounts.forEach(({ groupId, currentCount }) => nextSeatIndexByGroup.set(groupId, currentCount + 1));
-      
-      // Distribute unseated students to fill groups up to their target size
+      groupCurrentCounts.forEach(({ groupId, nextSeatIndex }) => nextSeatIndexByGroup.set(groupId, nextSeatIndex));
       const assignments: Array<{ student_id: string; seating_group_id: string; seat_index: number }> = [];
       let studentIndex = 0;
-      
-      // Sort groups by how many students they need (most needed first)
       const sortedGroupNeeds = [...groupNeeds].sort((a, b) => b.needed - a.needed);
-      
       for (const groupNeed of sortedGroupNeeds) {
-        // Assign students to this group until it reaches its target
         for (let i = 0; i < groupNeed.needed && studentIndex < shuffledStudents.length; i++) {
           const seat_index = nextSeatIndexByGroup.get(groupNeed.groupId) ?? 1;
           nextSeatIndexByGroup.set(groupNeed.groupId, seat_index + 1);
@@ -1845,8 +1789,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         return;
       }
 
-      // Renumber seat_index for this group so indices stay 1..N in row-major order
-      await renumberSeatIndicesForGroup(editingGroup.id);
+      // Fixed-slot: do not renumber when changing columns.
 
       // Update local state
       setGroups(prev => prev.map(g => 
@@ -1952,12 +1895,10 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         return;
       }
 
-      // Renumber seat_index for this group so indices stay 1..N in row-major order
-      await renumberSeatIndicesForGroup(groupId);
+      // Fixed-slot: do not renumber when changing columns.
 
-      // Update local state
-      setGroups(prev => prev.map(g => 
-        g.id === groupId 
+      setGroups(prev => prev.map(g =>
+        g.id === groupId
           ? { ...g, group_columns: columns }
           : g
       ));
@@ -1999,9 +1940,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         return;
       }
 
-      // Update local state - move all students back to unseated
-      const studentsToUnseat = groupStudents.get(teamToClear.id) || [];
-      setGroupStudents(prev => {
+      const studentsToUnseat = getStudentsInGroup(teamToClear.id);
+      setGroupAssignments(prev => {
         const newMap = new Map(prev);
         newMap.set(teamToClear.id, []);
         return newMap;
@@ -2072,9 +2012,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         return;
       }
 
-      // Update local state - move students back to unseated
-      const studentsToUnseat = groupStudents.get(teamToDelete.id) || [];
-      setGroupStudents(prev => {
+      const studentsToUnseat = getStudentsInGroup(teamToDelete.id);
+      setGroupAssignments(prev => {
         const newMap = new Map(prev);
         newMap.delete(teamToDelete.id);
         return newMap;
@@ -2165,18 +2104,13 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         return;
       }
 
-      // Collect all students from all groups to add back to unseated
       const allStudentsToUnseat: Student[] = [];
-      groupStudents.forEach((students) => {
-        allStudentsToUnseat.push(...students);
+      groupAssignments.forEach((assignments) => {
+        assignments.forEach(a => allStudentsToUnseat.push(a.student));
       });
-
-      // Clear all groups in local state
-      setGroupStudents(prev => {
+      setGroupAssignments(prev => {
         const newMap = new Map(prev);
-        groupIds.forEach(groupId => {
-          newMap.set(groupId, []);
-        });
+        groupIds.forEach(groupId => newMap.set(groupId, []));
         return newMap;
       });
 
@@ -2277,15 +2211,12 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         return;
       }
 
-      // Collect all students from all groups to add back to unseated
       const allStudentsToUnseat: Student[] = [];
-      groupStudents.forEach((students) => {
-        allStudentsToUnseat.push(...students);
+      groupAssignments.forEach((assignments) => {
+        assignments.forEach(a => allStudentsToUnseat.push(a.student));
       });
-
-      // Clear all local state
       setGroups([]);
-      setGroupStudents(new Map());
+      setGroupAssignments(new Map());
       setGroupPositions(new Map());
 
       // Add all students back to unseated list (filter out duplicates)
@@ -2567,70 +2498,33 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                     }}
                   >
                     {groups.map((group, index) => {
-                      const studentsInGroupRaw = groupStudents.get(group.id) || [];
-                      // Filter out duplicates by student ID to prevent React key errors
-                      const studentsInGroup = studentsInGroupRaw.filter((student, idx, self) => 
-                        self.findIndex(s => s.id === student.id) === idx
-                      );
+                      const assignmentsInGroup = getAssignmentsInGroup(group.id);
                       const isTarget = selectedStudentForGroup && targetGroupId === group.id;
-                      // Use group_columns from database (stored value)
-                      // Clamp to valid range (1-3) - this is the internal columns for student cards
                       const validColumns = Math.max(1, Math.min(3, group.group_columns || 2));
-                      
-                      // Get the stored pixel position for this group
                       const position = groupPositions.get(group.id) || { x: 20 + (index * 20), y: 20 + (index * 100) };
                       const groupX = position.x;
                       const groupY = position.y;
-                      
-                      // Calculate number of rows needed dynamically (on the fly) for responsiveness
-                      // Default: at least 2 rows (1 header + 1 student row)
-                      // Add more rows only when students exceed the capacity of existing rows
-                      const studentsPerRow = validColumns;
-                      // Calculate how many student rows are needed based on actual student count
-                      // Always have at least 1 student row (even if empty)
-                      const studentRowCount = studentsInGroup.length === 0 
-                        ? 1  // Empty group: 1 student row
-                        : Math.ceil(studentsInGroup.length / studentsPerRow); // Calculate based on student count
-                      
-                      // Calculate group dimensions based on content
-                      const headerHeight = 50; // Header is always 50px
-                      const studentRowHeight = 50; // Each student row is 50px
-                      const padding = 8; // Internal padding
-                      const gap = 8; // Gap between student cards
-                      
-                      // Calculate width: based on number of columns and card width
-                      // First, calculate the 2-column group width as the base reference
-                      const baseWidthFor2Columns = 400; // Base width for 2-column groups
-                      const cardMinWidth = 180; // Minimum card width (increased to accommodate names and points)
-                      
-                      // Calculate 2-column group width
+                      const maxIndex = assignmentsInGroup.length === 0 ? 0 : Math.max(...assignmentsInGroup.map(a => a.seat_index));
+                      const numRows = Math.max(1, Math.ceil(maxIndex / validColumns));
+                      const headerHeight = 50;
+                      const studentRowHeight = 50;
+                      const expandRowHeight = 36;
+                      const padding = 8;
+                      const gap = 8;
+                      const baseWidthFor2Columns = 400;
+                      const cardMinWidth = 180;
                       const cardWidthFor2Columns = Math.max(cardMinWidth, (baseWidthFor2Columns - (padding * 2) - (gap * (2 - 1))) / 2);
                       const twoColumnGroupWidth = Math.max(300, (cardWidthFor2Columns * 2) + (gap * (2 - 1)) + (padding * 2));
-                      
-                      // Calculate width based on column count
                       let groupWidth: number;
                       if (validColumns === 1) {
-                        // 1-column groups are 50% of 2-column groups
                         groupWidth = twoColumnGroupWidth * 0.5;
                       } else if (validColumns === 2) {
-                        // 2-column groups use the calculated width
                         groupWidth = twoColumnGroupWidth;
                       } else {
-                        // 3-column groups: proportional calculation
                         const cardWidth = Math.max(cardMinWidth, (baseWidthFor2Columns - (padding * 2) - (gap * (validColumns - 1))) / validColumns);
                         groupWidth = Math.max(300, (cardWidth * validColumns) + (gap * (validColumns - 1)) + (padding * 2));
                       }
-                      
-                      // Calculate height: header + student rows
-                      const groupHeight = headerHeight + (studentRowCount * studentRowHeight) + (padding * 2);
-                      
-                      // Distribute students across rows dynamically
-                      const studentRows: Student[][] = [];
-                      for (let i = 0; i < studentRowCount; i++) {
-                        const startIndex = i * studentsPerRow;
-                        const endIndex = startIndex + studentsPerRow;
-                        studentRows.push(studentsInGroup.slice(startIndex, endIndex));
-                      }
+                      const groupHeight = headerHeight + (numRows * studentRowHeight) + expandRowHeight + (padding * 2);
                       
                       // Render student card component
                       const renderStudentCard = (student: Student) => {
@@ -2881,18 +2775,16 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                 )}
                               </div>
 
-                                {/* Dynamic Student Rows */}
-                                {studentRows.map((rowStudents, rowIndex) => (
-                                  <div 
+                                {/* Fixed-slot grid: row = ceil(index/C), col = (index-1) % C */}
+                                {Array.from({ length: numRows }, (_, rowIndex) => (
+                                  <div
                                     key={`${group.id}-row-${rowIndex}`}
-                                    onClick={() => handleGroupClick(group.id)}
                                     style={{
                                       display: 'grid',
                                       gridTemplateColumns: `repeat(${validColumns}, 1fr)`,
                                       gap: '0.5rem',
-                                      padding: '0 0.5rem', // Reduced padding to fit within 50px
+                                      padding: '0 0.5rem',
                                       backgroundColor: '#f9fafb',
-                                      cursor: (selectedStudentForGroup || isTargetForMove) ? 'pointer' : 'default',
                                       height: '50px',
                                       minHeight: '50px',
                                       maxHeight: '50px',
@@ -2901,21 +2793,54 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                       alignItems: 'center'
                                     }}
                                   >
-                                    {rowStudents.length === 0 ? (
-                                      <div className="col-span-full text-gray-500 text-sm text-center py-2" style={{ gridColumn: `1 / ${validColumns + 1}` }}>
-                                    {selectedStudentForGroup ? 'Click to add student' : 'No students yet'}
+                                    {Array.from({ length: validColumns }, (_, colIndex) => {
+                                      const slotIndex = rowIndex * validColumns + colIndex + 1;
+                                      const student = studentAtSlot(group.id, slotIndex);
+                                      if (student) {
+                                        return <div key={slotIndex} onMouseDown={(e) => e.stopPropagation()}>{renderStudentCard(student)}</div>;
+                                      }
+                                      return (
+                                        <div
+                                          key={slotIndex}
+                                          onClick={handleSlotClick(group.id, slotIndex)}
+                                          onMouseDown={(e) => e.stopPropagation()}
+                                          className={`min-h-[32px] rounded border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs ${
+                                            selectedStudentForGroup || isTargetForMove ? 'cursor-pointer hover:border-purple-400 hover:bg-purple-50' : 'cursor-default'
+                                          }`}
+                                        >
+                                          {selectedStudentForGroup || isTargetForMove ? 'Drop here' : 'Empty'}
+                                        </div>
+                                      );
+                                    })}
                                   </div>
-                                ) : (
-                                      <>
-                                        {rowStudents.map(student => renderStudentCard(student))}
-                                        {/* Fill empty slots in the row if needed */}
-                                        {Array.from({ length: validColumns - rowStudents.length }).map((_, emptyIndex) => (
-                                          <div key={`empty-${emptyIndex}`} style={{ minHeight: '32px' }} />
-                                        ))}
-                                      </>
-                                )}
-                              </div>
                                 ))}
+                                {/* Expand row: add to bottom of column */}
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: `repeat(${validColumns}, 1fr)`,
+                                    gap: '0.5rem',
+                                    padding: '0 0.5rem',
+                                    backgroundColor: '#f3f4f6',
+                                    height: `${expandRowHeight}px`,
+                                    minHeight: `${expandRowHeight}px`,
+                                    boxSizing: 'border-box',
+                                    alignItems: 'center'
+                                  }}
+                                >
+                                  {Array.from({ length: validColumns }, (_, colIndex) => (
+                                    <div
+                                      key={`expand-${colIndex}`}
+                                      onClick={handleExpandInColumn(group.id, colIndex, validColumns)}
+                                      onMouseDown={(e) => e.stopPropagation()}
+                                      className={`flex items-center justify-center text-gray-500 text-xs rounded border border-dashed border-gray-300 min-h-[28px] ${
+                                        selectedStudentForGroup || isTargetForMove ? 'cursor-pointer hover:border-purple-400 hover:bg-purple-50' : 'cursor-default'
+                                      }`}
+                                    >
+                                      + Add
+                                    </div>
+                                  ))}
+                                </div>
                             </div>
                       );
                     })}
