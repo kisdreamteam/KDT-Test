@@ -1010,6 +1010,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         position_x: number;
         position_y: number;
       };
+      // Number new groups after existing ones: if we have 10 groups, new ones are Group 11, 12, ...
+      const nextGroupNumber = groups.length + 1;
       const groupsToCreate: GroupToCreate[] = [];
       for (let i = 0; i < numGroups; i++) {
         const row = Math.floor(i / groupsPerRow);
@@ -1019,7 +1021,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         const y = startY + row * (groupHeight + verticalSpacing);
         
         groupsToCreate.push({
-          name: `Group ${i + 1}`,
+          name: `Group ${nextGroupNumber + i}`,
           seating_chart_id: selectedLayoutId,
           sort_order: maxSortOrder + 1 + i,
           group_columns: defaultColumns,
