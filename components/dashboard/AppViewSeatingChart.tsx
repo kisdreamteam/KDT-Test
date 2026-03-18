@@ -41,6 +41,9 @@ interface StudentSeatAssignment {
   students: Student | null;
 }
 
+/** Per-group assignment with seat_index for fixed-slot grid (matches editor). */
+type GroupAssignment = { student: Student; seat_index: number };
+
 interface AppViewSeatingChartProps {
   classId: string;
   isMultiSelectMode?: boolean;
@@ -58,7 +61,7 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
   const [error, setError] = useState<string | null>(null);
   const [groups, setGroups] = useState<SeatingGroup[]>([]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
-  const [groupStudents, setGroupStudents] = useState<Map<string, Student[]>>(new Map());
+  const [groupAssignments, setGroupAssignments] = useState<Map<string, GroupAssignment[]>>(new Map());
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [groupPositions, setGroupPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -262,21 +265,19 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
             // Continue with empty assignments
           }
 
-          // Organize students by group with correct sort: seat_index (1..N) or first_name for legacy nulls
-          const newGroupStudents = new Map<string, Student[]>();
+          // Fixed-slot: store per-group list of { student, seat_index } (matches editor, preserves holes)
+          const newGroupAssignments = new Map<string, GroupAssignment[]>();
           groupsData.forEach(group => {
-            newGroupStudents.set(group.id, []);
+            newGroupAssignments.set(group.id, []);
           });
 
           if (assignmentsData) {
-            // Group assignments by seating_group_id
             const byGroup = new Map<string, StudentSeatAssignment[]>();
             for (const a of assignmentsData as StudentSeatAssignment[]) {
               const gid = a.seating_group_id;
               if (!byGroup.has(gid)) byGroup.set(gid, []);
               byGroup.get(gid)!.push(a);
             }
-            // For each group: sort by seat_index or first_name (legacy null), then set student list
             byGroup.forEach((assignments, groupId) => {
               const withStudent = assignments.filter((a): a is StudentSeatAssignment & { students: Student } =>
                 a.students != null
@@ -292,19 +293,20 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
                 if (sa !== sb) return sa - sb;
                 return (a.students.first_name ?? '').localeCompare(b.students.first_name ?? '');
               });
-              const students = sorted.map(a => a.students);
-              newGroupStudents.set(groupId, students);
+              newGroupAssignments.set(
+                groupId,
+                sorted.map((a, i) => ({ student: a.students, seat_index: a.seat_index ?? i + 1 }))
+              );
             });
           }
 
-          setGroupStudents(newGroupStudents);
+          setGroupAssignments(newGroupAssignments);
         } else {
-          // No groups, all students are unseated
-          setGroupStudents(new Map());
+          setGroupAssignments(new Map());
         }
       } else {
         setGroups([]);
-        setGroupStudents(new Map());
+        setGroupAssignments(new Map());
       }
     } catch (err) {
       console.error('Unexpected error fetching seating groups:', err);
@@ -319,9 +321,15 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
       fetchGroups();
     } else if (!selectedLayoutId) {
       setGroups([]);
-      setGroupStudents(new Map());
+      setGroupAssignments(new Map());
     }
   }, [selectedLayoutId, fetchGroups, allStudents.length]);
+
+  const studentAtSlot = useCallback((groupId: string, seatIndex: number): Student | null => {
+    const list = groupAssignments.get(groupId) ?? [];
+    const found = list.find(a => a.seat_index === seatIndex);
+    return found ? found.student : null;
+  }, [groupAssignments]);
 
   // Fetch layout settings (show_grid, show_objects, layout_orientation) when layout changes
   useEffect(() => {
@@ -504,7 +512,7 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
 
   // Handle group click to open award points modal (header only)
   const handleGroupClick = (groupId: string) => {
-    const studentsInGroup = groupStudents.get(groupId) || [];
+    const studentsInGroup = (groupAssignments.get(groupId) ?? []).map(a => a.student);
     if (studentsInGroup.length === 0) {
       alert('This group has no students to award points to.');
       return;
@@ -781,67 +789,33 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
               }}
             >
                     {groups.map((group, index) => {
-                      const studentsInGroupRaw = groupStudents.get(group.id) || [];
-                      // Filter out duplicates by student ID to prevent React key errors
-                      const studentsInGroup = studentsInGroupRaw.filter((student, idx, self) => 
-                        self.findIndex(s => s.id === student.id) === idx
-                      );
-                      // Use group_columns from database (stored value)
-                      // Clamp to valid range (1-3) - this is the internal columns for student cards
+                      const assignmentsInGroup = groupAssignments.get(group.id) ?? [];
                       const validColumns = Math.max(1, Math.min(3, group.group_columns || 2));
-                      
-                      // Get the stored pixel position for this group
                       const position = groupPositions.get(group.id) || { x: 20 + (index * 20), y: 20 + (index * 100) };
                       const groupX = position.x;
                       const groupY = position.y;
-                      
-                      // Calculate number of rows needed dynamically
-                      const studentsPerRow = validColumns;
-                      const studentRowCount = studentsInGroup.length === 0 
-                        ? 1  // Empty group: 1 student row
-                        : Math.ceil(studentsInGroup.length / studentsPerRow);
-                      
-                      // Calculate group dimensions based on content
-                      const headerHeight = 50; // Header is always 50px
-                      const studentRowHeight = 50; // Each student row is 50px
-                      const padding = 8; // Internal padding
-                      const gap = 8; // Gap between student cards
-                      
-                      // Calculate width: based on number of columns and card width
-                      // First, calculate the 2-column group width as the base reference
-                      const baseWidthFor2Columns = 400; // Base width for 2-column groups
-                      const cardMinWidth = 180; // Minimum card width (increased to accommodate names and points)
-                      
-                      // Calculate 2-column group width
+                      const maxIndex = assignmentsInGroup.length === 0 ? 0 : Math.max(...assignmentsInGroup.map(a => a.seat_index));
+                      const numRows = Math.max(1, Math.ceil(maxIndex / validColumns));
+                      const headerHeight = 50;
+                      const studentRowHeight = 50;
+                      const expandRowHeight = 36;
+                      const padding = 8;
+                      const gap = 8;
+                      const baseWidthFor2Columns = 400;
+                      const cardMinWidth = 180;
                       const cardWidthFor2Columns = Math.max(cardMinWidth, (baseWidthFor2Columns - (padding * 2) - (gap * (2 - 1))) / 2);
                       const twoColumnGroupWidth = Math.max(300, (cardWidthFor2Columns * 2) + (gap * (2 - 1)) + (padding * 2));
-                      
-                      // Calculate width based on column count
                       let groupWidth: number;
                       if (validColumns === 1) {
-                        // 1-column groups are 50% of 2-column groups
                         groupWidth = twoColumnGroupWidth * 0.5;
                       } else if (validColumns === 2) {
-                        // 2-column groups use the calculated width
                         groupWidth = twoColumnGroupWidth;
                       } else {
-                        // 3-column groups: proportional calculation
                         const cardWidth = Math.max(cardMinWidth, (baseWidthFor2Columns - (padding * 2) - (gap * (validColumns - 1))) / validColumns);
                         groupWidth = Math.max(300, (cardWidth * validColumns) + (gap * (validColumns - 1)) + (padding * 2));
                       }
-                      
-                      // Calculate height: header + student rows
-                      const groupHeight = headerHeight + (studentRowCount * studentRowHeight) + (padding * 2);
-                      
-                      // Distribute students across rows dynamically
-                      const studentRows: Student[][] = [];
-                      for (let i = 0; i < studentRowCount; i++) {
-                        const startIndex = i * studentsPerRow;
-                        const endIndex = startIndex + studentsPerRow;
-                        studentRows.push(studentsInGroup.slice(startIndex, endIndex));
-                      }
-                      
-                      // Render student card component (read-only)
+                      const groupHeight = headerHeight + (numRows * studentRowHeight) + expandRowHeight + (padding * 2);
+
                       const renderStudentCard = (student: Student) => {
                         // In multi-select mode: yellow when selected, otherwise gender-based
                         const isSelected = isMultiSelectMode && selectedStudentIds.includes(student.id);
@@ -939,8 +913,8 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
                             </div>
                           </div>
                           
-                          {/* Dynamic Student Rows */}
-                          {studentRows.map((rowStudents, rowIndex) => (
+                          {/* Fixed-slot grid (matches editor): empty slots shown as placeholders */}
+                          {Array.from({ length: numRows }, (_, rowIndex) => (
                             <div
                               key={`${group.id}-row-${rowIndex}`}
                               style={{
@@ -957,21 +931,44 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
                                 alignItems: 'center'
                               }}
                             >
-                              {rowStudents.length === 0 ? (
-                                <div className="col-span-full text-gray-500 text-sm text-center py-2" style={{ gridColumn: `1 / ${validColumns + 1}` }}>
-                                  No students
-                                </div>
-                              ) : (
-                                <>
-                                  {rowStudents.map(student => renderStudentCard(student))}
-                                  {/* Fill empty slots in the row if needed */}
-                                  {Array.from({ length: validColumns - rowStudents.length }).map((_, emptyIndex) => (
-                                    <div key={`empty-${emptyIndex}`} style={{ minHeight: '32px' }} />
-                                  ))}
-                                </>
-                              )}
+                              {Array.from({ length: validColumns }, (_, colIndex) => {
+                                const slotIndex = rowIndex * validColumns + colIndex + 1;
+                                const student = studentAtSlot(group.id, slotIndex);
+                                if (student) {
+                                  return <div key={slotIndex}>{renderStudentCard(student)}</div>;
+                                }
+                                return (
+                                  <div
+                                    key={slotIndex}
+                                    className="min-h-[32px] rounded border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 text-xs bg-gray-50/50"
+                                  >
+                                    Empty
+                                  </div>
+                                );
+                              })}
                             </div>
                           ))}
+                          {/* Expand row (visual only, matches editor layout) */}
+                          <div
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: `repeat(${validColumns}, 1fr)`,
+                              gap: '0.5rem',
+                              padding: '0 0.5rem',
+                              backgroundColor: '#f3f4f6',
+                              height: `${expandRowHeight}px`,
+                              minHeight: `${expandRowHeight}px`,
+                              boxSizing: 'border-box',
+                              alignItems: 'center'
+                            }}
+                          >
+                            {Array.from({ length: validColumns }, (_, colIndex) => (
+                              <div
+                                key={`expand-${colIndex}`}
+                                className="flex items-center justify-center text-gray-400 text-xs rounded border border-dashed border-gray-200 min-h-[28px]"
+                              />
+                            ))}
+                          </div>
                         </div>
                       );
                     })}
