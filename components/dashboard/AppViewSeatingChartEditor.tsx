@@ -672,13 +672,13 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       // After all animations, update database
       const supabase = createClient();
       
-      // Delete all current assignments
-      const allStudentIds = seatedStudents.map(s => s.student.id);
-      if (allStudentIds.length > 0) {
+      // Delete only assignments in the current layout's groups (so other layouts are untouched)
+      const currentLayoutGroupIds = groups.map(g => g.id);
+      if (currentLayoutGroupIds.length > 0) {
         await supabase
           .from('student_seat_assignments')
           .delete()
-          .in('student_id', allStudentIds);
+          .in('seating_group_id', currentLayoutGroupIds);
       }
       
       // Insert new assignments with seat_index 1, 2, 3, ... per group
