@@ -798,7 +798,6 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
                       const numRows = Math.max(1, Math.ceil(maxIndex / validColumns));
                       const headerHeight = 50;
                       const studentRowHeight = 50;
-                      const expandRowHeight = 36;
                       const padding = 8;
                       const gap = 8;
                       const baseWidthFor2Columns = 400;
@@ -814,7 +813,7 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
                         const cardWidth = Math.max(cardMinWidth, (baseWidthFor2Columns - (padding * 2) - (gap * (validColumns - 1))) / validColumns);
                         groupWidth = Math.max(300, (cardWidth * validColumns) + (gap * (validColumns - 1)) + (padding * 2));
                       }
-                      const groupHeight = headerHeight + (numRows * studentRowHeight) + expandRowHeight + (padding * 2);
+                      const groupHeight = headerHeight + (numRows * studentRowHeight) + (padding * 2);
 
                       const renderStudentCard = (student: Student) => {
                         // In multi-select mode: yellow when selected, otherwise gender-based
@@ -948,27 +947,6 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
                               })}
                             </div>
                           ))}
-                          {/* Expand row (visual only, matches editor layout) */}
-                          <div
-                            style={{
-                              display: 'grid',
-                              gridTemplateColumns: `repeat(${validColumns}, 1fr)`,
-                              gap: '0.5rem',
-                              padding: '0 0.5rem',
-                              backgroundColor: '#f3f4f6',
-                              height: `${expandRowHeight}px`,
-                              minHeight: `${expandRowHeight}px`,
-                              boxSizing: 'border-box',
-                              alignItems: 'center'
-                            }}
-                          >
-                            {Array.from({ length: validColumns }, (_, colIndex) => (
-                              <div
-                                key={`expand-${colIndex}`}
-                                className="flex items-center justify-center text-gray-400 text-xs rounded border border-dashed border-gray-200 min-h-[28px]"
-                              />
-                            ))}
-                          </div>
                         </div>
                       );
                     })}
