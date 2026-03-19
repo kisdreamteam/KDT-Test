@@ -2350,26 +2350,6 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         left: 0
       }}
     >
-      {/* Close Button */}
-      <button
-        onClick={handleClose}
-        className="absolute top-10 right-10 w-12 h-12 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-colors z-50 shadow-lg"
-      >
-        <svg
-          className="w-8 h-8 text-black"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M6 18L18 6M6 6l12 12"
-          />
-        </svg>
-      </button>
-
       {/* Main Content Area - Add left padding to account for left sidebar (w-76 = 304px) + spacing (8px) */}
       {/* Note: Removed overflow-y-auto from this container to avoid nested scroll container warning with drag-and-drop */}
       <div ref={mainContentRef} className="flex-1 p-1 bg-[#4A3B8D] sm:p-11md:p-2 relative" style={{ paddingLeft: '312px', minHeight: '100%', overflow: 'visible' }}>
@@ -2407,7 +2387,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
               }}
             />
           )}
-          {/* Visual Objects - Whiteboard and TV, Teacher's Desk, and Doors */}
+          {/* Visual Objects - Whiteboard and TV, Teacher's Desk */}
           <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
             {/* Whiteboard and TV - Centered at top (always visible) */}
             <div
@@ -2424,7 +2404,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
               <span className="text-white font-semibold text-lg">Whiteboard and TV</span>
             </div>
             
-            {/* Furniture (Teacher's Desk and Doors) - Only show if showObjects is true */}
+            {/* Furniture (Teacher's Desk) - Only show if showObjects is true */}
             {showObjects && (
               <>
                 {/* Teacher's Desk - Position based on layoutOrientation */}
@@ -2433,8 +2413,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                   style={{
                     top: '55px',
                     ...(layoutOrientation === 'Left' 
-                      ? { left: '5px' }
-                      : { right: '5px' }
+                      ? { left: '75px' }
+                      : { right: '75px' }
                     ),
                     width: '200px',
                     height: '75px',
@@ -2442,45 +2422,34 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                   }}
                 >
                   <span className="text-white font-semibold">Teacher's Desk</span>
-            </div>
-                
-                {/* Door 1 - Top - Position based on layoutOrientation */}
-                <div
-                  className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
-                  style={{
-                    top: '20%',
-                    ...(layoutOrientation === 'Left' 
-                      ? { right: '5px' }
-                      : { left: '5px' }
-                    ),
-                    transform: 'translateY(-50%)',
-                    width: '30px',
-                    height: '100px',
-                    zIndex: 0
-                  }}
-                >
-                  <span className="text-white font-semibold" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>DOOR</span>
-                </div>
-                
-                {/* Door 2 - Bottom - Position based on layoutOrientation */}
-                <div
-                  className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
-                    style={{
-                    top: '70%',
-                    ...(layoutOrientation === 'Left' 
-                      ? { right: '5px' }
-                      : { left: '5px' }
-                    ),
-                    transform: 'translateY(-50%)',
-                    width: '30px',
-                    height: '100px',
-                    zIndex: 0
-                  }}
-                >
-                  <span className="text-white font-semibold" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>DOOR</span>
                 </div>
               </>
             )}
+          </div>
+          {/* Vertical menu bar on the right - Close editor (X) */}
+          <div
+            className="absolute right-2 top-2 bottom-2 flex flex-col gap-2 p-2 rounded-xl bg-white/80 z-10 border-2 border-black"
+            aria-label="Canvas actions"
+          >
+            <button
+              onClick={handleClose}
+              className="w-10 h-10 rounded-lg bg-white/90 hover:bg-white flex items-center justify-center transition-colors shadow"
+              title="Close editor"
+            >
+              <svg
+                className="w-6 h-6 text-black"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
           </div>
           {isLoadingGroups ? (
             <div className="flex items-center justify-center p-8 relative" style={{ zIndex: 1 }}>

@@ -618,22 +618,27 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
   if (layouts.length === 0) {
     return (
       <div className="font-spartan w-full min-h-full bg-[#4A3B8D] relative">
-        {/* Top right: + (create layout) and pencil (grayed out, nothing to edit) */}
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="fixed top-10 right-24 w-12 h-12 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-colors z-50 shadow-lg"
-          title="Create new layout"
+        {/* Vertical menu bar on the right - Create layout (+) and Seating Editor (pencil, disabled) */}
+        <div
+          className="fixed right-2 top-2 flex flex-col gap-2 p-2 rounded-xl bg-white z-50"
+          aria-label="Canvas actions"
         >
-          <IconAddPlus className="w-8 h-8 text-black" />
-        </button>
-        <button
-          className="fixed top-10 right-10 w-12 h-12 rounded-full bg-white/60 flex items-center justify-center z-50 shadow-lg cursor-not-allowed opacity-60"
-          title="Seating Editor (create a layout first)"
-          disabled
-          aria-disabled="true"
-        >
-          <IconEditPencil className="w-8 h-8 text-gray-500" strokeWidth={2} />
-        </button>
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="w-10 h-10 rounded-lg bg-white/90 hover:bg-white flex items-center justify-center transition-colors shadow"
+            title="Create new layout"
+          >
+            <IconAddPlus className="w-6 h-6 text-black" />
+          </button>
+          <button
+            className="w-10 h-10 rounded-lg bg-white/60 flex items-center justify-center shadow cursor-not-allowed opacity-60"
+            title="Seating Editor (create a layout first)"
+            disabled
+            aria-disabled="true"
+          >
+            <IconEditPencil className="w-6 h-6 text-gray-500" strokeWidth={2} />
+          </button>
+        </div>
 
         <div className="p-6 sm:p-8 md:p-10">
           <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
@@ -657,22 +662,6 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
 
   return (
     <div className="font-spartan w-full min-h-full bg-[#4A3B8D] relative">
-      {/* Top right: + (create layout) and pencil (open Seating Editor) */}
-      <button
-        onClick={() => setIsCreateModalOpen(true)}
-        className="fixed top-10 right-24 w-12 h-12 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-colors z-50 shadow-lg"
-        title="Create new layout"
-      >
-        <IconAddPlus className="w-8 h-8 text-black" />
-      </button>
-      <button
-        onClick={handleOpenSeatingEditor}
-        className="fixed top-10 right-10 w-12 h-12 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-colors z-50 shadow-lg"
-        title="Seating Editor View"
-      >
-        <IconEditPencil className="w-8 h-8 text-black" strokeWidth={2} />
-      </button>
-
       {/* Canvas - fixed position, same size as AppViewSeatingChartEditor (no top nav) */}
       <div
         className="bg-[#fcf1f0] fixed border-2 border-black rounded-lg pt-2 overflow-auto"
@@ -698,7 +687,7 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
               }}
             />
           )}
-          {/* Visual Objects - Whiteboard and TV, Teacher's Desk, and Doors */}
+          {/* Visual Objects - Whiteboard and TV, Teacher's Desk */}
           <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
             {/* Whiteboard and TV - Centered at top (always visible) */}
             <div
@@ -715,7 +704,7 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
               <span className="text-white font-semibold text-lg">Whiteboard and TV</span>
             </div>
             
-            {/* Furniture (Teacher's Desk and Doors) - Only show if showObjects is true */}
+            {/* Furniture (Teacher's Desk) - Only show if showObjects is true */}
             {showObjects && (
               <>
                 {/* Teacher's Desk - Position based on layoutOrientation */}
@@ -724,8 +713,8 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
                   style={{
                     top: '55px',
                     ...(layoutOrientation === 'Left' 
-                      ? { left: '5px' }
-                      : { right: '5px' }
+                      ? { left: '75px' }
+                      : { right: '75px' }
                     ),
                     width: '200px',
                     height: '75px',
@@ -734,44 +723,28 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
                 >
                   <span className="text-white font-semibold">Teacher's Desk</span>
                 </div>
-                
-                {/* Door 1 - Top - Position based on layoutOrientation */}
-                <div
-                  className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
-                  style={{
-                    top: '20%',
-                    ...(layoutOrientation === 'Left' 
-                      ? { right: '5px' }
-                      : { left: '5px' }
-                    ),
-                    transform: 'translateY(-50%)',
-                    width: '30px',
-                    height: '100px',
-                    zIndex: 0
-                  }}
-                >
-                  <span className="text-white font-semibold" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>DOOR</span>
-                </div>
-                
-                {/* Door 2 - Bottom - Position based on layoutOrientation */}
-                <div
-                  className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
-                  style={{
-                    top: '70%',
-                    ...(layoutOrientation === 'Left' 
-                      ? { right: '5px' }
-                      : { left: '5px' }
-                    ),
-                    transform: 'translateY(-50%)',
-                    width: '30px',
-                    height: '100px',
-                    zIndex: 0
-                  }}
-                >
-                  <span className="text-white font-semibold" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>DOOR</span>
-                </div>
               </>
             )}
+          </div>
+          {/* Vertical menu bar on the right - Create layout (+) and Seating Editor (pencil) */}
+          <div
+            className="absolute right-2 top-2 bottom-2 flex flex-col gap-2 p-2 rounded-xl bg-white/80 z-10 border-2 border-black"
+            aria-label="Canvas actions"
+          >
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="w-10 h-10 rounded-lg bg-white/90 hover:bg-white flex items-center justify-center transition-colors shadow"
+              title="Create new layout"
+            >
+              <IconAddPlus className="w-6 h-6 text-black" />
+            </button>
+            <button
+              onClick={handleOpenSeatingEditor}
+              className="w-10 h-10 rounded-lg bg-white/90 hover:bg-white flex items-center justify-center transition-colors shadow"
+              title="Seating Editor View"
+            >
+              <IconEditPencil className="w-6 h-6 text-black" strokeWidth={2} />
+            </button>
           </div>
           {isLoadingGroups ? (
             <div className="flex items-center justify-center p-8 relative" style={{ zIndex: 1 }}>
