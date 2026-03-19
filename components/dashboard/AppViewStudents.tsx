@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AddStudentsModal from '@/components/modals/AddStudentsModal';
@@ -52,6 +52,7 @@ export default function AppViewStudents() {
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [isMultiStudentAwardModalOpen, setIsMultiStudentAwardModalOpen] = useState(false);
   const [isSeatingEditMode, setIsSeatingEditMode] = useState(false);
+  const prevViewRef = useRef<string | null>(null);
 
   // Dispatch initial state to BottomNav
   useEffect(() => {
@@ -71,6 +72,15 @@ export default function AppViewStudents() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classId]);
+
+  // When switching from Seating Chart to Student Grid, refetch students so the grid shows updated points
+  useEffect(() => {
+    if (prevViewRef.current === 'seating' && currentView === 'grid' && classId) {
+      fetchStudents();
+    }
+    prevViewRef.current = currentView;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentView, classId]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
