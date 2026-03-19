@@ -12,6 +12,8 @@ import AwardPointsModal from '@/components/modals/AwardPointsModal';
 import PointsAwardedConfirmationModal from '@/components/modals/PointsAwardedConfirmationModal';
 import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
 import IconAddPlus from '@/components/iconsCustom/iconAddPlus';
+import IconPresentationBoard from '@/components/iconsCustom/iconPresentationBoard';
+import IconDocumentClock from '@/components/iconsCustom/iconDocumentClock';
 
 interface SeatingChart {
   id: string;
@@ -620,7 +622,7 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
       <div className="font-spartan w-full min-h-full bg-[#4A3B8D] relative">
         {/* Vertical menu bar on the right - Create layout (+) and Seating Editor (pencil, disabled) */}
         <div
-          className="fixed right-2 top-2 flex flex-col gap-2 p-2 rounded-xl bg-white z-50"
+          className="fixed right-2 top-2 bottom-2 flex flex-col gap-2 p-2 rounded-xl bg-white z-50"
           aria-label="Canvas actions"
         >
           <button
@@ -637,6 +639,23 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
             aria-disabled="true"
           >
             <IconEditPencil className="w-6 h-6 text-gray-500" strokeWidth={2} />
+          </button>
+          <div className="flex-1 min-h-2" aria-hidden="true" />
+          <button
+            type="button"
+            className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center shadow cursor-default opacity-75"
+            title="Teacher View Coming soon"
+            aria-label="Teacher View Coming soon"
+          >
+            <IconPresentationBoard className="w-6 h-6 text-gray-500" strokeWidth={2} />
+          </button>
+          <button
+            type="button"
+            className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center shadow cursor-default opacity-75"
+            title="Point Log Coming soon"
+            aria-label="Point Log Coming soon"
+          >
+            <IconDocumentClock className="w-6 h-6 text-gray-500" strokeWidth={2} />
           </button>
         </div>
 
@@ -744,6 +763,23 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
               title="Seating Editor View"
             >
               <IconEditPencil className="w-6 h-6 text-black" strokeWidth={2} />
+            </button>
+            <div className="flex-1 min-h-2" aria-hidden="true" />
+            <button
+              type="button"
+              className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center shadow cursor-default opacity-75"
+              title="Teacher View Coming soon"
+              aria-label="Teacher View Coming soon"
+            >
+              <IconPresentationBoard className="w-6 h-6 text-gray-500" strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center shadow cursor-default opacity-75"
+              title="Point Log Coming soon"
+              aria-label="Point Log Coming soon"
+            >
+              <IconDocumentClock className="w-6 h-6 text-gray-500" strokeWidth={2} />
             </button>
           </div>
           {isLoadingGroups ? (
