@@ -88,6 +88,7 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
   const [showGrid, setShowGrid] = useState<boolean>(true);
   const [showObjects, setShowObjects] = useState<boolean>(true);
   const [layoutOrientation, setLayoutOrientation] = useState<string>('Left');
+  const [isTeacherView, setIsTeacherView] = useState(false);
 
   // Match editor canvas position: compute left from layout sidebar (data-sidebar-container)
   useEffect(() => {
@@ -643,11 +644,12 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
           <div className="flex-1 min-h-2" aria-hidden="true" />
           <button
             type="button"
-            className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center shadow cursor-default opacity-75"
-            title="Teacher View Coming soon"
-            aria-label="Teacher View Coming soon"
+            onClick={() => setIsTeacherView((v) => !v)}
+            className={`w-10 h-10 rounded-lg flex items-center justify-center shadow transition-colors ${isTeacherView ? 'bg-purple-100 hover:bg-purple-200' : 'bg-gray-200 hover:bg-gray-300 opacity-75'}`}
+            title={isTeacherView ? "Teacher's view (click to exit)" : "Teacher's view"}
+            aria-label={isTeacherView ? "Teacher's view (click to exit)" : "Teacher's view"}
           >
-            <IconPresentationBoard className="w-6 h-6 text-gray-500" strokeWidth={2} />
+            <IconPresentationBoard className={`w-6 h-6 ${isTeacherView ? 'text-black' : 'text-gray-500'}`} strokeWidth={2} />
           </button>
           <button
             type="button"
@@ -692,111 +694,88 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
           zIndex: 1,
         }}
       >
-          {/* Grid Lines Overlay - Visual guide only (only show if show_grid is true) */}
-          {showGrid && (
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                backgroundImage: `
-                  linear-gradient(to right, rgb(209 213 219) 1px, transparent 1px),
-                  linear-gradient(to bottom, rgb(209 213 219) 1px, transparent 1px)
-                `,
-                backgroundSize: '38px 38px', // 1cm ≈ 38px at 96 DPI
-                zIndex: 0
-              }}
-            />
-          )}
-          {/* Visual Objects - Whiteboard and TV, Teacher's Desk */}
-          <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
-            {/* Whiteboard and TV - Centered at top (always visible) */}
-            <div
-              className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
-              style={{
-                top: '0px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: '800px',
-                height: '30px',
-                zIndex: 0
-              }}
-            >
-              <span className="text-white font-semibold text-lg">Whiteboard and TV</span>
-            </div>
-            
-            {/* Furniture (Teacher's Desk) - Only show if showObjects is true */}
-            {showObjects && (
-              <>
-                {/* Teacher's Desk - Position based on layoutOrientation */}
-                <div
-                  className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
-                  style={{
-                    top: '55px',
-                    ...(layoutOrientation === 'Left' 
-                      ? { left: '75px' }
-                      : { right: '75px' }
-                    ),
-                    width: '200px',
-                    height: '75px',
-                    zIndex: 0
-                  }}
-                >
-                  <span className="text-white font-semibold">Teacher's Desk</span>
-                </div>
-              </>
-            )}
-          </div>
-          {/* Vertical menu bar on the right - Create layout (+) and Seating Editor (pencil) */}
+          {/* Rotatable canvas content: grid, objects, loading/groups (menu bar stays outside) */}
           <div
-            className="absolute right-2 top-2 bottom-2 flex flex-col gap-2 p-2 rounded-xl bg-white/80 z-10 border-2 border-black"
-            aria-label="Canvas actions"
+            className="absolute inset-0"
+            style={{
+              transform: isTeacherView ? 'rotate(180deg)' : undefined,
+              transformOrigin: 'center center',
+            }}
           >
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="w-10 h-10 rounded-lg bg-white/90 hover:bg-white flex items-center justify-center transition-colors shadow"
-              title="Create new layout"
-            >
-              <IconAddPlus className="w-6 h-6 text-black" />
-            </button>
-            <button
-              onClick={handleOpenSeatingEditor}
-              className="w-10 h-10 rounded-lg bg-white/90 hover:bg-white flex items-center justify-center transition-colors shadow"
-              title="Seating Editor View"
-            >
-              <IconEditPencil className="w-6 h-6 text-black" strokeWidth={2} />
-            </button>
-            <div className="flex-1 min-h-2" aria-hidden="true" />
-            <button
-              type="button"
-              className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center shadow cursor-default opacity-75"
-              title="Teacher View Coming soon"
-              aria-label="Teacher View Coming soon"
-            >
-              <IconPresentationBoard className="w-6 h-6 text-gray-500" strokeWidth={2} />
-            </button>
-            <button
-              type="button"
-              className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center shadow cursor-default opacity-75"
-              title="Point Log Coming soon"
-              aria-label="Point Log Coming soon"
-            >
-              <IconDocumentClock className="w-6 h-6 text-gray-500" strokeWidth={2} />
-            </button>
-          </div>
-          {isLoadingGroups ? (
-            <div className="flex items-center justify-center p-8 relative" style={{ zIndex: 1 }}>
-              <p className="text-white/80">Loading groups...</p>
+            {/* Grid Lines Overlay - Visual guide only (only show if show_grid is true) */}
+            {showGrid && (
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  backgroundImage: `
+                    linear-gradient(to right, rgb(209 213 219) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgb(209 213 219) 1px, transparent 1px)
+                  `,
+                  backgroundSize: '38px 38px', // 1cm ≈ 38px at 96 DPI
+                  zIndex: 0
+                }}
+              />
+            )}
+            {/* Visual Objects - Whiteboard and TV, Teacher's Desk */}
+            <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+              {/* Whiteboard and TV - Centered at top (always visible) */}
+              <div
+                className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
+                style={{
+                  top: '0px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '800px',
+                  height: '30px',
+                  zIndex: 0
+                }}
+              >
+                <span className="text-white font-semibold text-lg" style={isTeacherView ? { display: 'inline-block', transform: 'rotate(-180deg)' } : undefined}>
+                  Whiteboard and TV
+                </span>
+              </div>
+              
+              {/* Furniture (Teacher's Desk) - Only show if showObjects is true */}
+              {showObjects && (
+                <>
+                  {/* Teacher's Desk - Position based on layoutOrientation */}
+                  <div
+                    className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
+                    style={{
+                      top: '55px',
+                      ...(layoutOrientation === 'Left' 
+                        ? { left: '75px' }
+                        : { right: '75px' }
+                      ),
+                      width: '200px',
+                      height: '75px',
+                      zIndex: 0
+                    }}
+                  >
+                    <span className="text-white font-semibold" style={isTeacherView ? { display: 'inline-block', transform: 'rotate(-180deg)' } : undefined}>
+                      Teacher's Desk
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
-          ) : groups.length > 0 && (
-            <div
-              ref={canvasContainerRef}
-              className="relative"
-              style={{
-                position: 'relative',
-                width: '100%',
-                height: '100%',
-                zIndex: 1
-              }}
-            >
+            {isLoadingGroups ? (
+              <div className="flex items-center justify-center p-8 relative" style={{ zIndex: 1 }}>
+                <p className="text-white/80" style={isTeacherView ? { display: 'inline-block', transform: 'rotate(-180deg)' } : undefined}>
+                  Loading groups...
+                </p>
+              </div>
+            ) : groups.length > 0 ? (
+              <div
+                ref={canvasContainerRef}
+                className="relative"
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  height: '100%',
+                  zIndex: 1
+                }}
+              >
                     {groups.map((group, index) => {
                       const assignmentsInGroup = groupAssignments.get(group.id) ?? [];
                       const validColumns = Math.max(1, Math.min(3, group.group_columns || 2));
@@ -858,7 +837,7 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
                               height: 'auto'
                             }}
                           >
-                            <div className="flex-1 min-w-0 overflow-hidden flex items-center justify-between gap-2">
+                            <div className="flex-1 min-w-0 overflow-hidden flex items-center justify-between gap-2" style={isTeacherView ? { display: 'inline-flex', width: '100%', transform: 'rotate(-180deg)' } : undefined}>
                               <p 
                                 className="font-medium text-gray-800 truncate"
                                 style={{
@@ -916,7 +895,7 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
                             }}
                           >
                             {/* Team Name */}
-                            <div className="flex-1">
+                            <div className="flex-1" style={isTeacherView ? { display: 'inline-block', transform: 'rotate(-180deg)' } : undefined}>
                               <h4 className="font-semibold text-gray-800">{group.name}</h4>
                             </div>
                           </div>
@@ -940,6 +919,7 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
                               }}
                             >
                               {Array.from({ length: validColumns }, (_, colIndex) => {
+                                // Teacher view: canvas is rotated 180°, so DOM (row 0, col 0) appears bottom-right = seat 1; use same formula
                                 const slotIndex = rowIndex * validColumns + colIndex + 1;
                                 const student = studentAtSlot(group.id, slotIndex);
                                 if (student) {
@@ -950,7 +930,7 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
                                     key={slotIndex}
                                     className="min-h-[32px] rounded border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 text-xs bg-gray-50/50"
                                   >
-                                    Empty
+                                    <span style={isTeacherView ? { display: 'inline-block', transform: 'rotate(-180deg)' } : undefined}>Empty</span>
                                   </div>
                                 );
                               })}
@@ -959,8 +939,47 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
                         </div>
                       );
                     })}
-            </div>
-          )}
+              </div>
+            ) : null}
+          </div>
+          {/* Vertical menu bar on the right - Create layout (+) and Seating Editor (pencil) */}
+          <div
+            className="absolute right-2 top-2 bottom-2 flex flex-col gap-2 p-2 rounded-xl bg-white/80 z-10 border-2 border-black"
+            aria-label="Canvas actions"
+          >
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="w-10 h-10 rounded-lg bg-white/90 hover:bg-white flex items-center justify-center transition-colors shadow"
+              title="Create new layout"
+            >
+              <IconAddPlus className="w-6 h-6 text-black" />
+            </button>
+            <button
+              onClick={handleOpenSeatingEditor}
+              className="w-10 h-10 rounded-lg bg-white/90 hover:bg-white flex items-center justify-center transition-colors shadow"
+              title="Seating Editor View"
+            >
+              <IconEditPencil className="w-6 h-6 text-black" strokeWidth={2} />
+            </button>
+            <div className="flex-1 min-h-2" aria-hidden="true" />
+            <button
+              type="button"
+              onClick={() => setIsTeacherView((v) => !v)}
+              className={`w-10 h-10 rounded-lg flex items-center justify-center shadow transition-colors ${isTeacherView ? 'bg-purple-100 hover:bg-purple-200' : 'bg-gray-200 hover:bg-gray-300 opacity-75'}`}
+              title={isTeacherView ? "Teacher's view (click to exit)" : "Teacher's view"}
+              aria-label={isTeacherView ? "Teacher's view (click to exit)" : "Teacher's view"}
+            >
+              <IconPresentationBoard className={`w-6 h-6 ${isTeacherView ? 'text-black' : 'text-gray-500'}`} strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center shadow cursor-default opacity-75"
+              title="Point Log Coming soon"
+              aria-label="Point Log Coming soon"
+            >
+              <IconDocumentClock className="w-6 h-6 text-gray-500" strokeWidth={2} />
+            </button>
+          </div>
       </div>
 
       {/* Delete Layout Confirmation Modal */}
