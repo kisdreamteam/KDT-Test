@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Student } from '@/lib/types';
@@ -45,6 +45,13 @@ interface StudentSeatAssignment {
 
 /** Per-group assignment with seat_index for fixed-slot grid (matches editor). */
 type GroupAssignment = { student: Student; seat_index: number };
+type PointLogRow = {
+  id: string;
+  studentName: string;
+  reason: string;
+  points: number;
+  createdAt: string;
+};
 
 interface AppViewSeatingChartProps {
   classId: string;
@@ -89,6 +96,154 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
   const [showObjects, setShowObjects] = useState<boolean>(true);
   const [layoutOrientation, setLayoutOrientation] = useState<string>('Left');
   const [isTeacherView, setIsTeacherView] = useState(false);
+  const [isPointLogOpen, setIsPointLogOpen] = useState(false);
+  const [isPointLogLoading, setIsPointLogLoading] = useState(false);
+  const [pointLogError, setPointLogError] = useState<string | null>(null);
+  const [pointLogRows, setPointLogRows] = useState<PointLogRow[]>([]);
+  const [logPage, setLogPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [logTotalCount, setLogTotalCount] = useState(0);
+
+  const formatDateDDMMYYYY = useCallback((isoDate: string) => {
+    const d = new Date(isoDate);
+    if (Number.isNaN(d.getTime())) return '-';
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = String(d.getFullYear());
+    return `${day}/${month}/${year}`;
+  }, []);
+
+  const fetchPointLogRows = useCallback(async () => {
+    if (!classId) return;
+    try {
+      setIsPointLogLoading(true);
+      setPointLogError(null);
+      const supabase = createClient();
+
+      const { data: classStudents, error: studentsError } = await supabase
+        .from('students')
+        .select('id, first_name, last_name')
+        .eq('class_id', classId);
+
+      if (studentsError) {
+        console.error('Error fetching students for point log:', studentsError);
+        setPointLogError('Failed to load point log students.');
+        setPointLogRows([]);
+        setLogTotalCount(0);
+        return;
+      }
+
+      const studentNameMap = new Map<string, string>();
+      const studentIds = (classStudents ?? []).map((s: any) => {
+        const first = s.first_name ?? '';
+        const last = s.last_name ?? '';
+        studentNameMap.set(s.id, `${first} ${last}`.trim() || 'Unknown student');
+        return s.id;
+      });
+
+      if (studentIds.length === 0) {
+        setPointLogRows([]);
+        setLogTotalCount(0);
+        return;
+      }
+
+      const { data: pointEvents, error: pointEventsError } = await supabase
+        .from('point_events')
+        .select('id, student_id, category_id, points, created_at')
+        .in('student_id', studentIds)
+        .order('created_at', { ascending: false });
+
+      const { data: customEvents, error: customEventsError } = await supabase
+        .from('custom_point_events')
+        .select('id, student_id, points, memo, created_at')
+        .in('student_id', studentIds)
+        .order('created_at', { ascending: false });
+
+      if (pointEventsError) {
+        console.error('Error fetching point events:', pointEventsError);
+      }
+      if (customEventsError) {
+        console.error('Error fetching custom point events:', customEventsError);
+      }
+
+      const categoryIds = Array.from(
+        new Set(
+          ((pointEvents ?? []) as any[])
+            .map((ev) => ev.category_id)
+            .filter(Boolean)
+        )
+      );
+
+      const categoryMap = new Map<string, string>();
+      if (categoryIds.length > 0) {
+        const { data: categoriesData, error: categoriesError } = await supabase
+          .from('point_categories')
+          .select('id, name')
+          .in('id', categoryIds);
+        if (categoriesError) {
+          console.error('Error fetching point categories for log:', categoriesError);
+        } else {
+          (categoriesData ?? []).forEach((c: any) => {
+            categoryMap.set(c.id, c.name ?? 'Category');
+          });
+        }
+      }
+
+      const standardRows: PointLogRow[] = ((pointEvents ?? []) as any[]).map((ev) => {
+        const categoryId = ev.category_id;
+        return {
+          id: `standard-${ev.id}`,
+          studentName: studentNameMap.get(ev.student_id) ?? 'Unknown student',
+          reason: categoryMap.get(categoryId) ?? 'Point award',
+          points: Number(ev.points ?? 0),
+          createdAt: ev.created_at,
+        };
+      });
+
+      const customRows: PointLogRow[] = ((customEvents ?? []) as any[]).map((ev) => {
+        const memo = String(ev.memo ?? '').trim();
+        return {
+          id: `custom-${ev.id}`,
+          studentName: studentNameMap.get(ev.student_id) ?? 'Unknown student',
+          reason: memo ? `Custom: ${memo}` : 'Custom',
+          points: Number(ev.points ?? 0),
+          createdAt: ev.created_at,
+        };
+      });
+
+      const mergedRows = [...standardRows, ...customRows].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setPointLogRows(mergedRows);
+      setLogTotalCount(mergedRows.length);
+    } catch (err) {
+      console.error('Unexpected error fetching point log rows:', err);
+      setPointLogError('Failed to load point log.');
+      setPointLogRows([]);
+      setLogTotalCount(0);
+    } finally {
+      setIsPointLogLoading(false);
+    }
+  }, [classId]);
+
+  useEffect(() => {
+    if (isPointLogOpen) {
+      setLogPage(1);
+      fetchPointLogRows();
+    }
+  }, [isPointLogOpen, fetchPointLogRows]);
+
+  useEffect(() => {
+    setLogPage(1);
+  }, [rowsPerPage]);
+
+  const totalPages = Math.max(1, Math.ceil(logTotalCount / rowsPerPage));
+  const safeLogPage = Math.min(Math.max(logPage, 1), totalPages);
+  const pagedPointLogRows = useMemo(() => {
+    const start = (safeLogPage - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    return pointLogRows.slice(start, end);
+  }, [pointLogRows, rowsPerPage, safeLogPage]);
 
   // Match editor canvas position: compute left from layout sidebar (data-sidebar-container)
   useEffect(() => {
@@ -653,11 +808,12 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
           </button>
           <button
             type="button"
-            className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center shadow cursor-default opacity-75"
-            title="Point Log Coming soon"
-            aria-label="Point Log Coming soon"
+            onClick={() => setIsPointLogOpen((v) => !v)}
+            className={`w-10 h-10 rounded-lg flex items-center justify-center shadow transition-colors ${isPointLogOpen ? 'bg-purple-100 hover:bg-purple-200' : 'bg-white/90 hover:bg-white'}`}
+            title={isPointLogOpen ? 'Close point log' : 'Open point log'}
+            aria-label={isPointLogOpen ? 'Close point log' : 'Open point log'}
           >
-            <IconDocumentClock className="w-6 h-6 text-gray-500" strokeWidth={2} />
+            <IconDocumentClock className="w-6 h-6 text-black" strokeWidth={2} />
           </button>
         </div>
 
@@ -973,12 +1129,97 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
             </button>
             <button
               type="button"
-              className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center shadow cursor-default opacity-75"
-              title="Point Log Coming soon"
-              aria-label="Point Log Coming soon"
+              onClick={() => setIsPointLogOpen((v) => !v)}
+              className={`w-10 h-10 rounded-lg flex items-center justify-center shadow transition-colors ${isPointLogOpen ? 'bg-purple-100 hover:bg-purple-200' : 'bg-white/90 hover:bg-white'}`}
+              title={isPointLogOpen ? 'Close point log' : 'Open point log'}
+              aria-label={isPointLogOpen ? 'Close point log' : 'Open point log'}
             >
-              <IconDocumentClock className="w-6 h-6 text-gray-500" strokeWidth={2} />
+              <IconDocumentClock className="w-6 h-6 text-black" strokeWidth={2} />
             </button>
+          </div>
+          {/* Point Log slide-in panel */}
+          <div
+            className="absolute top-2 bottom-2 z-20 transition-all duration-300 ease-out"
+            style={{
+              right: '72px',
+              width: 'min(720px, calc(100% - 160px))',
+              transform: isPointLogOpen ? 'translateX(0)' : 'translateX(110%)',
+              opacity: isPointLogOpen ? 1 : 0,
+              pointerEvents: isPointLogOpen ? 'auto' : 'none',
+            }}
+          >
+            <div className="h-full rounded-xl border-2 border-black bg-white shadow-lg overflow-hidden flex flex-col">
+              <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="font-semibold text-gray-900">Point Log</h3>
+                <span className="text-sm text-gray-500">{logTotalCount} records</span>
+              </div>
+
+              {pointLogError && (
+                <div className="px-4 py-2 text-sm text-red-600 border-b border-red-100 bg-red-50">
+                  {pointLogError}
+                </div>
+              )}
+
+              <div className="grid grid-cols-[1.3fr_1.6fr_1fr_0.7fr] gap-3 px-4 py-2 text-xs font-semibold text-gray-600 bg-gray-50 border-b border-gray-200">
+                <div>Student</div>
+                <div>Point category / reason</div>
+                <div>Awarded date</div>
+                <div className="text-right">Points</div>
+              </div>
+
+              <div className="flex-1 overflow-auto">
+                {isPointLogLoading ? (
+                  <div className="h-full flex items-center justify-center text-gray-500">Loading point log...</div>
+                ) : pagedPointLogRows.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-gray-500">No point log entries yet.</div>
+                ) : (
+                  <div>
+                    {pagedPointLogRows.map((row, rowIndex) => (
+                      <div
+                        key={row.id}
+                        className={`grid grid-cols-[1.3fr_1.6fr_1fr_0.7fr] gap-3 px-4 py-2 text-sm border-b border-gray-100 ${rowIndex % 2 === 0 ? 'bg-white' : 'bg-[#fcf1f0]'}`}
+                      >
+                        <div className="text-gray-900 truncate">{row.studentName}</div>
+                        <div className="text-gray-700 truncate">{row.reason}</div>
+                        <div className="text-gray-700">{formatDateDDMMYYYY(row.createdAt)}</div>
+                        <div className={`text-right font-semibold ${row.points >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {row.points > 0 ? `+${row.points}` : row.points}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="px-4 py-2 border-t border-gray-200 flex items-center gap-3 text-sm">
+                <button
+                  type="button"
+                  onClick={() => setLogPage((p) => Math.max(1, p - 1))}
+                  disabled={safeLogPage <= 1}
+                  className="px-2 py-1 rounded border border-gray-300 disabled:opacity-40"
+                >
+                  &larr;
+                </button>
+                <span className="text-gray-700">Page {safeLogPage} of {totalPages}</span>
+                <button
+                  type="button"
+                  onClick={() => setLogPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safeLogPage >= totalPages}
+                  className="px-2 py-1 rounded border border-gray-300 disabled:opacity-40"
+                >
+                  &rarr;
+                </button>
+                <select
+                  value={rowsPerPage}
+                  onChange={(e) => setRowsPerPage(Number(e.target.value))}
+                  className="ml-auto border border-gray-300 rounded px-2 py-1"
+                >
+                  <option value={20}>20 rows</option>
+                  <option value={50}>50 rows</option>
+                  <option value={100}>100 rows</option>
+                </select>
+              </div>
+            </div>
           </div>
       </div>
 
