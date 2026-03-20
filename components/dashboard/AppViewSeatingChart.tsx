@@ -103,6 +103,28 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
   const [logPage, setLogPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [logTotalCount, setLogTotalCount] = useState(0);
+  const skipNextTeacherViewPersistRef = useRef(true);
+
+  // Persist teacher-view preference per class so it survives temporary remounts.
+  useEffect(() => {
+    if (!classId) return;
+    skipNextTeacherViewPersistRef.current = true;
+    const storageKey = `seatingChart_teacherView_${classId}`;
+    const stored = localStorage.getItem(storageKey);
+    if (stored !== null) {
+      setIsTeacherView(stored === 'true');
+    }
+  }, [classId]);
+
+  useEffect(() => {
+    if (!classId) return;
+    if (skipNextTeacherViewPersistRef.current) {
+      skipNextTeacherViewPersistRef.current = false;
+      return;
+    }
+    const storageKey = `seatingChart_teacherView_${classId}`;
+    localStorage.setItem(storageKey, String(isTeacherView));
+  }, [classId, isTeacherView]);
 
   const formatDateDDMMYYYY = useCallback((isoDate: string) => {
     const d = new Date(isoDate);
