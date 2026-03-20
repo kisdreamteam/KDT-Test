@@ -863,7 +863,7 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
     <div className="font-spartan w-full min-h-full bg-[#4A3B8D] relative">
       {/* Canvas - fixed position, same size as AppViewSeatingChartEditor (no top nav) */}
       <div
-        className="bg-[#fcf1f0] fixed border-2 border-black rounded-lg pt-2 overflow-auto"
+        className="bg-[#fcf1f0] fixed border-2 border-black rounded-lg pt-2 overflow-hidden"
         style={{
           top: '6px',
           left: `${canvasLeft}px`,
