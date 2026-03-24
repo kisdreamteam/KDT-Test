@@ -30,13 +30,16 @@ export default function Random({ onClose }: RandomProps) {
   const reelRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const [isAwardPointsModalOpen, setIsAwardPointsModalOpen] = useState(false);
+  const [isListAwardPointsModalOpen, setIsListAwardPointsModalOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [pointsListStudents, setPointsListStudents] = useState<Student[]>([]);
   const lastCardIndexRef = useRef<number>(-1);
   const audioContextRef = useRef<AudioContext | null>(null);
   const totalStudents = students.length;
   const reelStudents = students;
   const availableStudents = students.filter((student) => !student.has_been_picked);
   const pickedStudentsCount = totalStudents - availableStudents.length;
+  const pointsListStudentIds = pointsListStudents.map((student) => student.id);
 
   const fetchStudents = useCallback(async () => {
     try {
@@ -258,6 +261,22 @@ export default function Random({ onClose }: RandomProps) {
     animationFrameRef.current = requestAnimationFrame(animate);
   };
 
+  const handleAddStudentToPointsList = useCallback(() => {
+    if (!selectedStudent) return;
+    setPointsListStudents((prev) => [...prev, selectedStudent]);
+  }, [selectedStudent]);
+
+  const handleOpenListAwardModal = useCallback(() => {
+    if (pointsListStudentIds.length === 0) return;
+    setIsListAwardPointsModalOpen(true);
+  }, [pointsListStudentIds.length]);
+
+  const handleListAwardComplete = useCallback((_selectedIds: string[], type: 'classes' | 'students') => {
+    if (type === 'students') {
+      setPointsListStudents([]);
+    }
+  }, []);
+
   // Handle keyboard shortcut
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -356,14 +375,21 @@ export default function Random({ onClose }: RandomProps) {
                 disabled={!selectedStudent}
                 className="w-full bg-pink-600 hover:bg-pink-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl font-bold text-xl transition-colors shadow-lg"
               >
-                Award Points
+                Award Points to student
+              </button>
+              <button
+                onClick={handleAddStudentToPointsList}
+                disabled={!selectedStudent}
+                className="w-full mt-3 bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-500 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl font-bold text-xl transition-colors shadow-lg"
+              >
+                Add student to the points list
               </button>
             </div>
           </div>
         </div>
 
         {/* Right Side - Slot Machine */}
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex-1 flex items-center justify-center gap-8">
           {isLoading ? (
             <div className="text-center">
               <div className="animate-spin rounded-full h-20 w-20 border-b-2 border-white mx-auto mb-4"></div>
@@ -429,6 +455,46 @@ export default function Random({ onClose }: RandomProps) {
               </div>
             </div>
           )}
+
+          {!isLoading && totalStudents > 0 && (
+            <div className="w-[320px] h-[750px] bg-white/20 rounded-3xl p-5 backdrop-blur-sm flex flex-col">
+              <div className="mb-4">
+                <h3 className="text-white text-2xl font-bold">Points List</h3>
+                <p className="text-white/80 text-sm">{pointsListStudents.length} students selected</p>
+              </div>
+
+              <div className="flex-1 overflow-y-auto pr-1 space-y-3">
+                {pointsListStudents.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-center">
+                    <p className="text-white/70 text-sm">No students in the list yet</p>
+                  </div>
+                ) : (
+                  pointsListStudents.map((student, index) => (
+                    <div key={`${student.id}-${index}`} className="bg-white/20 rounded-xl p-3 flex items-center gap-3">
+                      <Image
+                        src={normalizeAvatarPath(student.avatar)}
+                        alt={`${student.first_name} ${student.last_name}`}
+                        width={48}
+                        height={48}
+                        className="rounded-full bg-[#FDF2F0] border-2 border-white"
+                      />
+                      <p className="text-white font-semibold text-sm">
+                        {student.first_name} {student.last_name}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <button
+                onClick={handleOpenListAwardModal}
+                disabled={pointsListStudents.length === 0}
+                className="mt-4 w-full bg-pink-600 hover:bg-pink-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white px-4 py-3 rounded-xl font-bold text-base transition-colors shadow-lg"
+              >
+                Award points to students on the list
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -442,6 +508,16 @@ export default function Random({ onClose }: RandomProps) {
           onRefresh={fetchStudents}
         />
       )}
+
+      <AwardPointsModal
+        isOpen={isListAwardPointsModalOpen}
+        onClose={() => setIsListAwardPointsModalOpen(false)}
+        student={null}
+        classId={classId}
+        selectedStudentIds={pointsListStudentIds}
+        onAwardComplete={handleListAwardComplete}
+        onRefresh={fetchStudents}
+      />
     </div>
   );
 }
