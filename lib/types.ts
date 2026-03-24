@@ -14,6 +14,7 @@ export interface Student {
   first_name: string;
   last_name: string;
   points: number;
+  has_been_picked?: boolean;
   avatar?: string; // Optional, may have a default
   student_number: number | null; // Integer type in database
   gender: string | null; // Optional, nullable

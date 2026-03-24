@@ -13,6 +13,13 @@ interface RandomProps {
 }
 
 export default function Random({ onClose }: RandomProps) {
+  const itemHeight = 250;
+  const slotWindowHeight = 750;
+  const middleOfWindow = slotWindowHeight / 2;
+  const itemCenterOffset = itemHeight / 2;
+  const baseRotations = 3;
+  const maxExtraRotations = 2;
+  const reelCopies = baseRotations + maxExtraRotations + 2;
   const params = useParams();
   const classId = params.classId as string;
   const [students, setStudents] = useState<Student[]>([]);
@@ -23,8 +30,13 @@ export default function Random({ onClose }: RandomProps) {
   const reelRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const [isAwardPointsModalOpen, setIsAwardPointsModalOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const lastCardIndexRef = useRef<number>(-1);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const totalStudents = students.length;
+  const reelStudents = students;
+  const availableStudents = students.filter((student) => !student.has_been_picked);
+  const pickedStudentsCount = totalStudents - availableStudents.length;
 
   const fetchStudents = useCallback(async () => {
     try {
@@ -33,7 +45,7 @@ export default function Random({ onClose }: RandomProps) {
       
       const { data: studentsData, error } = await supabase
         .from('students')
-        .select('id, first_name, last_name, points, class_id, student_number, gender, avatar')
+        .select('id, first_name, last_name, points, class_id, student_number, gender, avatar, has_been_picked')
         .eq('class_id', classId)
         .order('last_name', { ascending: true });
 
@@ -122,8 +134,52 @@ export default function Random({ onClose }: RandomProps) {
     }
   }, []);
 
+  const markStudentAsPicked = useCallback(async (studentId: string) => {
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('students')
+        .update({ has_been_picked: true })
+        .eq('id', studentId);
+
+      if (error) {
+        console.error('Error marking student as picked:', error);
+        return;
+      }
+
+      await fetchStudents();
+    } catch (error) {
+      console.error('Unexpected error marking student as picked:', error);
+    }
+  }, [fetchStudents]);
+
+  const handleResetPickedStudents = useCallback(async () => {
+    if (!classId || isResetting) return;
+
+    try {
+      setIsResetting(true);
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('students')
+        .update({ has_been_picked: false })
+        .eq('class_id', classId);
+
+      if (error) {
+        console.error('Error resetting picked students:', error);
+        return;
+      }
+
+      setSelectedStudent(null);
+      await fetchStudents();
+    } catch (error) {
+      console.error('Unexpected error resetting picked students:', error);
+    } finally {
+      setIsResetting(false);
+    }
+  }, [classId, fetchStudents, isResetting]);
+
   const handleSpin = () => {
-    if (students.length === 0 || isSpinning) return;
+    if (availableStudents.length === 0 || isSpinning) return;
 
     setIsSpinning(true);
     setSelectedStudent(null);
@@ -132,30 +188,19 @@ export default function Random({ onClose }: RandomProps) {
     lastCardIndexRef.current = -1;
     setScrollPosition(0); // Reset to top immediately
 
-    // Randomly select a student
-    const randomIndex = Math.floor(Math.random() * students.length);
-    const selected = students[randomIndex];
+    // Choose winner first, then calculate exact stop point from it.
+    const winnerIndex = Math.floor(Math.random() * availableStudents.length);
+    const selected = availableStudents[winnerIndex];
+    const winnerIndexInReel = reelStudents.findIndex((student) => student.id === selected.id);
+    if (winnerIndexInReel < 0) {
+      setIsSpinning(false);
+      return;
+    }
 
-    // Item height (avatar + name + padding) - scaled up 25%
-    const itemHeight = 250; // Height of each student item (200 * 1.25)
-    const slotWindowHeight = 750; // Height of the visible slot window (600 * 1.25)
-    const middleOfWindow = slotWindowHeight / 2; // 375px - middle of the visible window
-    const itemCenterOffset = itemHeight / 2; // 125px - center of each item
-    
-    // Calculate target position: center the selected student in the middle row
-    // The selected student's top position in the list: randomIndex * itemHeight
-    // To center it in the middle: we want the item's center (top + itemCenterOffset) to align with middleOfWindow
-    // So: randomIndex * itemHeight + itemCenterOffset should be at middleOfWindow
-    // Therefore: scrollPosition = randomIndex * itemHeight + itemCenterOffset - middleOfWindow
-    const targetPosition = randomIndex * itemHeight + itemCenterOffset - middleOfWindow;
-    
-    // Add multiple full rotations for visual effect (spin through all students multiple times)
-    const fullRotations = 3; // Number of full rotations
-    const totalItems = students.length;
-    const extraScroll = fullRotations * totalItems * itemHeight;
-    
-    // Final target position (add extra scroll to ensure we have enough content to scroll through)
-    const finalTarget = extraScroll + targetPosition;
+    const extraRotations = Math.floor(Math.random() * (maxExtraRotations + 1)); // 0..maxExtraRotations
+    const totalItems = reelStudents.length;
+    const globalStopIndex = (baseRotations + extraRotations) * totalItems + winnerIndexInReel;
+    const finalTarget = globalStopIndex * itemHeight + itemCenterOffset - middleOfWindow;
     
     // Always start from top (0) for consistent animation
     const startPosition = 0;
@@ -202,10 +247,11 @@ export default function Random({ onClose }: RandomProps) {
         animationFrameRef.current = requestAnimationFrame(animate);
       } else {
         // Animation complete
+        setScrollPosition(finalTarget);
         setIsSpinning(false);
         setSelectedStudent(selected);
-        setScrollPosition(finalTarget);
         lastCardIndexRef.current = -1; // Reset for next spin
+        void markStudentAsPicked(selected.id);
       }
     };
     
@@ -215,7 +261,7 @@ export default function Random({ onClose }: RandomProps) {
   // Handle keyboard shortcut
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !isSpinning && students.length > 0) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !isSpinning && availableStudents.length > 0) {
         handleSpin();
       }
     };
@@ -223,7 +269,7 @@ export default function Random({ onClose }: RandomProps) {
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSpinning, students.length]);
+  }, [availableStudents.length, isSpinning, middleOfWindow, itemCenterOffset, itemHeight]);
 
   return (
     <div className="fixed inset-0 bg-[#4A3B8D] z-50 flex items-center justify-center">
@@ -255,12 +301,28 @@ export default function Random({ onClose }: RandomProps) {
             <p className="text-white/80 text-xl mb-8">
               {isLoading 
                 ? 'Loading students...' 
-                : students.length === 0 
+                : totalStudents === 0
                   ? 'No students found' 
-                  : `Click the button to randomly select from ${students.length} students`}
+                  : availableStudents.length === 0
+                    ? 'All students have been picked. Reset to start again.'
+                    : `Click the button to randomly select from ${availableStudents.length} students`}
             </p>
+            {!isLoading && totalStudents > 0 && (
+              <div className="mb-6 flex items-center justify-center gap-4">
+                <p className="text-white/90 text-lg font-semibold">
+                  {pickedStudentsCount} of {totalStudents} students picked
+                </p>
+                <button
+                  onClick={handleResetPickedStudents}
+                  disabled={isResetting}
+                  className="bg-white/20 hover:bg-white/30 disabled:bg-white/10 disabled:text-white/60 text-white px-5 py-2 rounded-lg font-semibold transition-colors disabled:cursor-not-allowed"
+                >
+                  {isResetting ? 'Resetting...' : 'Reset'}
+                </button>
+              </div>
+            )}
             
-            {!isLoading && students.length > 0 && (
+            {!isLoading && availableStudents.length > 0 && (
               <button
                 onClick={handleSpin}
                 disabled={isSpinning}
@@ -307,16 +369,18 @@ export default function Random({ onClose }: RandomProps) {
               <div className="animate-spin rounded-full h-20 w-20 border-b-2 border-white mx-auto mb-4"></div>
               <p className="text-white/80 text-xl">Loading students...</p>
             </div>
-          ) : students.length === 0 ? (
+          ) : totalStudents === 0 ? (
             <div className="text-center">
-              <p className="text-white/80 text-2xl">No students available</p>
+              <p className="text-white/80 text-2xl">
+                No students available
+              </p>
             </div>
           ) : (
             <div className="relative">
               {/* Slot Machine Frame */}
               <div className="bg-gradient-to-b from-yellow-400 via-yellow-500 to-yellow-600 rounded-2xl p-8 shadow-2xl border-4 border-yellow-700">
                 {/* Slot Window */}
-                <div className="relative bg-gray-500 rounded-lg p-5 overflow-hidden" style={{ width: '375px', height: '750px' }}>
+                <div className="relative bg-gray-500 rounded-lg p-5 overflow-hidden" style={{ width: '375px', height: `${slotWindowHeight}px` }}>
                   {/* Top and bottom gradient overlays for fade effect */}
                   <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black to-transparent z-10 pointer-events-none" style={{ height: '100px' }}></div>
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent z-10 pointer-events-none" style={{ height: '100px' }}></div>
@@ -332,17 +396,17 @@ export default function Random({ onClose }: RandomProps) {
                     className="relative transition-none"
                     style={{
                       transform: `translateY(-${scrollPosition}px)`,
-                      transition: isSpinning ? 'none' : 'transform 0.3s ease-out',
+                      transition: 'none',
                     }}
                   >
                     {/* Duplicate students multiple times for seamless scrolling */}
-                    {[...Array(5)].map((_, rotation) => 
-                      students.map((student, index) => {
+                    {[...Array(reelCopies)].map((_, rotation) => 
+                      reelStudents.map((student, index) => {
                         return (
                           <div
                             key={`${student.id}-${rotation}-${index}`}
                             className="flex flex-col items-center justify-center py-10"
-                            style={{ height: '250px' }}
+                            style={{ height: `${itemHeight}px` }}
                           >
                             <div className="mb-5">
                               <Image
