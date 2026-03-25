@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Student } from '@/lib/types';
 import Image from 'next/image';
 import AwardPointsModal from '@/components/modals/AwardPointsModal';
+import PointsAwardedConfirmationModal from '@/components/modals/PointsAwardedConfirmationModal';
 import { normalizeAvatarPath } from '@/lib/iconUtils';
 
 interface RandomProps {
@@ -33,6 +34,14 @@ export default function Random({ onClose }: RandomProps) {
   const [isListAwardPointsModalOpen, setIsListAwardPointsModalOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [pointsListStudents, setPointsListStudents] = useState<Student[]>([]);
+  const [awardInfo, setAwardInfo] = useState<{
+    studentAvatar: string;
+    studentFirstName: string;
+    points: number;
+    categoryName: string;
+    categoryIcon?: string;
+  } | null>(null);
+  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const lastCardIndexRef = useRef<number>(-1);
   const audioContextRef = useRef<AudioContext | null>(null);
   const totalStudents = students.length;
@@ -277,6 +286,17 @@ export default function Random({ onClose }: RandomProps) {
     }
   }, []);
 
+  const handlePointsAwarded = useCallback((info: {
+    studentAvatar: string;
+    studentFirstName: string;
+    points: number;
+    categoryName: string;
+    categoryIcon?: string;
+  }) => {
+    setAwardInfo(info);
+    setIsConfirmationModalOpen(true);
+  }, []);
+
   // Handle keyboard shortcut
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -506,6 +526,7 @@ export default function Random({ onClose }: RandomProps) {
           student={selectedStudent}
           classId={classId}
           onRefresh={fetchStudents}
+          onPointsAwarded={handlePointsAwarded}
         />
       )}
 
@@ -517,7 +538,24 @@ export default function Random({ onClose }: RandomProps) {
         selectedStudentIds={pointsListStudentIds}
         onAwardComplete={handleListAwardComplete}
         onRefresh={fetchStudents}
+        onPointsAwarded={handlePointsAwarded}
       />
+
+      {/* Points Awarded Confirmation Modal */}
+      {awardInfo && (
+        <PointsAwardedConfirmationModal
+          isOpen={isConfirmationModalOpen}
+          onClose={() => {
+            setIsConfirmationModalOpen(false);
+            setAwardInfo(null);
+          }}
+          studentAvatar={awardInfo.studentAvatar}
+          studentFirstName={awardInfo.studentFirstName}
+          points={awardInfo.points}
+          categoryName={awardInfo.categoryName}
+          categoryIcon={awardInfo.categoryIcon}
+        />
+      )}
     </div>
   );
 }
