@@ -982,7 +982,7 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
                       const groupHeight = headerHeight + (numRows * studentRowHeight) + (padding * 2);
 
                       const studentCardHeight = 32;
-                      const studentPointsWidth = 42;
+                      const studentPointsWidth = 36;
 
                       const renderStudentCard = (student: Student) => {
                         // In multi-select mode: yellow when selected, otherwise gender-based
@@ -1019,9 +1019,9 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
                           >
                             <div className="flex-1 min-w-0 flex items-center gap-2 pr-1" style={isTeacherView ? { display: 'inline-flex', width: '100%', transform: 'rotate(-180deg)' } : undefined}>
                               <p 
-                                className="font-medium text-gray-800 truncate flex-1 min-w-0 pr-1"
+                                className="font-medium text-gray-800 overflow-hidden whitespace-nowrap flex-1 min-w-0 pr-1"
                                 style={{
-                                  fontSize: 'clamp(0.875rem, 120%, 1.5rem)', // Fixed font size for all groups (same as 1-column groups)
+                                  fontSize: 'clamp(0.8rem, 110%, 1.25rem)',
                                   lineHeight: '1.2'
                                 }}
                               >
