@@ -401,13 +401,15 @@ export default function AppViewStudents() {
         if (lastNameCompare !== 0) return lastNameCompare;
         return (a.first_name || '').localeCompare(b.first_name || '');
       });
-    } else {
-      // Alphabetical sort by last name, then first name
+    } else if (sortBy === 'alphabetical') {
+      // Alphabetical sort by first name (card display name), then last name
       return studentsCopy.sort((a, b) => {
-        const lastNameCompare = (a.last_name || '').localeCompare(b.last_name || '');
-        if (lastNameCompare !== 0) return lastNameCompare;
-        return (a.first_name || '').localeCompare(b.first_name || '');
+        const firstNameCompare = (a.first_name || '').localeCompare(b.first_name || '');
+        if (firstNameCompare !== 0) return firstNameCompare;
+        return (a.last_name || '').localeCompare(b.last_name || '');
       });
+    } else {
+      return studentsCopy;
     }
   }, [students, sortBy]);
 
