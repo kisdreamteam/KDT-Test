@@ -981,6 +981,9 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
                       }
                       const groupHeight = headerHeight + (numRows * studentRowHeight) + (padding * 2);
 
+                      const studentCardHeight = 32;
+                      const studentPointsWidth = 42;
+
                       const renderStudentCard = (student: Student) => {
                         // In multi-select mode: yellow when selected, otherwise gender-based
                         const isSelected = isMultiSelectMode && selectedStudentIds.includes(student.id);
@@ -1008,16 +1011,15 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
                                 handleStudentClick(student);
                               }
                             }}
-                            className={`flex items-center justify-between gap-1 p-1.5 rounded border cursor-pointer hover:opacity-90 transition-opacity ${bgColor}`}
+                            className={`flex items-center gap-1 p-1.5 rounded border cursor-pointer hover:opacity-90 transition-opacity min-w-0 overflow-hidden ${bgColor}`}
                             style={{
                               width: '100%',
-                              minHeight: '32px',
-                              height: 'auto'
+                              height: `${studentCardHeight}px`
                             }}
                           >
-                            <div className="flex-1 min-w-0 overflow-hidden flex items-center justify-between gap-2" style={isTeacherView ? { display: 'inline-flex', width: '100%', transform: 'rotate(-180deg)' } : undefined}>
+                            <div className="flex-1 min-w-0 flex items-center gap-2 pr-1" style={isTeacherView ? { display: 'inline-flex', width: '100%', transform: 'rotate(-180deg)' } : undefined}>
                               <p 
-                                className="font-medium text-gray-800 truncate"
+                                className="font-medium text-gray-800 truncate flex-1 min-w-0 pr-1"
                                 style={{
                                   fontSize: 'clamp(0.875rem, 120%, 1.5rem)', // Fixed font size for all groups (same as 1-column groups)
                                   lineHeight: '1.2'
@@ -1025,7 +1027,8 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
                               >
                                 {student.first_name}
                               </p>
-                              <span className="text-red-600 font-semibold flex-shrink-0" style={{
+                              <span className="text-red-600 font-semibold flex-shrink-0 text-right tabular-nums" style={{
+                                width: `${studentPointsWidth}px`,
                                 fontSize: 'clamp(0.875rem, 120%, 1.5rem)', // Fixed font size for all groups (same as 1-column groups)
                                 lineHeight: '1.2'
                               }}>
@@ -1101,12 +1104,13 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
                                 const slotIndex = rowIndex * validColumns + colIndex + 1;
                                 const student = studentAtSlot(group.id, slotIndex);
                                 if (student) {
-                                  return <div key={slotIndex}>{renderStudentCard(student)}</div>;
+                                  return <div key={slotIndex} className="w-full min-w-0">{renderStudentCard(student)}</div>;
                                 }
                                 return (
                                   <div
                                     key={slotIndex}
-                                    className="min-h-[32px] rounded border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 text-xs bg-gray-50/50"
+                                    className="rounded border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 text-xs bg-gray-50/50"
+                                    style={{ height: `${studentCardHeight}px` }}
                                   >
                                     <span style={isTeacherView ? { display: 'inline-block', transform: 'rotate(-180deg)' } : undefined}>Empty</span>
                                   </div>

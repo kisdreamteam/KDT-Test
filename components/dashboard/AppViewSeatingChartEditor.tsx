@@ -2497,6 +2497,9 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                       }
                       const groupHeight = headerHeight + (numRows * studentRowHeight) + expandRowHeight + (padding * 2);
                       
+                      const studentCardHeight = 32;
+                      const studentPointsWidth = 40;
+
                       // Render student card component
                       const renderStudentCard = (student: Student) => {
                         const isSelected = selectedStudentForSwap?.studentId === student.id && selectedStudentForSwap?.groupId === group.id;
@@ -2536,18 +2539,17 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                             key={student.id}
                             onClick={(e) => handleStudentClick(e, student.id, group.id)}
                             onMouseDown={(e) => e.stopPropagation()}
-                            className={`flex items-center justify-between gap-1 p-1.5 rounded border transition-colors ${
+                            className={`flex items-center gap-1 p-1.5 rounded border transition-colors min-w-0 overflow-hidden ${
                               isRandomizing ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
                             } ${bgColor}`}
                             style={{ 
                               width: '100%',
-                              minHeight: '32px',
-                              height: 'auto'
+                              height: `${studentCardHeight}px`
                             }}
                           >
-                            <div className="flex-1 min-w-0 overflow-hidden flex items-center justify-between gap-2">
+                            <div className="flex-1 min-w-0 flex items-center gap-2 pr-1">
                               <p 
-                                className="font-medium text-gray-800 truncate"
+                                className="font-medium text-gray-800 truncate flex-1 min-w-0 pr-1"
                                 style={{
                                   fontSize: 'clamp(0.875rem, 120%, 1.5rem)', // Fixed font size for all groups (same as 1-column groups)
                                   lineHeight: '1.2'
@@ -2555,7 +2557,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                               >
                                 {student.first_name}
                               </p>
-                              <span className="text-red-600 font-semibold flex-shrink-0" style={{
+                              <span className="text-red-600 font-semibold flex-shrink-0 text-right tabular-nums" style={{
+                                width: `${studentPointsWidth}px`,
                                 fontSize: 'clamp(0.875rem, 120%, 1.5rem)', // Fixed font size for all groups (same as 1-column groups)
                                 lineHeight: '1.2'
                               }}>
@@ -2574,6 +2577,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                   ? 'text-gray-400 cursor-not-allowed' 
                                   : 'text-red-500 hover:text-red-700'
                               }`}
+                              style={{ width: '16px', height: '16px' }}
                               title={isRandomizing ? 'Cannot remove during animation' : 'Remove from group'}
                               disabled={isRandomizing}
                             >
@@ -2768,16 +2772,21 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
                                       const slotIndex = rowIndex * validColumns + colIndex + 1;
                                       const student = studentAtSlot(group.id, slotIndex);
                                       if (student) {
-                                        return <div key={slotIndex} onMouseDown={(e) => e.stopPropagation()}>{renderStudentCard(student)}</div>;
+                                        return (
+                                          <div key={slotIndex} className="w-full min-w-0" onMouseDown={(e) => e.stopPropagation()}>
+                                            {renderStudentCard(student)}
+                                          </div>
+                                        );
                                       }
                                       return (
                                         <div
                                           key={slotIndex}
                                           onClick={handleSlotClick(group.id, slotIndex)}
                                           onMouseDown={(e) => e.stopPropagation()}
-                                          className={`min-h-[32px] rounded border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs ${
+                                          className={`rounded border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs ${
                                             selectedStudentForGroup || isTargetForMove ? 'cursor-pointer hover:border-purple-400 hover:bg-purple-50' : 'cursor-default'
                                           }`}
+                                          style={{ height: `${studentCardHeight}px` }}
                                         >
                                           {selectedStudentForGroup || isTargetForMove ? 'Drop here' : 'Empty'}
                                         </div>
