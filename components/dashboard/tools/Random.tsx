@@ -16,7 +16,10 @@ interface RandomProps {
 export default function Random({ onClose }: RandomProps) {
   const itemHeight = 250;
   const slotWindowHeight = 750;
-  const middleOfWindow = slotWindowHeight / 2;
+  // Slot window uses p-5 (20px) — center of the *visible reel* is half of inner height, not half of outer 750px.
+  const slotPaddingPx = 20;
+  const viewportInnerHeight = slotWindowHeight - 2 * slotPaddingPx;
+  const middleOfWindow = viewportInnerHeight / 2;
   const itemCenterOffset = itemHeight / 2;
   const baseRotations = 3;
   const maxExtraRotations = 2;
@@ -50,9 +53,12 @@ export default function Random({ onClose }: RandomProps) {
   const pickedStudentsCount = totalStudents - availableStudents.length;
   const pointsListStudentIds = pointsListStudents.map((student) => student.id);
 
-  const fetchStudents = useCallback(async () => {
+  const fetchStudents = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false;
     try {
-      setIsLoading(true);
+      if (!silent) {
+        setIsLoading(true);
+      }
       const supabase = createClient();
       
       const { data: studentsData, error } = await supabase
@@ -70,7 +76,9 @@ export default function Random({ onClose }: RandomProps) {
     } catch (err) {
       console.error('Unexpected error fetching students:', err);
     } finally {
-      setIsLoading(false);
+      if (!silent) {
+        setIsLoading(false);
+      }
     }
   }, [classId]);
 
@@ -159,11 +167,16 @@ export default function Random({ onClose }: RandomProps) {
         return;
       }
 
-      await fetchStudents();
+      // Optimistic local update only — do not refetch here. A silent `setStudents` from Supabase
+      // replaces the whole list, remounts reel rows/Images, and layout can shift while
+      // `scrollPosition` stays fixed, so the winner appears on the wrong band (e.g. top vs middle).
+      setStudents((prev) =>
+        prev.map((s) => (s.id === studentId ? { ...s, has_been_picked: true } : s))
+      );
     } catch (error) {
       console.error('Unexpected error marking student as picked:', error);
     }
-  }, [fetchStudents]);
+  }, []);
 
   const handleResetPickedStudents = useCallback(async () => {
     if (!classId || isResetting) return;
@@ -213,7 +226,7 @@ export default function Random({ onClose }: RandomProps) {
     const totalItems = reelStudents.length;
     const globalStopIndex = (baseRotations + extraRotations) * totalItems + winnerIndexInReel;
     const finalTarget = globalStopIndex * itemHeight + itemCenterOffset - middleOfWindow;
-    
+
     // Always start from top (0) for consistent animation
     const startPosition = 0;
     const distance = finalTarget - startPosition;
@@ -237,7 +250,7 @@ export default function Random({ onClose }: RandomProps) {
       setScrollPosition(currentPosition);
       
       // Calculate which card is currently in the middle slot
-      // The middle of the window is at middleOfWindow (375px)
+      // The middle of the visible viewport is at middleOfWindow (inner height / 2)
       // With scrollPosition, the card at position (scrollPosition + middleOfWindow) is centered
       // Calculate which item index this corresponds to
       const currentCenterPosition = currentPosition + middleOfWindow;
@@ -525,7 +538,7 @@ export default function Random({ onClose }: RandomProps) {
           onClose={() => setIsAwardPointsModalOpen(false)}
           student={selectedStudent}
           classId={classId}
-          onRefresh={fetchStudents}
+          onRefresh={() => fetchStudents({ silent: true })}
           onPointsAwarded={handlePointsAwarded}
         />
       )}
@@ -537,7 +550,7 @@ export default function Random({ onClose }: RandomProps) {
         classId={classId}
         selectedStudentIds={pointsListStudentIds}
         onAwardComplete={handleListAwardComplete}
-        onRefresh={fetchStudents}
+        onRefresh={() => fetchStudents({ silent: true })}
         onPointsAwarded={handlePointsAwarded}
       />
 
