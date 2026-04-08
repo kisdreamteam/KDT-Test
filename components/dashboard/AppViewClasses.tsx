@@ -26,6 +26,7 @@ export default function AppViewClasses() {
   const [deleteClassName, setDeleteClassName] = useState<string>('');
 
   const isArchivedView = viewMode === 'archived';
+  const classOwnerMap = new Map(classes.map((cls) => [cls.id, cls.is_owner !== false]));
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -103,6 +104,10 @@ export default function AppViewClasses() {
 
   // Handle archive/unarchive class - open confirmation modal
   const handleArchiveClass = (classId: string, className: string) => {
+    if (!classOwnerMap.get(classId)) {
+      alert('Only the primary class owner can archive or unarchive this class.');
+      return;
+    }
     setArchiveClassId(classId);
     setArchiveClassName(className);
     setIsArchiveModalOpen(true);
@@ -156,6 +161,10 @@ export default function AppViewClasses() {
 
   // Handle delete class (archived only)
   const handleDeleteClass = (classId: string, className: string) => {
+    if (!classOwnerMap.get(classId)) {
+      alert('Only the primary class owner can delete this class.');
+      return;
+    }
     setDeleteClassId(classId);
     setDeleteClassName(className);
     setIsDeleteModalOpen(true);

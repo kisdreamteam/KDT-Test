@@ -33,6 +33,19 @@ interface Class {
   is_archived: boolean;
   created_at: string;
   icon?: string;
+  is_owner?: boolean;
+}
+
+/** PostgREST / Postgres when RPC `list_accessible_classes` is not deployed yet */
+function isMissingListAccessibleClassesRpc(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  const msg = (error.message || '').toLowerCase();
+  return (
+    error.code === 'PGRST202' ||
+    error.code === '42883' ||
+    msg.includes('could not find the function') ||
+    msg.includes('schema cache')
+  );
 }
 
 function DashboardLayoutContent({
@@ -127,25 +140,40 @@ function DashboardLayoutContent({
 
       console.log('Fetching classes for sidebar, user:', user.id, 'viewMode:', viewMode);
 
-      // Fetch classes for the current teacher based on viewMode
-      // For sidebar, we fetch all classes to show both active and archived
-      // For main content, we filter based on viewMode
-      const { data, error } = await supabase
-        .from('classes')
-        .select('*')
-        .eq('teacher_id', user.id)
-        .order('is_archived', { ascending: true })
-        .order('created_at', { ascending: false });
+      // Fetch classes accessible to current user (owner or collaborator)
+      const { data, error } = await supabase.rpc('list_accessible_classes');
 
       console.log('Sidebar classes data:', data);
       console.log('Sidebar classes error:', error);
 
+      let rows: Class[] = [];
+
       if (error) {
-        console.error('Error fetching classes for sidebar:', error?.message || error);
-        return;
+        // Any RPC failure: always try owner direct query (fixes early-return when error shape did not match "missing function")
+        const { data: ownerRows, error: ownerError } = await supabase
+          .from('classes')
+          .select('*')
+          .eq('teacher_id', user.id)
+          .order('is_archived', { ascending: true })
+          .order('created_at', { ascending: false });
+
+        if (ownerError) {
+          console.error('Error fetching classes (owner fallback):', ownerError?.message || ownerError);
+          return;
+        }
+
+        rows = (ownerRows || []).map((r) => ({ ...r, is_owner: true }));
+      } else {
+        rows = (data || []) as Class[];
       }
 
-      setClasses(data || []);
+      const sorted = [...rows].sort((a, b) => {
+        if (a.is_archived !== b.is_archived) {
+          return a.is_archived ? 1 : -1;
+        }
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+      setClasses(sorted);
     } catch (err) {
       console.error('Unexpected error fetching classes for sidebar:', err);
     } finally {

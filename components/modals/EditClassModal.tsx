@@ -4,24 +4,22 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Modal from '@/components/modals/Modal';
+import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import { createClient } from '@/lib/supabase/client';
 import { Student } from '@/lib/types';
 import AddStudentsModal from '@/components/modals/AddStudentsModal';
 import { normalizeAvatarPath } from '@/lib/iconUtils';
 
-interface Teacher {
-  id: string;
+interface CollaboratorTeacher {
+  collaboratorRowId: string;
+  collaboratorId: string;
   email: string;
   name?: string;
 }
 
-interface TeacherDataItem {
-  teacher_email: string;
-  teachers?: {
-    id: string;
-    email: string;
-    name?: string;
-  }[] | null;
+function isKshcmNetEmail(email: string): boolean {
+  const e = email.trim().toLowerCase();
+  return e.endsWith('@kshcm.net');
 }
 
 interface StudentWithPhoto extends Student {
@@ -46,8 +44,17 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
   const [students, setStudents] = useState<StudentWithPhoto[]>([]);
   const [originalStudents, setOriginalStudents] = useState<StudentWithPhoto[]>([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [teachers, setTeachers] = useState<CollaboratorTeacher[]>([]);
   const [newTeacherEmail, setNewTeacherEmail] = useState('');
+  const [pendingCollaborator, setPendingCollaborator] = useState<{
+    id: string;
+    name: string | null;
+    email: string;
+  } | null>(null);
+  const [showConfirmAddCollaborator, setShowConfirmAddCollaborator] = useState(false);
+  const [showNotFoundCollaborator, setShowNotFoundCollaborator] = useState(false);
+  const [showCollaboratorSuccess, setShowCollaboratorSuccess] = useState(false);
+  const [collaboratorSuccessName, setCollaboratorSuccessName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
@@ -56,6 +63,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
   const [studentsWithoutFirstName, setStudentsWithoutFirstName] = useState<StudentWithPhoto[]>([]);
   const [showResetPointsPopup, setShowResetPointsPopup] = useState(false);
   const [isResettingPoints, setIsResettingPoints] = useState(false);
+  const [isClassOwner, setIsClassOwner] = useState(true);
 
   // Generate array of all available icons
   const availableIcons = Array.from({ length: 15 }, (_, i) => 
@@ -80,6 +88,9 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
     try {
       setIsLoadingData(true);
       const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const { data, error } = await supabase
         .from('classes')
         .select('*')
@@ -95,6 +106,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
         setClassName(data.name || '');
         setGrade(data.grade || '');
         setSelectedIcon(data.icon || '/images/dashboard/class-icons/icon-1.png');
+        setIsClassOwner(session?.user?.id === data.teacher_id);
       }
     } catch (err) {
       console.error('Unexpected error fetching class:', err);
@@ -158,40 +170,26 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
   const fetchTeachers = useCallback(async () => {
     try {
       const supabase = createClient();
-      // For now, we'll fetch teachers from a class_teachers junction table if it exists
-      // If not, we'll use a placeholder structure
-      // Assuming there's a class_teachers table with class_id and teacher_id/email
-      const { data: teachersData, error } = await supabase
-        .from('class_teachers')
-        .select(`
-          teacher_email,
-          teachers:teacher_id (
-            id,
-            email,
-            name
-          )
-        `)
-        .eq('class_id', classId);
+      const { data, error } = await supabase.rpc('list_class_collaborators', {
+        p_class_id: classId,
+      });
 
       if (error) {
-        // If table doesn't exist, set empty array
-        console.log('No class_teachers table or no teachers found');
+        console.error('Error fetching collaborators:', error);
         setTeachers([]);
         return;
       }
 
-      // Transform the data to match our Teacher interface
-      if (teachersData) {
-        const typedData = teachersData as unknown as TeacherDataItem[];
-        const teachersList: Teacher[] = typedData.map((item: TeacherDataItem) => {
-          const teacher = Array.isArray(item.teachers) ? item.teachers[0] : item.teachers;
-          return {
-            id: teacher?.id || item.teacher_email,
-            email: teacher?.email || item.teacher_email,
-            name: teacher?.name
-          };
-        });
-        setTeachers(teachersList);
+      if (data && Array.isArray(data)) {
+        const list: CollaboratorTeacher[] = data.map(
+          (row: { row_id: string; collaborator_id: string; name: string | null; email: string }) => ({
+            collaboratorRowId: row.row_id,
+            collaboratorId: row.collaborator_id,
+            email: row.email,
+            name: row.name ?? undefined,
+          })
+        );
+        setTeachers(list);
       } else {
         setTeachers([]);
       }
@@ -211,6 +209,10 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
   }, [isOpen, classId, fetchClassData, fetchStudents, fetchTeachers]);
 
   const handleSaveInfo = async () => {
+    if (!isClassOwner) {
+      alert('Only the primary class owner can edit class information.');
+      return;
+    }
     if (!className.trim()) {
       alert('Please enter a class name.');
       return;
@@ -245,45 +247,61 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
   };
 
   const handleAddTeacher = async () => {
+    if (!isClassOwner) {
+      alert('Only the primary class owner can manage collaborators.');
+      return;
+    }
     if (!newTeacherEmail.trim()) {
       alert('Please enter an email address.');
       return;
     }
 
     const email = newTeacherEmail.trim().toLowerCase();
-    
-    // Basic email validation
-    if (!email.includes('@')) {
-      alert('Please enter a valid email address.');
+
+    if (!isKshcmNetEmail(email)) {
+      alert('Please enter a valid @kshcm.net email address.');
       return;
     }
 
     setIsLoading(true);
     try {
       const supabase = createClient();
-      
-      // Check if class_teachers table exists, if not we'll just add to a simple structure
-      // For now, we'll try to insert into class_teachers
-      const { error } = await supabase
-        .from('class_teachers')
-        .insert({
-          class_id: classId,
-          teacher_email: email
-        });
-
-      if (error) {
-        // If the table doesn't exist or there's an error, we'll just show a message
-        console.log('Could not add teacher (table may not exist):', error);
-        alert('Teacher collaboration feature is being set up. This will be available soon.');
-        setNewTeacherEmail('');
-        setIsLoading(false);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const myEmail = session?.user?.email?.trim().toLowerCase();
+      if (myEmail && myEmail === email) {
+        alert('You cannot add yourself as a collaborator.');
         return;
       }
 
-      // Refresh teachers list
-      await fetchTeachers();
-      setNewTeacherEmail('');
-      alert('Teacher added successfully!');
+      const { data: lookupRows, error: lookupError } = await supabase.rpc('lookup_teacher_by_email', {
+        p_email: email,
+      });
+
+      if (lookupError) {
+        console.error('lookup_teacher_by_email error:', lookupError);
+        alert('Could not look up that teacher. Please try again.');
+        return;
+      }
+
+      const row = Array.isArray(lookupRows) ? lookupRows[0] : lookupRows;
+      if (!row || !row.id) {
+        setShowNotFoundCollaborator(true);
+        return;
+      }
+
+      if (teachers.some((t) => t.collaboratorId === row.id)) {
+        alert('That teacher is already a collaborator on this class.');
+        return;
+      }
+
+      setPendingCollaborator({
+        id: row.id,
+        name: row.name,
+        email: row.email,
+      });
+      setShowConfirmAddCollaborator(true);
     } catch (err) {
       console.error('Unexpected error adding teacher:', err);
       alert('An unexpected error occurred. Please try again.');
@@ -292,19 +310,61 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
     }
   };
 
-  const handleRemoveTeacher = async (teacherEmail: string) => {
-    if (!confirm(`Are you sure you want to remove this teacher?`)) {
+  const handleConfirmAddCollaborator = async (pending: {
+    id: string;
+    name: string | null;
+    email: string;
+  }) => {
+    if (!isClassOwner) {
+      alert('Only the primary class owner can manage collaborators.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from('class_collaborators').insert({
+        class_id: classId,
+        collaborator_id: pending.id,
+        primary_user: false,
+      });
+
+      if (error) {
+        console.error('Error inserting collaborator:', error);
+        if (error.code === '23505') {
+          alert('That teacher is already a collaborator on this class.');
+        } else {
+          alert('Failed to add collaborator. Please try again.');
+        }
+        return;
+      }
+
+      const displayName = pending.name?.trim() || pending.email;
+      setCollaboratorSuccessName(displayName);
+      setNewTeacherEmail('');
+      await fetchTeachers();
+      setShowCollaboratorSuccess(true);
+      onRefresh();
+    } catch (err) {
+      console.error('Unexpected error confirming collaborator:', err);
+      alert('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRemoveTeacher = async (collaboratorRowId: string, label: string) => {
+    if (!isClassOwner) {
+      alert('Only the primary class owner can manage collaborators.');
+      return;
+    }
+    if (!confirm(`Are you sure you want to remove ${label} from this class?`)) {
       return;
     }
 
     setIsLoading(true);
     try {
       const supabase = createClient();
-      const { error } = await supabase
-        .from('class_teachers')
-        .delete()
-        .eq('class_id', classId)
-        .eq('teacher_email', teacherEmail);
+      const { error } = await supabase.from('class_collaborators').delete().eq('id', collaboratorRowId);
 
       if (error) {
         console.error('Error removing teacher:', error);
@@ -313,7 +373,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       }
 
       await fetchTeachers();
-      alert('Teacher removed successfully!');
+      onRefresh();
     } catch (err) {
       console.error('Unexpected error removing teacher:', err);
       alert('An unexpected error occurred. Please try again.');
@@ -451,6 +511,10 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
 
   // Handle reset points
   const handleResetPoints = async (deleteEvents: boolean) => {
+    if (!isClassOwner) {
+      alert('Only the primary class owner can reset points.');
+      return;
+    }
     if (isResettingPoints) return;
     
     setIsResettingPoints(true);
@@ -610,6 +674,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                       <button
                         type="button"
                         onClick={() => setIsIconDropdownOpen(!isIconDropdownOpen)}
+                        disabled={!isClassOwner}
                         className="w-20 h-20 bg-white rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors border-2 border-gray-300 hover:border-[#4A3B8D] relative shadow-sm"
                       >
                         <Image
@@ -692,6 +757,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                       type="text"
                       value={className}
                       onChange={(e) => setClassName(e.target.value)}
+                      disabled={!isClassOwner}
                       className="w-full h-12 rounded-[12px] border border-black/20 bg-white px-4 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-[#4A3B8D]/30"
                       placeholder="Enter class name"
                     />
@@ -704,6 +770,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                     <select
                       value={grade}
                       onChange={(e) => setGrade(e.target.value)}
+                      disabled={!isClassOwner}
                       className="w-full h-12 rounded-[12px] border border-black/20 bg-white px-4 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-[#4A3B8D]/30"
                     >
                       <option value="">Select a grade</option>
@@ -727,12 +794,17 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                     </button>
                     <button
                       onClick={handleSaveInfo}
-                      disabled={isLoading}
+                      disabled={isLoading || !isClassOwner}
                       className="px-6 py-2 bg-[#D96B7B] text-white rounded-lg font-bold hover:brightness-95 transition disabled:opacity-50"
                     >
                       {isLoading ? 'Saving...' : 'Save Changes'}
                     </button>
                   </div>
+                  {!isClassOwner && (
+                    <p className="text-xs text-gray-600 text-right">
+                      Only the primary class owner can edit class info.
+                    </p>
+                  )}
                 </>
               )}
             </div>
@@ -961,17 +1033,24 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                 <label className="block text-sm font-semibold text-black mb-2">
                   Add Teacher by Email
                 </label>
+                {!isClassOwner && (
+                  <p className="text-xs text-gray-600 mb-2">
+                    Only the primary class owner can manage collaborators.
+                  </p>
+                )}
                 <div className="flex gap-3">
                   <input
                     type="email"
                     value={newTeacherEmail}
                     onChange={(e) => setNewTeacherEmail(e.target.value)}
+                    disabled={!isClassOwner}
                     className="flex-1 h-12 rounded-[12px] border border-black/20 bg-white px-4 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-[#4A3B8D]/30"
-                    placeholder="teacher@example.com"
+                    placeholder="name@kshcm.net"
                   />
                   <button
+                    type="button"
                     onClick={handleAddTeacher}
-                    disabled={isLoading}
+                    disabled={isLoading || !isClassOwner}
                     className="px-6 py-2 bg-[#D96B7B] text-white rounded-lg font-bold hover:brightness-95 transition disabled:opacity-50"
                   >
                     {isLoading ? 'Adding...' : 'Add'}
@@ -990,7 +1069,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                   <div className="space-y-3">
                     {teachers.map((teacher) => (
                       <div
-                        key={teacher.id}
+                        key={teacher.collaboratorRowId}
                         className="bg-white rounded-lg p-4 border border-gray-200 flex items-center justify-between"
                       >
                         <div className="flex items-center gap-3">
@@ -1003,8 +1082,14 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                           </div>
                         </div>
                         <button
-                          onClick={() => handleRemoveTeacher(teacher.email)}
-                          disabled={isLoading}
+                          type="button"
+                          onClick={() =>
+                            handleRemoveTeacher(
+                              teacher.collaboratorRowId,
+                              teacher.name?.trim() || teacher.email
+                            )
+                          }
+                          disabled={isLoading || !isClassOwner}
                           className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition disabled:opacity-50"
                         >
                           Remove
@@ -1022,9 +1107,14 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
             <div className="space-y-6">
               <div className="flex flex-col gap-4">
                 <h3 className="text-lg font-semibold text-gray-800">Points Management</h3>
+                {!isClassOwner && (
+                  <p className="text-xs text-gray-600">
+                    Only the primary class owner can reset points.
+                  </p>
+                )}
                 <button
                   onClick={() => setShowResetPointsPopup(true)}
-                  disabled={isResettingPoints}
+                  disabled={isResettingPoints || !isClassOwner}
                   className="px-6 py-3 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-fit"
                 >
                   {isResettingPoints ? 'Resetting...' : 'Reset Points'}
@@ -1176,6 +1266,80 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
               className="px-6 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
               Cancel
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <ConfirmationModal
+        isOpen={showConfirmAddCollaborator}
+        onClose={() => {
+          setShowConfirmAddCollaborator(false);
+          setPendingCollaborator(null);
+        }}
+        onConfirm={() => {
+          const pc = pendingCollaborator;
+          if (pc) void handleConfirmAddCollaborator(pc);
+        }}
+        title="Add collaborator"
+        message={
+          pendingCollaborator
+            ? `Are you sure you want to add ${
+                pendingCollaborator.name?.trim() || pendingCollaborator.email
+              } as a collaborator for ${className.trim() || 'this class'}?`
+            : ''
+        }
+        confirmText="Add"
+        cancelText="Cancel"
+        confirmButtonColor="purple"
+      />
+
+      <Modal
+        isOpen={showNotFoundCollaborator}
+        onClose={() => setShowNotFoundCollaborator(false)}
+        className="max-w-md"
+      >
+        <div className="bg-[#F5F5F5] rounded-[28px] p-8 -m-6">
+          <div className="text-center mb-6">
+            <h3 className="text-2xl font-extrabold text-[#4A3B8D] mb-2">Teacher not found</h3>
+            <p className="text-gray-600">
+              No registered teacher account was found for this email address. Only teachers who have signed up
+              with a @kshcm.net account can be added as collaborators for{' '}
+              <span className="font-semibold">{className.trim() || 'this class'}</span>.
+            </p>
+          </div>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setShowNotFoundCollaborator(false)}
+              className="px-6 py-2 bg-[#D96B7B] text-white rounded-lg font-bold hover:brightness-95 transition"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showCollaboratorSuccess}
+        onClose={() => setShowCollaboratorSuccess(false)}
+        className="max-w-md"
+      >
+        <div className="bg-[#F5F5F5] rounded-[28px] p-8 -m-6">
+          <div className="text-center mb-6">
+            <h3 className="text-2xl font-extrabold text-[#4A3B8D] mb-2">Collaborator added</h3>
+            <p className="text-gray-600">
+              {collaboratorSuccessName} has been successfully added as a collaborator for{' '}
+              <span className="font-semibold">{className.trim() || 'this class'}</span>.
+            </p>
+          </div>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setShowCollaboratorSuccess(false)}
+              className="px-6 py-2 bg-[#D96B7B] text-white rounded-lg font-bold hover:brightness-95 transition"
+            >
+              OK
             </button>
           </div>
         </div>

@@ -7,6 +7,7 @@ interface Class {
   id: string;
   name: string;
   icon?: string;
+  is_owner?: boolean;
 }
 
 interface ClassCardProps {
@@ -32,6 +33,7 @@ export default function ClassCard({
   onDelete,
   showDelete = false,
 }: ClassCardProps) {
+  const isOwner = classItem.is_owner !== false;
   return (
     <Link
       href={`/dashboard/classes/${classItem.id}`}
@@ -70,25 +72,29 @@ export default function ClassCard({
                     </svg>
                     <span>Edit Class</span>
                   </button>
-                  <div className="my-1 border-t border-gray-100"></div>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onArchive(classItem.id, classItem.name);
-                    }}
-                    className="w-full px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-purple-50 hover:text-purple-700 flex items-center transition-colors duration-150 group"
-                  >
-                    <svg className="w-5 h-5 mr-3 text-gray-400 group-hover:text-purple-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      {archiveButtonText === 'Unarchive Class' ? (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                      ) : (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l6 6m0 0l6-6m-6 6V3" />
-                      )}
-                    </svg>
-                    <span>{archiveButtonText}</span>
-                  </button>
-                  {showDelete && onDelete && (
+                  {isOwner && (
+                    <>
+                      <div className="my-1 border-t border-gray-100"></div>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onArchive(classItem.id, classItem.name);
+                        }}
+                        className="w-full px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-purple-50 hover:text-purple-700 flex items-center transition-colors duration-150 group"
+                      >
+                        <svg className="w-5 h-5 mr-3 text-gray-400 group-hover:text-purple-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          {archiveButtonText === 'Unarchive Class' ? (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                          ) : (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l6 6m0 0l6-6m-6 6V3" />
+                          )}
+                        </svg>
+                        <span>{archiveButtonText}</span>
+                      </button>
+                    </>
+                  )}
+                  {isOwner && showDelete && onDelete && (
                     <>
                       <div className="my-1 border-t border-gray-100"></div>
                       <button
@@ -143,6 +149,9 @@ export default function ClassCard({
             : 'Loading...'
           }
         </p>
+        {!isOwner && (
+          <p className="text-[11px] text-blue-600 text-center font-semibold mt-1">Shared with you</p>
+        )}
       </div>
     </Link>
   );

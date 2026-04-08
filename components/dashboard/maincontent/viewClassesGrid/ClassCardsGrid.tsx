@@ -5,6 +5,7 @@ interface Class {
   id: string;
   name: string;
   icon?: string;
+  is_owner?: boolean;
 }
 
 interface ClassCardsGridProps {
