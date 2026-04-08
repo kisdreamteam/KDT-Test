@@ -47,6 +47,22 @@ export default function BottomNavSeatingEdit({
   // Get layout ID from URL
   const layoutId = searchParams.get('layout');
 
+  const emitViewSettingsChanged = (partial: {
+    show_grid?: boolean;
+    show_objects?: boolean;
+    layout_orientation?: 'Left' | 'Right';
+  }) => {
+    if (!layoutId) return;
+    window.dispatchEvent(
+      new CustomEvent('seatingChartViewSettingsChanged', {
+        detail: {
+          layoutId,
+          ...partial,
+        },
+      })
+    );
+  };
+
   // Fetch current layout settings from database
   useEffect(() => {
     const fetchLayoutSettings = async () => {
@@ -99,7 +115,9 @@ export default function BottomNavSeatingEdit({
         console.error('Error updating show_grid:', error);
         // Revert on error
         setShowGrid(!newValue);
+        return;
       }
+      emitViewSettingsChanged({ show_grid: newValue });
     } catch (err) {
       console.error('Unexpected error updating show_grid:', err);
       // Revert on error
@@ -124,7 +142,9 @@ export default function BottomNavSeatingEdit({
         console.error('Error updating show_objects:', error);
         // Revert on error
         setShowFurniture(!newValue);
+        return;
       }
+      emitViewSettingsChanged({ show_objects: newValue });
     } catch (err) {
       console.error('Unexpected error updating show_objects:', err);
       // Revert on error
@@ -149,7 +169,9 @@ export default function BottomNavSeatingEdit({
         console.error('Error updating layout_orientation:', error);
         // Revert on error
         setTeachersDeskLeft(!newValue);
+        return;
       }
+      emitViewSettingsChanged({ layout_orientation: newValue ? 'Left' : 'Right' });
     } catch (err) {
       console.error('Unexpected error updating layout_orientation:', err);
       // Revert on error
