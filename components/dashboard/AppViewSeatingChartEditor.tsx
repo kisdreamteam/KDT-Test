@@ -130,6 +130,16 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   const [showGrid, setShowGrid] = useState<boolean>(true);
   const [showObjects, setShowObjects] = useState<boolean>(true);
   const [layoutOrientation, setLayoutOrientation] = useState<string>('Left');
+
+  const applyLayoutViewSettings = useCallback((data: {
+    show_grid?: boolean | null;
+    show_objects?: boolean | null;
+    layout_orientation?: string | null;
+  }) => {
+    setShowGrid(data.show_grid ?? true);
+    setShowObjects(data.show_objects ?? true);
+    setLayoutOrientation(data.layout_orientation ?? 'Left');
+  }, []);
   
   // Helper function to show success notification
   const showSuccessNotification = (title: string, message: string) => {
@@ -296,9 +306,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
 
         if (data) {
           // Set values from database (default to true/Left if null)
-          setShowGrid(data.show_grid ?? true);
-          setShowObjects(data.show_objects ?? true);
-          setLayoutOrientation(data.layout_orientation ?? 'Left');
+          applyLayoutViewSettings(data);
         }
       } catch (err) {
         console.error('Unexpected error fetching layout settings:', err);
@@ -306,40 +314,83 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     };
 
     fetchLayoutSettings();
-  }, [selectedLayoutId]);
+  }, [selectedLayoutId, applyLayoutViewSettings]);
 
-  // Listen for view settings updates from bottom nav (polling approach)
+  // Keep view settings in sync without aggressive polling:
+  // 1) local custom events, 2) realtime row updates, 3) low-frequency visible-tab fallback.
   useEffect(() => {
     if (!selectedLayoutId) return;
-    
+
+    const supabase = createClient();
+
     const handleViewSettingsUpdate = async () => {
+      if (document.visibilityState !== 'visible') return;
       try {
-        const supabase = createClient();
         const { data, error } = await supabase
           .from('seating_charts')
           .select('show_grid, show_objects, layout_orientation')
           .eq('id', selectedLayoutId)
           .single();
 
-        if (error) {
-          return; // Silently fail if error
-        }
-
-        if (data) {
-          setShowGrid(data.show_grid ?? true);
-          setShowObjects(data.show_objects ?? true);
-          setLayoutOrientation(data.layout_orientation ?? 'Left');
-        }
-      } catch (err) {
+        if (error || !data) return;
+        applyLayoutViewSettings(data);
+      } catch {
         // Silently fail
       }
     };
 
-    // Poll for changes every 500ms to catch updates from bottom nav
-    const interval = setInterval(handleViewSettingsUpdate, 500);
-    
-    return () => clearInterval(interval);
-  }, [selectedLayoutId]);
+    const handleLocalSettingsEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        layoutId?: string;
+        show_grid?: boolean | null;
+        show_objects?: boolean | null;
+        layout_orientation?: string | null;
+      }>;
+      const detail = customEvent.detail;
+      if (!detail || detail.layoutId !== selectedLayoutId) return;
+      applyLayoutViewSettings(detail);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void handleViewSettingsUpdate();
+      }
+    };
+
+    window.addEventListener('seatingChartViewSettingsChanged', handleLocalSettingsEvent as EventListener);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const realtimeChannel = supabase
+      .channel(`seating_chart_view_settings_${selectedLayoutId}_editor`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'seating_charts',
+          filter: `id=eq.${selectedLayoutId}`,
+        },
+        (payload) => {
+          const nextRow = payload.new as {
+            show_grid?: boolean | null;
+            show_objects?: boolean | null;
+            layout_orientation?: string | null;
+          };
+          applyLayoutViewSettings(nextRow);
+        }
+      )
+      .subscribe();
+
+    // Low-frequency fallback in case realtime is unavailable.
+    const interval = setInterval(handleViewSettingsUpdate, 15000);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('seatingChartViewSettingsChanged', handleLocalSettingsEvent as EventListener);
+      void supabase.removeChannel(realtimeChannel);
+    };
+  }, [selectedLayoutId, applyLayoutViewSettings]);
 
   // Fetch all students for the class
   const fetchAllStudents = useCallback(async () => {
