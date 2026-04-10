@@ -30,7 +30,6 @@ export default function Random({ onClose }: RandomProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSpinning, setIsSpinning] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [scrollPosition, setScrollPosition] = useState(0);
   const reelRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const [isAwardPointsModalOpen, setIsAwardPointsModalOpen] = useState(false);
@@ -96,7 +95,7 @@ export default function Random({ onClose }: RandomProps) {
         cancelAnimationFrame(animationFrameRef.current);
       }
       if (audioContextRef.current) {
-        audioContextRef.current.close();
+        void audioContextRef.current.close();
       }
     };
   }, []);
@@ -211,7 +210,7 @@ export default function Random({ onClose }: RandomProps) {
     
     // Reset card tracking and scroll position to top for consistent animation
     lastCardIndexRef.current = -1;
-    setScrollPosition(0); // Reset to top immediately
+    if (reelRef.current) reelRef.current.style.transform = `translateY(-${0}px)`; // Reset to top immediately
 
     // Choose winner first, then calculate exact stop point from it.
     const winnerIndex = Math.floor(Math.random() * availableStudents.length);
@@ -247,7 +246,7 @@ export default function Random({ onClose }: RandomProps) {
       
       // Calculate current position
       const currentPosition = startPosition + distance * easedProgress;
-      setScrollPosition(currentPosition);
+      if (reelRef.current) reelRef.current.style.transform = `translateY(-${currentPosition}px)`;
       
       // Calculate which card is currently in the middle slot
       // The middle of the visible viewport is at middleOfWindow (inner height / 2)
@@ -272,7 +271,7 @@ export default function Random({ onClose }: RandomProps) {
         animationFrameRef.current = requestAnimationFrame(animate);
       } else {
         // Animation complete
-        setScrollPosition(finalTarget);
+        if (reelRef.current) reelRef.current.style.transform = `translateY(-${finalTarget}px)`;
         setIsSpinning(false);
         setSelectedStudent(selected);
         lastCardIndexRef.current = -1; // Reset for next spin
@@ -321,7 +320,7 @@ export default function Random({ onClose }: RandomProps) {
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [availableStudents.length, isSpinning, middleOfWindow, itemCenterOffset, itemHeight]);
+  }, [availableStudents.length, isSpinning]);
 
   return (
     <div className="fixed inset-0 bg-[#4A3B8D] z-50 flex items-center justify-center">
@@ -454,7 +453,7 @@ export default function Random({ onClose }: RandomProps) {
                     ref={reelRef}
                     className="relative transition-none"
                     style={{
-                      transform: `translateY(-${scrollPosition}px)`,
+                      transform: 'translateY(0px)',
                       transition: 'none',
                     }}
                   >
