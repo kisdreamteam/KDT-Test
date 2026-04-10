@@ -30,18 +30,14 @@ export default function BottomNavSeatingEdit({
   const pathname = usePathname();
   const leftPosition = useBottomNavPosition(sidebarOpen);
   const [isViewSettingsMenuOpen, setIsViewSettingsMenuOpen] = useState(false);
-  const [viewSettingsMenuPosition, setViewSettingsMenuPosition] = useState({ left: 0, bottom: 0 });
   const viewSettingsButtonRef = useRef<HTMLDivElement>(null);
   const [showGrid, setShowGrid] = useState(true);
   const [showFurniture, setShowFurniture] = useState(true);
   const [teachersDeskLeft, setTeachersDeskLeft] = useState(true);
   const [colorByGender, setColorByGender] = useState(true);
-  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
-  const [settingsMenuPosition, setSettingsMenuPosition] = useState({ left: 0, bottom: 0 });
   const settingsButtonRef = useRef<HTMLDivElement>(null);
   const [isAddGroupsMenuOpen, setIsAddGroupsMenuOpen] = useState(false);
-  const [addGroupsMenuPosition, setAddGroupsMenuPosition] = useState({ left: 0, bottom: 0 });
   const addGroupsButtonRef = useRef<HTMLDivElement>(null);
   
   // Get layout ID from URL
@@ -62,41 +58,6 @@ export default function BottomNavSeatingEdit({
       })
     );
   };
-
-  // Fetch current layout settings from database
-  useEffect(() => {
-    const fetchLayoutSettings = async () => {
-      if (!layoutId) return;
-      
-      try {
-        setIsLoadingSettings(true);
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from('seating_charts')
-          .select('show_grid, show_objects, layout_orientation')
-          .eq('id', layoutId)
-          .single();
-
-        if (error) {
-          console.error('Error fetching layout settings:', error);
-          return;
-        }
-
-        if (data) {
-          // Set initial values from database (default to true/Left if null)
-          setShowGrid(data.show_grid ?? true);
-          setShowFurniture(data.show_objects ?? true);
-          setTeachersDeskLeft(data.layout_orientation === 'Left' || data.layout_orientation === null);
-        }
-      } catch (err) {
-        console.error('Unexpected error fetching layout settings:', err);
-      } finally {
-        setIsLoadingSettings(false);
-      }
-    };
-
-    fetchLayoutSettings();
-  }, [layoutId]);
 
   // Update show_grid in database
   const handleToggleShowGrid = async (newValue: boolean) => {
@@ -179,83 +140,40 @@ export default function BottomNavSeatingEdit({
     }
   };
 
-  // Update view settings menu position when it opens
   useEffect(() => {
-    if (isViewSettingsMenuOpen && viewSettingsButtonRef.current) {
-      const rect = viewSettingsButtonRef.current.getBoundingClientRect();
-      setViewSettingsMenuPosition({
-        left: rect.left,
-        bottom: window.innerHeight - rect.top + 8,
-      });
-    }
-  }, [isViewSettingsMenuOpen]);
+    if (!isViewSettingsMenuOpen && !isSettingsMenuOpen && !isAddGroupsMenuOpen) return;
 
-  // Update settings menu position when it opens
-  useEffect(() => {
-    if (isSettingsMenuOpen && settingsButtonRef.current) {
-      const rect = settingsButtonRef.current.getBoundingClientRect();
-      setSettingsMenuPosition({
-        left: rect.left,
-        bottom: window.innerHeight - rect.top + 8,
-      });
-    }
-  }, [isSettingsMenuOpen]);
-
-  // Update add groups menu position when it opens
-  useEffect(() => {
-    if (isAddGroupsMenuOpen && addGroupsButtonRef.current) {
-      const rect = addGroupsButtonRef.current.getBoundingClientRect();
-      setAddGroupsMenuPosition({
-        left: rect.left,
-        bottom: window.innerHeight - rect.top + 8,
-      });
-    }
-  }, [isAddGroupsMenuOpen]);
-
-  // Close view settings menu when clicking outside
-  useEffect(() => {
-    if (!isViewSettingsMenuOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
-      if (viewSettingsButtonRef.current && !viewSettingsButtonRef.current.contains(e.target as Node)) {
-        const menu = document.querySelector('[data-view-settings-menu]');
-        if (menu && !menu.contains(e.target as Node)) {
-          setIsViewSettingsMenuOpen(false);
-        }
+      const target = e.target as Node;
+
+      if (
+        isViewSettingsMenuOpen &&
+        viewSettingsButtonRef.current &&
+        !viewSettingsButtonRef.current.contains(target)
+      ) {
+        setIsViewSettingsMenuOpen(false);
+      }
+
+      if (
+        isSettingsMenuOpen &&
+        settingsButtonRef.current &&
+        !settingsButtonRef.current.contains(target)
+      ) {
+        setIsSettingsMenuOpen(false);
+      }
+
+      if (
+        isAddGroupsMenuOpen &&
+        addGroupsButtonRef.current &&
+        !addGroupsButtonRef.current.contains(target)
+      ) {
+        setIsAddGroupsMenuOpen(false);
       }
     };
-    document.addEventListener('click', handleClickOutside, true);
-    return () => document.removeEventListener('click', handleClickOutside, true);
-  }, [isViewSettingsMenuOpen]);
 
-  // Close settings menu when clicking outside
-  useEffect(() => {
-    if (!isSettingsMenuOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (settingsButtonRef.current && !settingsButtonRef.current.contains(e.target as Node)) {
-        const menu = document.querySelector('[data-settings-menu]');
-        if (menu && !menu.contains(e.target as Node)) {
-          setIsSettingsMenuOpen(false);
-        }
-      }
-    };
     document.addEventListener('click', handleClickOutside, true);
     return () => document.removeEventListener('click', handleClickOutside, true);
-  }, [isSettingsMenuOpen]);
-
-  // Close add groups menu when clicking outside
-  useEffect(() => {
-    if (!isAddGroupsMenuOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (addGroupsButtonRef.current && !addGroupsButtonRef.current.contains(e.target as Node)) {
-        const menu = document.querySelector('[data-add-groups-menu]');
-        if (menu && !menu.contains(e.target as Node)) {
-          setIsAddGroupsMenuOpen(false);
-        }
-      }
-    };
-    document.addEventListener('click', handleClickOutside, true);
-    return () => document.removeEventListener('click', handleClickOutside, true);
-  }, [isAddGroupsMenuOpen]);
+  }, [isViewSettingsMenuOpen, isSettingsMenuOpen, isAddGroupsMenuOpen]);
 
   const handleRandomizeSeating = () => {
     window.dispatchEvent(new CustomEvent('seatingChartRandomize'));
@@ -302,7 +220,7 @@ export default function BottomNavSeatingEdit({
 
   return (
     <div 
-      className="fixed bottom-0 font-spartan bg-white h-12 sm:h-14 md:h-16 lg:h-20 flex items-center justify-start gap-2 sm:gap-4 md:gap-8 lg:gap-15 pr-4 sm:pr-6 md:pr-8 lg:pr-10 z-50 border-t border-[#4A3B8D] overflow-hidden"
+      className="fixed bottom-0 font-spartan bg-white h-12 sm:h-14 md:h-16 lg:h-20 flex items-center justify-start gap-2 sm:gap-4 md:gap-8 lg:gap-15 pr-4 sm:pr-6 md:pr-8 lg:pr-10 z-50 border-t border-[#4A3B8D] overflow-visible"
       style={{ left: `${leftPosition}px`, right: '0.5rem' }}
     >
       <div className="flex items-center justify-between w-full">
@@ -325,11 +243,7 @@ export default function BottomNavSeatingEdit({
               {isViewSettingsMenuOpen && (
                 <div
                   data-view-settings-menu
-                  className="fixed bg-white border border-gray-200 rounded-lg shadow-lg z-[100] min-w-[220px] py-2"
-                  style={{
-                    left: `${viewSettingsMenuPosition.left}px`,
-                    bottom: `${viewSettingsMenuPosition.bottom}px`,
-                  }}
+                  className="absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[100] min-w-[220px] py-2"
                   onClick={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
                 >
@@ -341,10 +255,9 @@ export default function BottomNavSeatingEdit({
                         e.stopPropagation();
                         handleToggleShowGrid(!showGrid);
                       }}
-                      disabled={isLoadingSettings}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                         showGrid ? 'bg-purple-600' : 'bg-gray-300'
-                      } ${isLoadingSettings ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      }`}
                     >
                       <span
                         className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -362,10 +275,9 @@ export default function BottomNavSeatingEdit({
                         e.stopPropagation();
                         handleToggleShowFurniture(!showFurniture);
                       }}
-                      disabled={isLoadingSettings}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                         showFurniture ? 'bg-purple-600' : 'bg-gray-300'
-                      } ${isLoadingSettings ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      }`}
                     >
                       <span
                         className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -383,10 +295,9 @@ export default function BottomNavSeatingEdit({
                         e.stopPropagation();
                         handleToggleTeachersDeskLeft(!teachersDeskLeft);
                       }}
-                      disabled={isLoadingSettings}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                         teachersDeskLeft ? 'bg-purple-600' : 'bg-gray-300'
-                      } ${isLoadingSettings ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      }`}
                     >
                       <span
                         className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -408,10 +319,9 @@ export default function BottomNavSeatingEdit({
                           detail: { colorCodeBy: newValue ? 'Gender' : 'Level' } 
                         }));
                       }}
-                      disabled={isLoadingSettings}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                         colorByGender ? 'bg-purple-600' : 'bg-gray-300'
-                      } ${isLoadingSettings ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      }`}
                     >
                       <span
                         className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -456,11 +366,7 @@ export default function BottomNavSeatingEdit({
               {isAddGroupsMenuOpen && (
                 <div
                   data-add-groups-menu
-                  className="fixed bg-white border border-gray-200 rounded-lg shadow-lg z-[100] min-w-[160px] py-2"
-                  style={{
-                    left: `${addGroupsMenuPosition.left}px`,
-                    bottom: `${addGroupsMenuPosition.bottom}px`,
-                  }}
+                  className="absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[100] min-w-[160px] py-2"
                   onClick={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
                 >
@@ -514,11 +420,7 @@ export default function BottomNavSeatingEdit({
               {isSettingsMenuOpen && (
                 <div
                   data-settings-menu
-                  className="fixed bg-white border border-gray-200 rounded-lg shadow-lg z-[100] min-w-[220px] py-2"
-                  style={{
-                    left: `${settingsMenuPosition.left}px`,
-                    bottom: `${settingsMenuPosition.bottom}px`,
-                  }}
+                  className="absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[100] min-w-[220px] py-2"
                   onClick={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
                 >
