@@ -40,79 +40,33 @@ export default function BottomNavStudents({
   const router = useRouter();
   const leftPosition = useBottomNavPosition(sidebarOpen);
   const [isSortPopupOpen, setIsSortPopupOpen] = useState(false);
-  const [sortPopupPosition, setSortPopupPosition] = useState({ left: 0, bottom: 0 });
   const sortButtonRef = useRef<HTMLDivElement>(null);
   const [isSettingsPopupOpen, setIsSettingsPopupOpen] = useState(false);
-  const [settingsPopupPosition, setSettingsPopupPosition] = useState({ left: 0, bottom: 0 });
   const settingsButtonRef = useRef<HTMLDivElement>(null);
   const [isViewPopupOpen, setIsViewPopupOpen] = useState(false);
-  const [viewPopupPosition, setViewPopupPosition] = useState({ left: 0, bottom: 0 });
   const viewButtonRef = useRef<HTMLDivElement>(null);
 
-  // Update popup positions when they open
+  // Close any open popup when clicking outside its trigger container.
   useEffect(() => {
-    if (isSortPopupOpen && sortButtonRef.current) {
-      const rect = sortButtonRef.current.getBoundingClientRect();
-      setSortPopupPosition({
-        left: rect.left,
-        bottom: window.innerHeight - rect.top + 8,
-      });
-    }
-  }, [isSortPopupOpen]);
+    if (!isSortPopupOpen && !isSettingsPopupOpen && !isViewPopupOpen) return;
 
-  useEffect(() => {
-    if (isSettingsPopupOpen && settingsButtonRef.current) {
-      const rect = settingsButtonRef.current.getBoundingClientRect();
-      setSettingsPopupPosition({
-        left: rect.left,
-        bottom: window.innerHeight - rect.top + 8,
-      });
-    }
-  }, [isSettingsPopupOpen]);
-
-  useEffect(() => {
-    if (isViewPopupOpen && viewButtonRef.current) {
-      const rect = viewButtonRef.current.getBoundingClientRect();
-      setViewPopupPosition({
-        left: rect.left,
-        bottom: window.innerHeight - rect.top + 8,
-      });
-    }
-  }, [isViewPopupOpen]);
-
-  // Close popups when clicking outside
-  useEffect(() => {
-    if (!isSortPopupOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
-      if (sortButtonRef.current && !sortButtonRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+
+      if (isSortPopupOpen && sortButtonRef.current && !sortButtonRef.current.contains(target)) {
         setIsSortPopupOpen(false);
       }
-    };
-    document.addEventListener('click', handleClickOutside, true);
-    return () => document.removeEventListener('click', handleClickOutside, true);
-  }, [isSortPopupOpen]);
-
-  useEffect(() => {
-    if (!isSettingsPopupOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (settingsButtonRef.current && !settingsButtonRef.current.contains(e.target as Node)) {
+      if (isSettingsPopupOpen && settingsButtonRef.current && !settingsButtonRef.current.contains(target)) {
         setIsSettingsPopupOpen(false);
       }
-    };
-    document.addEventListener('click', handleClickOutside, true);
-    return () => document.removeEventListener('click', handleClickOutside, true);
-  }, [isSettingsPopupOpen]);
-
-  useEffect(() => {
-    if (!isViewPopupOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (viewButtonRef.current && !viewButtonRef.current.contains(e.target as Node)) {
+      if (isViewPopupOpen && viewButtonRef.current && !viewButtonRef.current.contains(target)) {
         setIsViewPopupOpen(false);
       }
     };
+
     document.addEventListener('click', handleClickOutside, true);
     return () => document.removeEventListener('click', handleClickOutside, true);
-  }, [isViewPopupOpen]);
+  }, [isSortPopupOpen, isSettingsPopupOpen, isViewPopupOpen]);
 
   const handleLogout = async () => {
     try {
@@ -132,7 +86,7 @@ export default function BottomNavStudents({
 
   return (
     <div 
-      className="fixed bottom-0 font-spartan bg-white h-12 sm:h-14 md:h-16 lg:h-20 flex items-center justify-start gap-2 sm:gap-4 md:gap-8 lg:gap-15 pr-4 sm:pr-6 md:pr-8 lg:pr-10 z-50 border-t border-[#4A3B8D] overflow-hidden"
+      className="fixed bottom-0 font-spartan bg-white h-12 sm:h-14 md:h-16 lg:h-20 flex items-center justify-start gap-2 sm:gap-4 md:gap-8 lg:gap-15 pr-4 sm:pr-6 md:pr-8 lg:pr-10 z-50 border-t border-[#4A3B8D] overflow-visible"
       style={{ left: `${leftPosition}px`, right: '0.5rem' }}
     >
       {/* View Button - Only show when on a class page */}
@@ -149,7 +103,6 @@ export default function BottomNavStudents({
           />
           <ViewPopup 
             isOpen={isViewPopupOpen} 
-            position={viewPopupPosition} 
             onClose={() => setIsViewPopupOpen(false)} 
           />
         </div>
@@ -185,11 +138,7 @@ export default function BottomNavStudents({
           {/* Sort Popup */}
           {isSortPopupOpen && (
             <div 
-              className="fixed bg-blue-100 rounded-lg shadow-lg border-4 border-[#4A3B8D] py-2 z-[100] min-w-[200px]"
-              style={{ 
-                left: `${sortPopupPosition.left}px`,
-                bottom: `${sortPopupPosition.bottom}px`,
-              }}
+              className="absolute bottom-full left-0 mb-2 bg-blue-100 rounded-lg shadow-lg border-4 border-[#4A3B8D] py-2 z-[100] min-w-[200px]"
             >
               <div className="px-4 py-2 text-sm font-semibold text-gray-700 border-b border-gray-200">
                 Sort by:
@@ -256,11 +205,7 @@ export default function BottomNavStudents({
         {/* Settings Popup */}
         {isSettingsPopupOpen && (
           <div 
-            className="fixed bg-blue-100 rounded-lg shadow-lg border-4 border-[#4A3B8D] py-2 z-[100] min-w-[200px]"
-            style={{ 
-              left: `${settingsPopupPosition.left}px`,
-              bottom: `${settingsPopupPosition.bottom}px`,
-            }}
+            className="absolute bottom-full left-0 mb-2 bg-blue-100 rounded-lg shadow-lg border-4 border-[#4A3B8D] py-2 z-[100] min-w-[200px]"
           >
             {classId && onEditClass && (
               <button

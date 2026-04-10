@@ -4,11 +4,10 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 interface ViewPopupProps {
   isOpen: boolean;
-  position: { left: number; bottom: number };
   onClose: () => void;
 }
 
-export default function ViewPopup({ isOpen, position, onClose }: ViewPopupProps) {
+export default function ViewPopup({ isOpen, onClose }: ViewPopupProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -34,11 +33,7 @@ export default function ViewPopup({ isOpen, position, onClose }: ViewPopupProps)
 
   return (
     <div 
-      className="fixed bg-blue-100 rounded-lg shadow-lg border-4 border-[#4A3B8D] py-2 z-[100] min-w-[200px]"
-      style={{ 
-        left: `${position.left}px`,
-        bottom: `${position.bottom}px`,
-      }}
+      className="absolute bottom-full left-0 mb-2 bg-blue-100 rounded-lg shadow-lg border-4 border-[#4A3B8D] py-2 z-[100] min-w-[200px]"
     >
       <div className="px-4 py-2 text-sm font-semibold text-gray-700 border-b border-gray-200">
         View mode:
