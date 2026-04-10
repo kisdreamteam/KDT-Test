@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { normalizeClassIconPath } from '@/lib/iconUtils';
 import IconSettingsWheel from '@/components/iconsCustom/iconSettingsWheel';
@@ -120,12 +119,13 @@ export default function ClassCard({
 
         {/* Class Icon - Fixed */}
         <div className="text-center mb-4 flex-shrink-0">
-          <Image
+          <img
             src={normalizeClassIconPath(classItem.icon)}
             alt={`${classItem.name} icon`}
             width={80}
             height={80}
             className="mx-auto mb-2"
+            decoding="async"
           />
         </div>
 

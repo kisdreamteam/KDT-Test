@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import { Student } from '@/lib/types';
 import { normalizeAvatarPath } from '@/lib/iconUtils';
 import IconCheckCircle from '@/components/iconsCustom/iconCheckCircle';
@@ -57,12 +56,13 @@ export default function StudentCardMulti({
 
       {/* Student Avatar */}
       <div className="flex justify-center mb-1 pointer-events-none flex-shrink-0">
-        <Image
+        <img
           src={normalizeAvatarPath(student.avatar)}
           alt={`${student.first_name} ${student.last_name} avatar`}
           width={100}
           height={100}
           className="rounded-xl bg-[#FDF2F0]"
+          decoding="async"
         />
       </div>
 

@@ -439,6 +439,8 @@ export default function AppViewStudents() {
             ) : (
               <AppViewSeatingChart
                 classId={classId}
+                students={students}
+                setStudents={setStudents}
                 isMultiSelectMode={isMultiSelectMode}
                 selectedStudentIds={selectedStudentIds}
                 onSelectStudent={handleSelectStudent}

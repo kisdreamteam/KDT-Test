@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Student } from '@/lib/types';
@@ -55,12 +56,22 @@ type PointLogRow = {
 
 interface AppViewSeatingChartProps {
   classId: string;
+  /** Shared class roster from parent — avoids duplicate Supabase fetch when toggling grid/seating. */
+  students: Student[];
+  setStudents: Dispatch<SetStateAction<Student[]>>;
   isMultiSelectMode?: boolean;
   selectedStudentIds?: string[];
   onSelectStudent?: (studentId: string) => void;
 }
 
-export default function AppViewSeatingChart({ classId, isMultiSelectMode = false, selectedStudentIds = [], onSelectStudent }: AppViewSeatingChartProps) {
+export default function AppViewSeatingChart({
+  classId,
+  students,
+  setStudents,
+  isMultiSelectMode = false,
+  selectedStudentIds = [],
+  onSelectStudent,
+}: AppViewSeatingChartProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -71,7 +82,6 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
   const [groups, setGroups] = useState<SeatingGroup[]>([]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [groupAssignments, setGroupAssignments] = useState<Map<string, GroupAssignment[]>>(new Map());
-  const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [groupPositions, setGroupPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const setSeatingLayoutData = useSeatingLayoutNav();
@@ -81,6 +91,8 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAwardPointsModalOpen, setIsAwardPointsModalOpen] = useState(false);
   const [selectedGroupStudentIds, setSelectedGroupStudentIds] = useState<string[]>([]);
+  /** Set in onAwardComplete before IDs are cleared; read in handlePointsAwarded for optimistic points. */
+  const pendingAwardStudentIdsRef = useRef<string[] | null>(null);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [awardInfo, setAwardInfo] = useState<{
     studentAvatar: string;
@@ -370,35 +382,27 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
     // eslint-disable-next-line react-hooks/exhaustive-deps -- handlers are stable enough; avoid running on every render
   }, [layouts, selectedLayoutId, isLoading, setSeatingLayoutData]);
 
-  // Fetch all students for the class
-  const fetchAllStudents = useCallback(async () => {
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('students')
-        .select('*')
-        .eq('class_id', classId)
-        .order('student_number', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching students:', error);
-        return;
-      }
-
-      if (data) {
-        setAllStudents(data as Student[]);
-      }
-    } catch (err) {
-      console.error('Unexpected error fetching students:', err);
-    }
-  }, [classId]);
-
-  // Fetch all students on mount
-  useEffect(() => {
-    if (classId) {
-      fetchAllStudents();
-    }
-  }, [classId, fetchAllStudents]);
+  const applyOptimisticPointsDelta = useCallback((studentIds: string[], delta: number) => {
+    if (studentIds.length === 0 || delta === 0 || !Number.isFinite(delta)) return;
+    const idSet = new Set(studentIds);
+    setStudents((prev) =>
+      prev.map((s) => (idSet.has(s.id) ? { ...s, points: (s.points ?? 0) + delta } : s))
+    );
+    setGroupAssignments((prev) => {
+      const next = new Map<string, GroupAssignment[]>();
+      prev.forEach((assignments, groupId) => {
+        next.set(
+          groupId,
+          assignments.map((ga) =>
+            idSet.has(ga.student.id)
+              ? { ...ga, student: { ...ga.student, points: (ga.student.points ?? 0) + delta } }
+              : ga
+          )
+        );
+      });
+      return next;
+    });
+  }, [setStudents]);
 
   const fetchGroups = useCallback(async () => {
     if (!selectedLayoutId) return;
@@ -503,17 +507,17 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
     } finally {
       setIsLoadingGroups(false);
     }
-  }, [selectedLayoutId, allStudents]);
+  }, [selectedLayoutId]);
 
-  // Fetch groups when layout is selected or when allStudents changes
+  // Fetch groups when layout is selected or when shared roster becomes available
   useEffect(() => {
-    if (selectedLayoutId && allStudents.length > 0) {
+    if (selectedLayoutId && students.length > 0) {
       fetchGroups();
     } else if (!selectedLayoutId) {
       setGroups([]);
       setGroupAssignments(new Map());
     }
-  }, [selectedLayoutId, fetchGroups, allStudents.length]);
+  }, [selectedLayoutId, fetchGroups, students.length]);
 
   const studentAtSlot = useCallback((groupId: string, seatIndex: number): Student | null => {
     const list = groupAssignments.get(groupId) ?? [];
@@ -767,13 +771,15 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
     categoryName: string;
     categoryIcon?: string;
   }) => {
+    const fromRef = pendingAwardStudentIdsRef.current;
+    pendingAwardStudentIdsRef.current = null;
+    const targetIds =
+      fromRef && fromRef.length > 0 ? fromRef : [...selectedGroupStudentIds];
+    if (targetIds.length > 0 && typeof info.points === 'number') {
+      applyOptimisticPointsDelta(targetIds, info.points);
+    }
     setAwardInfo(info);
     setIsConfirmationModalOpen(true);
-    // Refresh students and groups to update points display
-    fetchAllStudents();
-    if (selectedLayoutId) {
-      fetchGroups();
-    }
   };
 
   // Handle create layout
@@ -1358,26 +1364,15 @@ export default function AppViewSeatingChart({ classId, isMultiSelectMode = false
             setIsAwardPointsModalOpen(false);
             setSelectedGroupStudentIds([]);
           }}
-          student={selectedGroupStudentIds.length === 1 ? (allStudents.find(s => s.id === selectedGroupStudentIds[0]) ?? null) : null}
+          student={selectedGroupStudentIds.length === 1 ? (students.find(s => s.id === selectedGroupStudentIds[0]) ?? null) : null}
           classId={classId}
           selectedStudentIds={selectedGroupStudentIds}
-          onAwardComplete={() => {
+          onAwardComplete={(selectedIds) => {
+            pendingAwardStudentIdsRef.current = selectedIds;
             setIsAwardPointsModalOpen(false);
             setSelectedGroupStudentIds([]);
-            // Refresh students and groups to update points
-            fetchAllStudents();
-            if (selectedLayoutId) {
-              fetchGroups();
-            }
           }}
           onPointsAwarded={handlePointsAwarded}
-          onRefresh={() => {
-            // Refresh students and groups to update points
-            fetchAllStudents();
-            if (selectedLayoutId) {
-              fetchGroups();
-            }
-          }}
         />
       )}
 

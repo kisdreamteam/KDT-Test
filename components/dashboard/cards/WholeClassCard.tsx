@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import { normalizeClassIconPath } from '@/lib/iconUtils';
 
 interface WholeClassCardProps {
@@ -20,12 +19,13 @@ export default function WholeClassCard({
     >
       {/* Class Icon */}
       <div className="flex justify-center mb-4 pointer-events-none flex-shrink-0">
-        <Image
+        <img
           src={normalizeClassIconPath(classIcon)}
           alt="Whole Class icon"
           width={80}
           height={80}
           className="rounded-xl bg-[#FDF2F0]"
+          decoding="async"
         />
       </div>
 
