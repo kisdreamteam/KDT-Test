@@ -102,7 +102,6 @@ export default function AppViewSeatingChart({
     categoryIcon?: string;
   } | null>(null);
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
-  const [canvasLeft, setCanvasLeft] = useState(320); // Same as editor: sidebar right edge + 8px
   // View settings from database
   const [showGrid, setShowGrid] = useState<boolean>(true);
   const [showObjects, setShowObjects] = useState<boolean>(true);
@@ -115,7 +114,6 @@ export default function AppViewSeatingChart({
   const [logPage, setLogPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [logTotalCount, setLogTotalCount] = useState(0);
-  const skipNextTeacherViewPersistRef = useRef(true);
 
   const applyLayoutViewSettings = useCallback((data: {
     show_grid?: boolean | null;
@@ -130,23 +128,12 @@ export default function AppViewSeatingChart({
   // Persist teacher-view preference per class so it survives temporary remounts.
   useEffect(() => {
     if (!classId) return;
-    skipNextTeacherViewPersistRef.current = true;
     const storageKey = `seatingChart_teacherView_${classId}`;
     const stored = localStorage.getItem(storageKey);
     if (stored !== null) {
       setIsTeacherView(stored === 'true');
     }
   }, [classId]);
-
-  useEffect(() => {
-    if (!classId) return;
-    if (skipNextTeacherViewPersistRef.current) {
-      skipNextTeacherViewPersistRef.current = false;
-      return;
-    }
-    const storageKey = `seatingChart_teacherView_${classId}`;
-    localStorage.setItem(storageKey, String(isTeacherView));
-  }, [classId, isTeacherView]);
 
   const formatDateDDMMYYYY = useCallback((isoDate: string) => {
     const d = new Date(isoDate);
@@ -264,10 +251,6 @@ export default function AppViewSeatingChart({
     }
   }, [isPointLogOpen, fetchPointLogRows]);
 
-  useEffect(() => {
-    setLogPage(1);
-  }, [rowsPerPage]);
-
   const totalPages = Math.max(1, Math.ceil(logTotalCount / rowsPerPage));
   const safeLogPage = Math.min(Math.max(logPage, 1), totalPages);
   const pagedPointLogRows = useMemo(() => {
@@ -275,28 +258,6 @@ export default function AppViewSeatingChart({
     const end = start + rowsPerPage;
     return pointLogRows.slice(start, end);
   }, [pointLogRows, rowsPerPage, safeLogPage]);
-
-  // Match editor canvas position: compute left from layout sidebar (data-sidebar-container)
-  useEffect(() => {
-    const updateCanvasLeft = () => {
-      const sidebar = document.querySelector('[data-sidebar-container]');
-      if (sidebar) {
-        const rect = sidebar.getBoundingClientRect();
-        setCanvasLeft(rect.right + 8);
-      } else {
-        setCanvasLeft(320);
-      }
-    };
-    const timeoutId = setTimeout(updateCanvasLeft, 10);
-    updateCanvasLeft();
-    window.addEventListener('resize', updateCanvasLeft);
-    const interval = setInterval(updateCanvasLeft, 100);
-    return () => {
-      clearTimeout(timeoutId);
-      window.removeEventListener('resize', updateCanvasLeft);
-      clearInterval(interval);
-    };
-  }, []);
 
   const fetchLayouts = useCallback(async () => {
     try {
@@ -527,35 +488,14 @@ export default function AppViewSeatingChart({
     return found ? found.student : null;
   }, [groupAssignments]);
 
-  // Fetch layout settings (show_grid, show_objects, layout_orientation) when layout changes
+  // Apply current layout settings directly from layouts already in state.
   useEffect(() => {
-    const fetchLayoutSettings = async () => {
-      if (!selectedLayoutId) return;
-      
-      try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from('seating_charts')
-          .select('show_grid, show_objects, layout_orientation')
-          .eq('id', selectedLayoutId)
-          .single();
-
-        if (error) {
-          console.error('Error fetching layout settings:', error);
-          return;
-        }
-
-        if (data) {
-          // Set value from database (default to true if null, 'Left' if null)
-          applyLayoutViewSettings(data);
-        }
-      } catch (err) {
-        console.error('Unexpected error fetching layout settings:', err);
-      }
-    };
-
-    fetchLayoutSettings();
-  }, [selectedLayoutId, applyLayoutViewSettings]);
+    if (!selectedLayoutId) return;
+    const currentLayout = layouts.find((l) => l.id === selectedLayoutId);
+    if (currentLayout) {
+      applyLayoutViewSettings(currentLayout);
+    }
+  }, [selectedLayoutId, layouts, applyLayoutViewSettings]);
 
   // Keep view settings in sync without aggressive polling:
   // 1) local custom events, 2) realtime row updates, 3) low-frequency visible-tab fallback.
@@ -622,11 +562,7 @@ export default function AppViewSeatingChart({
       )
       .subscribe();
 
-    // Low-frequency fallback in case realtime is unavailable.
-    const interval = setInterval(handleViewSettingsUpdate, 15000);
-
     return () => {
-      clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('seatingChartViewSettingsChanged', handleLocalSettingsEvent as EventListener);
       void supabase.removeChannel(realtimeChannel);
@@ -880,7 +816,13 @@ export default function AppViewSeatingChart({
           <div className="flex-1 min-h-2" aria-hidden="true" />
           <button
             type="button"
-            onClick={() => setIsTeacherView((v) => !v)}
+            onClick={() =>
+              setIsTeacherView((v) => {
+                const next = !v;
+                if (classId) localStorage.setItem(`seatingChart_teacherView_${classId}`, String(next));
+                return next;
+              })
+            }
             className={`w-10 h-10 rounded-lg flex items-center justify-center shadow transition-colors ${isTeacherView ? 'bg-purple-100 hover:bg-purple-200' : 'bg-gray-200 hover:bg-gray-300 opacity-75'}`}
             title={isTeacherView ? "Teacher's view (click to exit)" : "Teacher's view"}
             aria-label={isTeacherView ? "Teacher's view (click to exit)" : "Teacher's view"}
@@ -925,7 +867,7 @@ export default function AppViewSeatingChart({
         className="bg-[#fcf1f0] fixed border-2 border-black rounded-lg pt-2 overflow-hidden"
         style={{
           top: '6px',
-          left: `${canvasLeft}px`,
+          left: '320px',
           right: '8px',
           bottom: '85px',
           zIndex: 1,
@@ -1205,7 +1147,13 @@ export default function AppViewSeatingChart({
             <div className="flex-1 min-h-2" aria-hidden="true" />
             <button
               type="button"
-              onClick={() => setIsTeacherView((v) => !v)}
+              onClick={() =>
+                setIsTeacherView((v) => {
+                  const next = !v;
+                  if (classId) localStorage.setItem(`seatingChart_teacherView_${classId}`, String(next));
+                  return next;
+                })
+              }
               className={`w-10 h-10 rounded-lg flex items-center justify-center shadow transition-colors ${isTeacherView ? 'bg-purple-100 hover:bg-purple-200' : 'bg-gray-200 hover:bg-gray-300 opacity-75'}`}
               title={isTeacherView ? "Teacher's view (click to exit)" : "Teacher's view"}
               aria-label={isTeacherView ? "Teacher's view (click to exit)" : "Teacher's view"}
@@ -1296,7 +1244,10 @@ export default function AppViewSeatingChart({
                 </button>
                 <select
                   value={rowsPerPage}
-                  onChange={(e) => setRowsPerPage(Number(e.target.value))}
+                  onChange={(e) => {
+                    setRowsPerPage(Number(e.target.value));
+                    setLogPage(1);
+                  }}
                   className="ml-auto border border-gray-300 rounded px-2 py-1"
                 >
                   <option value={20}>20 rows</option>
