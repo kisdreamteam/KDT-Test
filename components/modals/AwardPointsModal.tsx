@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import Image from 'next/image';
 import Modal from '@/components/modals/Modal';
 import { createClient } from '@/lib/supabase/client';
 import AddSkillModal from '@/components/modals/AddSkillModal';
@@ -699,7 +698,7 @@ export default function AwardPointsModal({
           {/* Student/Class Info */}
           <div className="flex items-center gap-3">
             <div className="relative">
-              <Image
+              <img
                 src={isMultiClassMode || isWholeClassMode
                   ? (classIcon || "/images/dashboard/class-icons/icon-1.png")
                   : (student?.avatar || "/images/dashboard/student-avatars/avatar-01.png")
@@ -717,6 +716,7 @@ export default function AwardPointsModal({
                 width={48}
                 height={48}
                 className="rounded-full"
+                decoding="async"
               />
               {/* Crown icon overlay - only for single student (including single student from seating chart) */}
               {(student || (!isWholeClassMode && !isMultiClassMode && !isMultiStudentMode)) && (
@@ -818,14 +818,14 @@ export default function AwardPointsModal({
                         {/* Skill Icon */}
                         <div className="flex justify-center mb-1 pointer-events-none flex-shrink-0">
                           {skill.icon ? (
-                            <Image
+                            <img
                               key={`${skill.id}-${imageCacheKey}`}
                               src={addCacheBuster(skill.icon, imageCacheKey)}
                               alt={skill.name}
                               width={100}
                               height={100}
                               className="rounded-xl bg-[#FDF2F0] object-contain"
-                              unoptimized
+                              decoding="async"
                             />
                           ) : (
                             <div className="w-[100px] h-[100px] rounded-xl bg-[#FDF2F0] flex items-center justify-center">
@@ -916,14 +916,14 @@ export default function AwardPointsModal({
                         {/* Skill Icon */}
                         <div className="flex justify-center mb-1 pointer-events-none flex-shrink-0">
                           {skill.icon ? (
-                            <Image
+                            <img
                               key={`${skill.id}-${imageCacheKey}`}
                               src={addCacheBuster(skill.icon, imageCacheKey)}
                               alt={skill.name}
                               width={100}
                               height={100}
                               className="rounded-xl bg-[#FDF2F0] object-contain"
-                              unoptimized
+                              decoding="async"
                             />
                           ) : (
                             <div className="w-[100px] h-[100px] rounded-xl bg-[#FDF2F0] flex items-center justify-center">

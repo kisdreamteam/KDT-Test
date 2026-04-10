@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import Image from 'next/image';
 import Modal from '@/components/modals/Modal';
 import { createClient } from '@/lib/supabase/client';
 import { Student } from '@/lib/types';
@@ -142,12 +141,13 @@ export default function EditStudentModal({ isOpen, onClose, student, onRefresh }
                   onClick={() => setIsAvatarDropdownOpen(!isAvatarDropdownOpen)}
                   className="w-20 h-20 bg-white rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors border-2 border-gray-300 hover:border-[#4A3B8D] relative shadow-sm"
                 >
-                  <Image
+                  <img
                     src={selectedAvatar}
                     alt="Student avatar"
                     width={60}
                     height={60}
                     className="w-full h-full object-cover rounded-full"
+                    decoding="async"
                     onError={(e) => {
                       // Fallback to default avatar if image doesn't exist
                       e.currentTarget.src = '/images/dashboard/student-avatars/avatar-01.png';
@@ -203,12 +203,13 @@ export default function EditStudentModal({ isOpen, onClose, student, onRefresh }
                                 : 'border-gray-200 hover:border-gray-300'
                             }`}
                           >
-                            <Image
+                            <img
                               src={avatar}
                               alt={`Avatar ${index + 1}`}
                               width={48}
                               height={48}
                               className="w-full h-full object-cover rounded-full"
+                              decoding="async"
                               onError={(e) => {
                                 // Hide broken images
                                 e.currentTarget.style.display = 'none';

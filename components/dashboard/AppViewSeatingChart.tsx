@@ -164,21 +164,8 @@ export default function AppViewSeatingChart({
       setPointLogError(null);
       const supabase = createClient();
 
-      const { data: classStudents, error: studentsError } = await supabase
-        .from('students')
-        .select('id, first_name, last_name')
-        .eq('class_id', classId);
-
-      if (studentsError) {
-        console.error('Error fetching students for point log:', studentsError);
-        setPointLogError('Failed to load point log students.');
-        setPointLogRows([]);
-        setLogTotalCount(0);
-        return;
-      }
-
       const studentNameMap = new Map<string, string>();
-      const studentIds = (classStudents ?? []).map((s: any) => {
+      const studentIds = students.map((s) => {
         const first = s.first_name ?? '';
         const last = s.last_name ?? '';
         studentNameMap.set(s.id, `${first} ${last}`.trim() || 'Unknown student');
@@ -268,7 +255,7 @@ export default function AppViewSeatingChart({
     } finally {
       setIsPointLogLoading(false);
     }
-  }, [classId]);
+  }, [classId, students]);
 
   useEffect(() => {
     if (isPointLogOpen) {

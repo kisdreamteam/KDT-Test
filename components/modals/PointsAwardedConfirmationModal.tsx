@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect } from 'react';
-import Image from 'next/image';
 import Modal from '@/components/modals/Modal';
 import { normalizeAvatarPath } from '@/lib/iconUtils';
 
@@ -147,12 +146,13 @@ export default function PointsAwardedConfirmationModal({
       <div className="flex flex-row bg-white rounded-2xl p-8 items-center justify-center gap-12 p-1 shadow-lg">
           {/* Student Avatar */}
           <div className="relative w-40">
-            <Image
+            <img
               src={normalizeAvatarPath(studentAvatar)}
               alt={`${studentFirstName} avatar`}
               width={120}
               height={120}
               className="rounded-lg object-cover"
+              decoding="async"
               onError={(e) => {
                 e.currentTarget.src = '/images/dashboard/student-avatars/avatar-01.png';
               }}
@@ -191,12 +191,13 @@ export default function PointsAwardedConfirmationModal({
               {/* Category Icon */}
               {categoryIcon && (
                 <div className="w-12 h-12 flex items-center justify-center">
-                  <Image
+                  <img
                     src={categoryIcon}
                     alt={categoryName}
                     width={120}
                     height={120}
                     className="w-12 h-12 object-contain"
+                    decoding="async"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
                     }}
