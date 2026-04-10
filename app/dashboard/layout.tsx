@@ -58,7 +58,6 @@ function DashboardLayoutContent({
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [classes, setClasses] = useState<Class[]>([]);
   const [isLoadingClasses, setIsLoadingClasses] = useState(true);
-  const [currentClassName, setCurrentClassName] = useState<string | null>(null);
   const [isTimerOpen, setIsTimerOpen] = useState(false);
   const [isRandomOpen, setIsRandomOpen] = useState(false);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -187,32 +186,10 @@ function DashboardLayoutContent({
       viewMode === 'archived' ? cls.is_archived : !cls.is_archived
     );
   }, [classes, viewMode]);
-
-  const fetchClassName = useCallback(async (classId: string) => {
-    try {
-      console.log('Fetching class name for classId:', classId);
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('classes')
-        .select('name')
-        .eq('id', classId)
-        .single();
-      
-      console.log('Class name data:', data);
-      console.log('Class name error:', error);
-      
-      if (data) {
-        console.log('Setting class name to:', data.name);
-        setCurrentClassName(data.name);
-      } else if (error) {
-        console.error('Error fetching class name:', error);
-        setCurrentClassName(null);
-      }
-    } catch (err) {
-      console.error('Unexpected error fetching class name:', err);
-      setCurrentClassName(null);
-    }
-  }, []);
+  const currentClassName = useMemo(
+    () => classes.find((c) => c.id === currentClassId)?.name || null,
+    [classes, currentClassId]
+  );
 
   // Listen for multi-select state changes
   useEffect(() => {
@@ -244,30 +221,6 @@ function DashboardLayoutContent({
       window.removeEventListener('classUpdated', handleClassUpdate);
     };
   }, [fetchClasses]);
-
-  // Refetch classes when viewMode changes
-  useEffect(() => {
-    fetchClasses();
-  }, [fetchClasses]);
-
-  // Detect route changes and update header
-  useEffect(() => {
-    console.log('Pathname changed to:', pathname);
-    // Check if we're on a class detail page
-    const classDetailMatch = pathname?.match(/\/dashboard\/classes\/([^/]+)/);
-    
-    console.log('Class detail match:', classDetailMatch);
-    
-    if (classDetailMatch) {
-      const classId = classDetailMatch[1];
-      console.log('Extracted classId:', classId);
-      fetchClassName(classId);
-    } else {
-      // On main dashboard, clear class name
-      console.log('On main dashboard, clearing class name');
-      setCurrentClassName(null);
-    }
-  }, [pathname, fetchClassName]);
 
   return (
     // Outer Container of the left-nav and main content container
