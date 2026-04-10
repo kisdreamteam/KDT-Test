@@ -46,9 +46,11 @@ type GroupAssignment = { student: Student; seat_index: number };
 
 interface AppViewSeatingChartEditorProps {
   classId: string;
+  /** Shared class roster from parent — same source as AppViewSeatingChart. */
+  students: Student[];
 }
 
-export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingChartEditorProps) {
+export default function AppViewSeatingChartEditor({ classId, students }: AppViewSeatingChartEditorProps) {
   const { selectedStudentForGroup, setSelectedStudentForGroup, setUnseatedStudents, unseatedStudents } = useSeatingChart();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -72,11 +74,13 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     title: '',
     message: '',
   });
+  const [isSavingAllChanges, setIsSavingAllChanges] = useState(false);
   const [editingGroup, setEditingGroup] = useState<SeatingGroup | null>(null);
   /** Fixed-slot: groupId -> list of { student, seat_index } (may have gaps). */
   const [groupAssignments, setGroupAssignments] = useState<Map<string, GroupAssignment[]>>(new Map());
   const groupAssignmentsRef = useRef<Map<string, GroupAssignment[]>>(new Map());
   const addStudentToGroupInFlightRef = useRef<{ studentId: string; groupId: string } | null>(null);
+  const saveAllChangesInFlightRef = useRef(false);
   const [targetGroupId, setTargetGroupId] = useState<string | null>(null);
 
   // Keep ref in sync with state
@@ -110,7 +114,6 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     const maxInCol = maxSeatIndexInColumn(groupId, col, C);
     return maxInCol === 0 ? col + 1 : maxInCol + C;
   }, [maxSeatIndexInColumn]);
-  const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [openSettingsMenuId, setOpenSettingsMenuId] = useState<string | null>(null);
   const [settingsMenuPosition, setSettingsMenuPosition] = useState<{ top: number; right: number } | null>(null);
   const [selectedStudentForSwap, setSelectedStudentForSwap] = useState<{ studentId: string; groupId: string } | null>(null);
@@ -162,11 +165,13 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
 
   // Handle close button - navigate back to seating chart view (remove mode=edit)
   const handleClose = () => {
-    window.dispatchEvent(new CustomEvent('seatingChartEditMode', { detail: { isEditMode: false } }));
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('mode');
-    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-    router.push(newUrl);
+    void saveAllChangesToDatabase(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('mode');
+      const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+      router.push(newUrl);
+      window.dispatchEvent(new CustomEvent('seatingChartEditMode', { detail: { isEditMode: false } }));
+    });
   };
 
   // Calculate canvas left position based on left sidebar position
@@ -392,36 +397,6 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     };
   }, [selectedLayoutId, applyLayoutViewSettings]);
 
-  // Fetch all students for the class
-  const fetchAllStudents = useCallback(async () => {
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('students')
-        .select('*')
-        .eq('class_id', classId)
-        .order('student_number', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching students:', error);
-        return;
-      }
-
-      if (data) {
-        setAllStudents(data as Student[]);
-      }
-    } catch (err) {
-      console.error('Unexpected error fetching students:', err);
-    }
-  }, [classId]);
-
-  // Fetch all students on mount
-  useEffect(() => {
-    if (classId) {
-      fetchAllStudents();
-    }
-  }, [classId, fetchAllStudents]);
-
   const fetchGroups = useCallback(async () => {
     if (!selectedLayoutId) return;
 
@@ -518,34 +493,34 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
           const assignedStudentIds = new Set(
             assignmentsData?.map((a: StudentSeatAssignment) => a.students?.id).filter(Boolean) || []
           );
-          const unseated = allStudents.filter(student => !assignedStudentIds.has(student.id));
+          const unseated = students.filter(student => !assignedStudentIds.has(student.id));
           setUnseatedStudents(unseated);
         } else {
           // No groups, all students are unseated
           setGroupAssignments(new Map());
-          setUnseatedStudents(allStudents);
+          setUnseatedStudents(students);
         }
       } else {
         setGroups([]);
         setGroupAssignments(new Map());
-        setUnseatedStudents(allStudents);
+        setUnseatedStudents(students);
       }
     } catch (err) {
       console.error('Unexpected error fetching seating groups:', err);
     } finally {
       setIsLoadingGroups(false);
     }
-  }, [selectedLayoutId, allStudents, setUnseatedStudents]);
+  }, [selectedLayoutId, students, setUnseatedStudents]);
 
-  // Fetch groups when layout is selected or when allStudents changes
+  // Fetch groups when layout is selected or when shared roster changes
   useEffect(() => {
-    if (selectedLayoutId && allStudents.length > 0) {
+    if (selectedLayoutId && students.length > 0) {
       fetchGroups();
     } else if (!selectedLayoutId) {
       setGroups([]);
       setGroupAssignments(new Map());
     }
-  }, [selectedLayoutId, fetchGroups, allStudents.length]);
+  }, [selectedLayoutId, fetchGroups, students.length]);
 
   // Listen for student selection from sidebar
   useEffect(() => {
@@ -562,65 +537,134 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   }, [setSelectedStudentForGroup]);
 
 
-  // Function to save all group_rows and group_columns to database
-  // Called when user clicks "Save Changes" button
-  const saveAllGroupSizes = useCallback(async () => {
+  /** Matches local grid math used previously in saveAllGroupSizes (header row + student rows, min 2). */
+  const computeGroupRowsFromAssignments = useCallback(
+    (assignmentsInGroup: GroupAssignment[], groupColumns: number) => {
+      const studentsPerRow = groupColumns || 2;
+      const maxIdx =
+        assignmentsInGroup.length === 0 ? 0 : Math.max(...assignmentsInGroup.map((a) => a.seat_index));
+      const studentRowCount = maxIdx === 0 ? 1 : Math.ceil(maxIdx / studentsPerRow);
+      return Math.max(2, 1 + studentRowCount);
+    },
+    []
+  );
+
+  /**
+   * Batch persist: group positions/sizes + full replace of seat assignments for the current layout.
+   */
+  const saveAllChangesToDatabase = useCallback(async (onSaveComplete?: () => void) => {
+    if (!selectedLayoutId) {
+      showSuccessNotification('No layout', 'Select a seating layout before saving.');
+      return;
+    }
+    if (groups.length === 0) {
+      showSuccessNotification('Nothing to save', 'Create at least one group before saving.');
+      return;
+    }
+    if (saveAllChangesInFlightRef.current) return;
+    saveAllChangesInFlightRef.current = true;
+    setIsSavingAllChanges(true);
     try {
       const supabase = createClient();
-      
-      // Calculate and prepare updates for all groups
-      const updates = groups.map(group => {
-        const assignmentsInGroup = getAssignmentsInGroup(group.id);
-        const studentsPerRow = group.group_columns || 2;
-        const maxIdx = assignmentsInGroup.length === 0 ? 0 : Math.max(...assignmentsInGroup.map(a => a.seat_index));
-        const studentRowCount = maxIdx === 0 ? 1 : Math.ceil(maxIdx / studentsPerRow);
-        
-        // Total rows = 1 header + student rows (minimum 2)
-        const totalRowCount = Math.max(2, 1 + studentRowCount);
-        
-        return {
-          id: group.id,
-          group_rows: totalRowCount,
-          group_columns: group.group_columns || 2,
+      const groupIds = groups.map((g) => g.id);
+      const groupIdSet = new Set(groupIds);
+
+      const updates = groups.map((group) => {
+        const pos = groupPositions.get(group.id) ?? {
+          x: group.position_x ?? 0,
+          y: group.position_y ?? 0,
         };
+        const assignmentsInGroup = groupAssignments.get(group.id) ?? [];
+        const columns = group.group_columns || 2;
+        const group_rows = computeGroupRowsFromAssignments(assignmentsInGroup, columns);
+        return { group, pos, columns, group_rows };
       });
-      
-      // Update all groups in database
-      for (const update of updates) {
-        const { error } = await supabase
-          .from('seating_groups')
-          .update({
-            group_rows: update.group_rows,
-            group_columns: update.group_columns,
-          })
-          .eq('id', update.id);
-        
-        if (error) {
-          console.error(`Error updating group ${update.id}:`, error);
-          console.error('Update data:', { 
-            group_rows: update.group_rows, 
-            group_columns: update.group_columns,
-            id: update.id 
-          });
-          console.error('Full error details:', JSON.stringify(error, null, 2));
+
+      const updateResults = await Promise.all(
+        updates.map(({ group, pos, columns, group_rows }) =>
+          supabase
+            .from('seating_groups')
+            .update({
+              position_x: pos.x,
+              position_y: pos.y,
+              group_columns: columns,
+              group_rows,
+            })
+            .eq('id', group.id)
+        )
+      );
+
+      const firstGroupErr = updateResults.find((r) => r.error)?.error;
+      if (firstGroupErr) {
+        console.error('Error updating seating_groups:', firstGroupErr);
+        showSuccessNotification('Error', firstGroupErr.message ?? 'Failed to update groups.');
+        return;
+      }
+
+      if (groupIds.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('student_seat_assignments')
+          .delete()
+          .in('seating_group_id', groupIds);
+
+        if (deleteError) {
+          console.error('Error clearing seat assignments:', deleteError);
+          showSuccessNotification('Error', deleteError.message ?? 'Failed to clear seat assignments.');
+          return;
         }
       }
-      
-      // Update local state with calculated values
-      setGroups(prev => prev.map(g => {
-        const update = updates.find(u => u.id === g.id);
-        if (update) {
-          return { ...g, group_rows: update.group_rows, group_columns: update.group_columns };
+
+      const insertRows: { student_id: string; seating_group_id: string; seat_index: number }[] = [];
+      groupAssignments.forEach((list, seatingGroupId) => {
+        if (!groupIdSet.has(seatingGroupId)) return;
+        for (const a of list) {
+          insertRows.push({
+            student_id: a.student.id,
+            seating_group_id: seatingGroupId,
+            seat_index: a.seat_index,
+          });
         }
-        return g;
-      }));
-      
-      console.log('All group sizes saved to database');
+      });
+
+      if (insertRows.length > 0) {
+        const chunkSize = 500;
+        for (let i = 0; i < insertRows.length; i += chunkSize) {
+          const chunk = insertRows.slice(i, i + chunkSize);
+          const { error: insertError } = await supabase.from('student_seat_assignments').insert(chunk);
+          if (insertError) {
+            console.error('Error inserting seat assignments:', insertError);
+            showSuccessNotification('Error', insertError.message ?? 'Failed to save seat assignments.');
+            return;
+          }
+        }
+      }
+
+      setGroups((prev) =>
+        prev.map((g) => {
+          const pos = groupPositions.get(g.id) ?? { x: g.position_x ?? 0, y: g.position_y ?? 0 };
+          const assignmentsInGroup = groupAssignments.get(g.id) ?? [];
+          const columns = g.group_columns || 2;
+          const group_rows = computeGroupRowsFromAssignments(assignmentsInGroup, columns);
+          return {
+            ...g,
+            position_x: pos.x,
+            position_y: pos.y,
+            group_columns: columns,
+            group_rows,
+          };
+        })
+      );
+
+      showSuccessNotification('Saved', 'Your seating chart layout and assignments were saved.');
+      onSaveComplete?.();
     } catch (err) {
-      console.error('Unexpected error saving group sizes:', err);
-      alert('Failed to save changes. Please try again.');
+      console.error('Unexpected error saving seating chart:', err);
+      showSuccessNotification('Error', 'Failed to save changes. Please try again.');
+    } finally {
+      saveAllChangesInFlightRef.current = false;
+      setIsSavingAllChanges(false);
     }
-  }, [groups, getAssignmentsInGroup]);
+  }, [selectedLayoutId, groups, groupAssignments, groupPositions, computeGroupRowsFromAssignments]);
 
   // Handle randomize seating - animated swap of all seated students
   const handleRandomizeSeating = useCallback(async () => {
@@ -774,8 +818,8 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
   }, [handleRandomizeSeating]);
 
   // Listen for add student to group event. targetSeatIndex = fill hole / expand; omit = append at end.
-  const addStudentToGroup = useCallback(async (student: Student, groupId: string, targetSeatIndex?: number) => {
-    // Prevent double invocation (e.g. React Strict Mode or duplicate event) so we don't try to insert twice and hit duplicate key
+  const addStudentToGroup = useCallback((student: Student, groupId: string, targetSeatIndex?: number) => {
+    // Prevent double invocation (e.g. React Strict Mode or duplicate event)
     if (addStudentToGroupInFlightRef.current?.studentId === student.id && addStudentToGroupInFlightRef.current?.groupId === groupId) {
       return;
     }
@@ -784,41 +828,19 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     try {
       const currentInGroup = (groupAssignmentsRef.current.get(groupId) ?? []).map(a => a.student);
       if (currentInGroup.some((s) => s.id === student.id)) {
-        // Already in this group (e.g. double-click or stale state) — avoid duplicate insert
         setSelectedStudentForGroup(null);
         return;
       }
 
-      const supabase = createClient();
       let seatIndexToUse: number;
       if (targetSeatIndex != null) {
         seatIndexToUse = targetSeatIndex;
       } else {
-        const { data: existing } = await supabase
-          .from('student_seat_assignments')
-          .select('seat_index')
-          .eq('seating_group_id', groupId);
-        const maxIndex = existing?.length
-          ? Math.max(...existing.map((r) => r.seat_index ?? 0))
-          : 0;
+        const list = groupAssignmentsRef.current.get(groupId) ?? [];
+        const maxIndex = list.length === 0 ? 0 : Math.max(...list.map((a) => a.seat_index ?? 0));
         seatIndexToUse = maxIndex + 1;
       }
 
-      const { error: insertError } = await supabase
-        .from('student_seat_assignments')
-        .insert({
-          student_id: student.id,
-          seating_group_id: groupId,
-          seat_index: seatIndexToUse,
-        });
-
-      if (insertError) {
-        const msg = insertError.message ?? insertError.code ?? JSON.stringify(insertError);
-        console.error('Error assigning student to group:', msg, insertError);
-        alert(`Failed to assign student. ${insertError.message ?? 'Please try again.'}`);
-        return;
-      }
-      // Update local state (fixed-slot: add with exact seat_index)
       setGroupAssignments(prev => {
         const newMap = new Map(prev);
         const list = newMap.get(groupId) ?? [];
@@ -828,7 +850,6 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         return newMap;
       });
 
-      // Remove from unseated list
       setUnseatedStudents((prev: Student[]) => prev.filter(s => s.id !== student.id));
       setSelectedStudentForGroup(null);
     } catch (err) {
@@ -857,15 +878,16 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
 
   // Listen for save changes event from bottom nav
   useEffect(() => {
-    const handleSaveSeatingChart = () => {
-      saveAllGroupSizes();
+    const handleSaveSeatingChart = (event: Event) => {
+      const detail = (event as CustomEvent<{ onSaveComplete?: () => void }>).detail;
+      void saveAllChangesToDatabase(detail?.onSaveComplete);
     };
 
     window.addEventListener('seatingChartSave', handleSaveSeatingChart);
     return () => {
       window.removeEventListener('seatingChartSave', handleSaveSeatingChart);
     };
-  }, [saveAllGroupSizes]);
+  }, [saveAllChangesToDatabase]);
 
   // Listen for clear all groups event from bottom nav
   useEffect(() => {
@@ -904,54 +926,26 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     };
   }, []);
 
-  const removeStudentFromGroup = async (studentId: string, groupId: string) => {
-    try {
-      const supabase = createClient();
-      
-      // Delete assignment from database
-      const { error: deleteError } = await supabase
-        .from('student_seat_assignments')
-        .delete()
-        .eq('student_id', studentId)
-        .eq('seating_group_id', groupId);
-
-      if (deleteError) {
-        console.error('Error removing student from group:', deleteError);
-        alert('Failed to remove student. Please try again.');
-        return;
-      }
-
-      // Fixed-slot: do not renumber; leave the hole.
-
-      // Update local state
-      let removedStudent: Student | undefined;
-      setGroupAssignments(prev => {
-        const newMap = new Map(prev);
-        const list = newMap.get(groupId) ?? [];
-        const found = list.find(a => a.student.id === studentId);
-        if (found) removedStudent = found.student;
-        if (removedStudent) {
-          newMap.set(groupId, list.filter(a => a.student.id !== studentId));
-        }
-        return newMap;
-      });
-      
-      // Add back to unseated list (check for duplicates first) - outside of setGroupAssignments callback
+  const removeStudentFromGroup = (studentId: string, groupId: string) => {
+    let removedStudent: Student | undefined;
+    setGroupAssignments(prev => {
+      const newMap = new Map(prev);
+      const list = newMap.get(groupId) ?? [];
+      const found = list.find(a => a.student.id === studentId);
+      if (found) removedStudent = found.student;
       if (removedStudent) {
-          setUnseatedStudents((prev: Student[]) => {
-            // Check if student is already in the list
-          if (!prev.find(s => s.id === removedStudent!.id)) {
-            return [...prev, removedStudent!];
-            }
-            return prev;
-          });
+        newMap.set(groupId, list.filter(a => a.student.id !== studentId));
+      }
+      return newMap;
+    });
+
+    if (removedStudent) {
+      setUnseatedStudents((prev: Student[]) => {
+        if (!prev.find(s => s.id === removedStudent!.id)) {
+          return [...prev, removedStudent!];
         }
-      
-      // Note: group_rows is calculated on the fly for responsiveness
-      // Database will be updated when user clicks "Save Changes" button
-    } catch (err) {
-      console.error('Unexpected error removing student:', err);
-      alert('An unexpected error occurred. Please try again.');
+        return prev;
+      });
     }
   };
 
@@ -1217,76 +1211,29 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     const clampedX = Math.max(0, Math.min(relativeX, containerRect.width - 300)); // 300px minimum group width (updated to match new sizing)
     const clampedY = Math.max(0, Math.min(relativeY, containerRect.height - 100)); // 100px minimum group height
     
-    // Update the position immediately - free positioning, no snapping
+    // Update the position immediately - free positioning, no snapping (persist via batch save later)
     setGroupPositions(prev => {
       const newPositions = new Map(prev);
       newPositions.set(draggedGroupId, { x: clampedX, y: clampedY });
       return newPositions;
     });
-    
-    // Save position to database
-    const savePositionToDatabase = async () => {
-      try {
-        const supabase = createClient();
-        const { error } = await supabase
-          .from('seating_groups')
-          .update({
-            position_x: clampedX,
-            position_y: clampedY,
-          })
-          .eq('id', draggedGroupId);
-        
-        if (error) {
-          console.error('Error saving group position:', error);
-        }
-      } catch (err) {
-        console.error('Unexpected error saving group position:', err);
-      }
-    };
-    
-    savePositionToDatabase();
+
     setDraggedGroupId(null);
     dragOffsetRef.current = null; // Clear drag offset
   };
 
-  const moveStudentToGroup = async (studentId: string, fromGroupId: string, toGroupId: string, targetSeatIndex?: number) => {
-    // Same group + target slot = move to empty seat within group (student changing seats in real life)
+  const moveStudentToGroup = (studentId: string, fromGroupId: string, toGroupId: string, targetSeatIndex?: number) => {
+    // Same group + target slot = move to empty seat within group
     if (fromGroupId === toGroupId && targetSeatIndex != null) {
-      try {
-        const supabase = createClient();
-        const { data: assignmentArray, error: fetchErr } = await supabase
-          .from('student_seat_assignments')
-          .select('id')
-          .eq('student_id', studentId)
-          .eq('seating_group_id', fromGroupId);
-        if (fetchErr || !assignmentArray?.length) {
-          console.error('Error finding assignment for same-group move:', fetchErr);
-          setSelectedStudentForSwap(null);
-          return;
-        }
-        const { error: updateErr } = await supabase
-          .from('student_seat_assignments')
-          .update({ seat_index: targetSeatIndex })
-          .eq('id', assignmentArray[0].id);
-        if (updateErr) {
-          console.error('Error updating seat_index for same-group move:', updateErr);
-          alert('Failed to move seat. Please try again.');
-          setSelectedStudentForSwap(null);
-          return;
-        }
-        setGroupAssignments(prev => {
-          const newMap = new Map(prev);
-          const list = (newMap.get(fromGroupId) ?? []).map(a =>
-            a.student.id === studentId ? { ...a, seat_index: targetSeatIndex } : a
-          );
-          newMap.set(fromGroupId, list);
-          return newMap;
-        });
-        setSelectedStudentForSwap(null);
-      } catch (err) {
-        console.error('Unexpected error moving seat within group:', err);
-        setSelectedStudentForSwap(null);
-      }
+      setGroupAssignments((prev) => {
+        const newMap = new Map(prev);
+        const list = (newMap.get(fromGroupId) ?? []).map((a) =>
+          a.student.id === studentId ? { ...a, seat_index: targetSeatIndex } : a
+        );
+        newMap.set(fromGroupId, list);
+        return newMap;
+      });
+      setSelectedStudentForSwap(null);
       return;
     }
 
@@ -1295,143 +1242,34 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
       return;
     }
 
-    try {
-      const supabase = createClient();
-      const fromList = groupAssignmentsRef.current.get(fromGroupId) ?? [];
-      const foundFrom = fromList.find(a => a.student.id === studentId);
-      const studentToMove = foundFrom?.student;
+    const fromList = groupAssignmentsRef.current.get(fromGroupId) ?? [];
+    const foundFrom = fromList.find((a) => a.student.id === studentId);
+    const studentToMove = foundFrom?.student;
 
-      if (!studentToMove) {
-        console.error('Student not found in source group');
-        alert('Failed to move student. The student data may be out of sync.');
-        setSelectedStudentForSwap(null);
-        return;
-      }
-
-      // Get current assignment to verify it exists
-      const { data: assignmentArray, error: assignmentError } = await supabase
-        .from('student_seat_assignments')
-        .select('id')
-        .eq('student_id', studentId)
-        .eq('seating_group_id', fromGroupId);
-
-      if (assignmentError) {
-        console.error('Error finding assignment:', assignmentError);
-        alert('Failed to move student. Please try again.');
-        setSelectedStudentForSwap(null);
-        return;
-      }
-
-      const assignmentData = assignmentArray && assignmentArray.length > 0 ? assignmentArray[0] : null;
-
-      // If assignment doesn't exist but student is in local state, create it first
-      // This handles cases where there might be a sync issue
-      if (!assignmentData) {
-        console.warn('Assignment not found in database, but student is in local state. Creating assignment first.');
-        // Create the assignment first
-        const { data: newAssignment, error: createError } = await supabase
-          .from('student_seat_assignments')
-          .insert({
-            student_id: studentId,
-            seating_group_id: fromGroupId,
-            seat_index: 1,
-          })
-          .select('id')
-          .single();
-
-        if (createError || !newAssignment) {
-          console.error('Error creating assignment:', createError);
-          alert('Failed to move student. Could not create assignment.');
-          setSelectedStudentForSwap(null);
-          return;
-        }
-        
-        // Use the newly created assignment
-        const tempAssignmentData = { id: newAssignment.id };
-        const toList = groupAssignmentsRef.current.get(toGroupId) ?? [];
-        const nextSeat = targetSeatIndex != null ? targetSeatIndex : (toList.length === 0 ? 1 : Math.max(...toList.map(a => a.seat_index), 0) + 1);
-        let rollbackState: Map<string, GroupAssignment[]> | null = null;
-        setGroupAssignments(prev => {
-          rollbackState = new Map(prev);
-          const newMap = new Map(prev);
-          const src = (newMap.get(fromGroupId) ?? []).filter(a => a.student.id !== studentId);
-          const tgt = [...(newMap.get(toGroupId) ?? []), { student: studentToMove, seat_index: nextSeat }];
-          newMap.set(fromGroupId, src);
-          newMap.set(toGroupId, tgt);
-          return newMap;
-        });
-        try {
-          const { error: deleteError } = await supabase
-            .from('student_seat_assignments')
-            .delete()
-            .eq('id', tempAssignmentData.id);
-          if (deleteError) {
-            if (rollbackState) setGroupAssignments(rollbackState);
-            alert('Failed to move student. Please try again.');
-            setSelectedStudentForSwap(null);
-            return;
-          }
-          const { error: insertError } = await supabase
-            .from('student_seat_assignments')
-            .insert({ student_id: studentId, seating_group_id: toGroupId, seat_index: nextSeat });
-          if (insertError) {
-            if (rollbackState) setGroupAssignments(rollbackState);
-            alert('Failed to move student. Please try again.');
-            setSelectedStudentForSwap(null);
-            return;
-          }
-          setSelectedStudentForSwap(null);
-        } catch (err) {
-          if (rollbackState) setGroupAssignments(rollbackState);
-          alert('An unexpected error occurred. The move has been reverted.');
-          setSelectedStudentForSwap(null);
-        }
-        return;
-      }
-
-      const toList = groupAssignmentsRef.current.get(toGroupId) ?? [];
-      const nextSeat = targetSeatIndex != null ? targetSeatIndex : (toList.length === 0 ? 1 : Math.max(...toList.map(a => a.seat_index), 0) + 1);
-      let rollbackState: Map<string, GroupAssignment[]> | null = null;
-      setGroupAssignments(prev => {
-        rollbackState = new Map(prev);
-        const newMap = new Map(prev);
-        const src = (newMap.get(fromGroupId) ?? []).filter(a => a.student.id !== studentId);
-        const tgt = [...(newMap.get(toGroupId) ?? []), { student: studentToMove, seat_index: nextSeat }];
-        newMap.set(fromGroupId, src);
-        newMap.set(toGroupId, tgt);
-        return newMap;
-      });
-      try {
-        const { error: deleteError } = await supabase
-          .from('student_seat_assignments')
-          .delete()
-          .eq('id', assignmentData.id);
-        if (deleteError) {
-          if (rollbackState) setGroupAssignments(rollbackState);
-          alert('Failed to move student. Please try again.');
-          setSelectedStudentForSwap(null);
-          return;
-        }
-        const { error: insertError } = await supabase
-          .from('student_seat_assignments')
-          .insert({ student_id: studentId, seating_group_id: toGroupId, seat_index: nextSeat });
-        if (insertError) {
-          if (rollbackState) setGroupAssignments(rollbackState);
-          alert('Failed to move student. Please try again.');
-          setSelectedStudentForSwap(null);
-          return;
-        }
-        setSelectedStudentForSwap(null);
-      } catch (err) {
-        if (rollbackState) setGroupAssignments(rollbackState);
-        alert('An unexpected error occurred. The move has been reverted.');
-        setSelectedStudentForSwap(null);
-      }
-    } catch (err) {
-      console.error('Unexpected error moving student:', err);
-      alert('An unexpected error occurred. Please try again.');
+    if (!studentToMove) {
+      console.error('Student not found in source group');
+      alert('Failed to move student. The student data may be out of sync.');
       setSelectedStudentForSwap(null);
+      return;
     }
+
+    const toList = groupAssignmentsRef.current.get(toGroupId) ?? [];
+    const nextSeat =
+      targetSeatIndex != null
+        ? targetSeatIndex
+        : toList.length === 0
+          ? 1
+          : Math.max(...toList.map((a) => a.seat_index), 0) + 1;
+
+    setGroupAssignments((prev) => {
+      const newMap = new Map(prev);
+      const src = (newMap.get(fromGroupId) ?? []).filter((a) => a.student.id !== studentId);
+      const tgt = [...(newMap.get(toGroupId) ?? []), { student: studentToMove, seat_index: nextSeat }];
+      newMap.set(fromGroupId, src);
+      newMap.set(toGroupId, tgt);
+      return newMap;
+    });
+    setSelectedStudentForSwap(null);
   };
 
   const handleSlotClick = (groupId: string, seatIndex: number) => (e: React.MouseEvent) => {
@@ -1471,7 +1309,7 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
     }
   };
 
-  const handleStudentClick = async (e: React.MouseEvent, studentId: string, groupId: string) => {
+  const handleStudentClick = (e: React.MouseEvent, studentId: string, groupId: string) => {
     e.stopPropagation(); // Prevent group click handler from firing
     e.preventDefault();
     
@@ -1494,16 +1332,13 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
         student2: studentId,
         group2: groupId
       });
-      await swapStudents(selectedStudentForSwap.studentId, selectedStudentForSwap.groupId, studentId, groupId);
+      swapStudents(selectedStudentForSwap.studentId, selectedStudentForSwap.groupId, studentId, groupId);
       setSelectedStudentForSwap(null);
     }
   };
 
-  const swapStudents = async (studentId1: string, groupId1: string, studentId2: string, groupId2: string) => {
+  const swapStudents = (studentId1: string, groupId1: string, studentId2: string, groupId2: string) => {
     try {
-      const supabase = createClient();
-      
-      // If students are in the same group, swap their positions (local state: swap seat_index values)
       if (groupId1 === groupId2) {
         const assignments = groupAssignments.get(groupId1) ?? [];
         const a1 = assignments.find(a => a.student.id === studentId1);
@@ -1524,170 +1359,38 @@ export default function AppViewSeatingChartEditor({ classId }: AppViewSeatingCha
           newMap.set(groupId1, list);
           return newMap;
         });
-        
-        // Persist: fetch both assignments and swap their seat_index in the database
-        const { data: row1, error: err1 } = await supabase
-          .from('student_seat_assignments')
-          .select('id, seat_index')
-          .eq('student_id', studentId1)
-          .eq('seating_group_id', groupId1)
-          .single();
-        const { data: row2, error: err2 } = await supabase
-          .from('student_seat_assignments')
-          .select('id, seat_index')
-          .eq('student_id', studentId2)
-          .eq('seating_group_id', groupId2)
-          .single();
-        if (err1 || err2 || !row1 || !row2) {
-          console.error('Failed to fetch assignments for same-group swap:', err1 ?? err2);
-          await fetchGroups();
-          return;
-        }
-        const SENTINEL = 999999;
-        const { error: u1 } = await supabase.from('student_seat_assignments').update({ seat_index: SENTINEL }).eq('id', row1.id);
-        if (u1) {
-          console.error('Failed to swap seat_index (step 1):', u1);
-          await fetchGroups();
-          return;
-        }
-        const { error: u2 } = await supabase.from('student_seat_assignments').update({ seat_index: s1 }).eq('id', row2.id);
-        if (u2) {
-          console.error('Failed to swap seat_index (step 2):', u2);
-          await supabase.from('student_seat_assignments').update({ seat_index: s1 }).eq('id', row1.id);
-          await fetchGroups();
-          return;
-        }
-        const { error: u3 } = await supabase.from('student_seat_assignments').update({ seat_index: s2 }).eq('id', row1.id);
-        if (u3) {
-          console.error('Failed to swap seat_index (step 3):', u3);
-          await fetchGroups();
-          return;
-        }
         return;
       }
 
-      const studentsInGroup1 = getStudentsInGroup(groupId1);
-      const studentsInGroup2 = getStudentsInGroup(groupId2);
-      const student1Exists = studentsInGroup1.some(s => s.id === studentId1);
-      const student2Exists = studentsInGroup2.some(s => s.id === studentId2);
+      const list1 = groupAssignments.get(groupId1) ?? [];
+      const list2 = groupAssignments.get(groupId2) ?? [];
+      const a1 = list1.find(a => a.student.id === studentId1);
+      const a2 = list2.find(a => a.student.id === studentId2);
 
-      if (!student1Exists || !student2Exists) {
-        console.error('Students not found in expected groups:', { 
-          student1Exists, 
-          student2Exists,
+      if (!a1 || !a2) {
+        console.error('Students not found in expected groups:', {
           studentId1,
           studentId2,
           groupId1,
           groupId2,
-          studentsInGroup1: studentsInGroup1.map(s => ({ id: s.id, name: `${s.first_name} ${s.last_name}` })),
-          studentsInGroup2: studentsInGroup2.map(s => ({ id: s.id, name: `${s.first_name} ${s.last_name}` }))
         });
         alert('Failed to swap students. The student data may be out of sync. Please refresh the page and try again.');
-        // Refresh groups to sync state
-        await fetchGroups();
         return;
       }
 
-      // Different groups - swap ONLY these two students' assignments
-      // All other students remain in their exact positions
-      
-      // First, get current assignments (id and seat_index for swap)
-      const { data: assignment1Array, error: error1 } = await supabase
-        .from('student_seat_assignments')
-        .select('id, seat_index')
-        .eq('student_id', studentId1)
-        .eq('seating_group_id', groupId1);
+      const seatIndex1 = a1.seat_index;
+      const seatIndex2 = a2.seat_index;
+      const student1 = a1.student;
+      const student2 = a2.student;
 
-      const { data: assignment2Array, error: error2 } = await supabase
-        .from('student_seat_assignments')
-        .select('id, seat_index')
-        .eq('student_id', studentId2)
-        .eq('seating_group_id', groupId2);
-
-      const assignment1Data = assignment1Array && assignment1Array.length > 0 ? assignment1Array[0] : null;
-      const assignment2Data = assignment2Array && assignment2Array.length > 0 ? assignment2Array[0] : null;
-
-      if (error1 || error2) {
-        console.error('Error finding assignments:', { error1, error2, studentId1, groupId1, studentId2, groupId2 });
-        alert('Failed to swap students. Please try again.');
-        return;
-      }
-
-      if (!assignment1Data || !assignment2Data) {
-        console.error('One or both assignments not found:', { 
-          assignment1Data, 
-          assignment2Data, 
-          studentId1, 
-          groupId1, 
-          studentId2, 
-          groupId2 
-        });
-        alert('Failed to swap students. One or both students may not be assigned to their groups.');
-        return;
-      }
-
-      const seatIndex1 = assignment1Data.seat_index ?? 0;
-      const seatIndex2 = assignment2Data.seat_index ?? 0;
-      const student1 = (groupAssignments.get(groupId1) ?? []).find(a => a.student.id === studentId1)?.student;
-      const student2 = (groupAssignments.get(groupId2) ?? []).find(a => a.student.id === studentId2)?.student;
-      if (!student1 || !student2) {
-        alert('Failed to swap students. The student data may be out of sync.');
-        await fetchGroups();
-        return;
-      }
-      let rollbackState: Map<string, GroupAssignment[]> | null = null;
       setGroupAssignments(prev => {
-        rollbackState = new Map(prev);
         const newMap = new Map(prev);
-        const list1 = (newMap.get(groupId1) ?? []).filter(a => a.student.id !== studentId1);
-        const list2 = (newMap.get(groupId2) ?? []).filter(a => a.student.id !== studentId2);
-        newMap.set(groupId1, [...list1, { student: student2, seat_index: seatIndex1 }]);
-        newMap.set(groupId2, [...list2, { student: student1, seat_index: seatIndex2 }]);
+        const g1 = (newMap.get(groupId1) ?? []).filter(a => a.student.id !== studentId1);
+        const g2 = (newMap.get(groupId2) ?? []).filter(a => a.student.id !== studentId2);
+        newMap.set(groupId1, [...g1, { student: student2, seat_index: seatIndex1 }]);
+        newMap.set(groupId2, [...g2, { student: student1, seat_index: seatIndex2 }]);
         return newMap;
       });
-
-      // Update database in the background (non-blocking)
-      // If this fails, we'll rollback the optimistic update
-      try {
-        // Delete ONLY the two specific assignments (by their unique IDs)
-        const { error: deleteError1 } = await supabase
-          .from('student_seat_assignments')
-          .delete()
-          .eq('id', assignment1Data.id);
-
-        const { error: deleteError2 } = await supabase
-          .from('student_seat_assignments')
-          .delete()
-          .eq('id', assignment2Data.id);
-
-        if (deleteError1 || deleteError2) {
-          console.error('Error deleting assignments:', deleteError1 || deleteError2);
-          if (rollbackState) setGroupAssignments(rollbackState);
-          alert('Failed to swap students. Please try again.');
-          return;
-        }
-
-        const { error: insertError } = await supabase
-          .from('student_seat_assignments')
-          .insert([
-            { student_id: studentId1, seating_group_id: groupId2, seat_index: seatIndex2 },
-            { student_id: studentId2, seating_group_id: groupId1, seat_index: seatIndex1 },
-          ]);
-
-        if (insertError) {
-          console.error('Error swapping students:', insertError);
-          if (rollbackState) setGroupAssignments(rollbackState);
-          alert('Failed to swap students. Please try again.');
-          return;
-        }
-        
-        // Note: group_rows is calculated on the fly for responsiveness
-        // Database will be updated when user clicks "Save Changes" button
-      } catch (err) {
-        console.error('Unexpected error during database swap:', err);
-        if (rollbackState) setGroupAssignments(rollbackState);
-        alert('An unexpected error occurred. The swap has been reverted.');
-      }
     } catch (err) {
       console.error('Unexpected error swapping students:', err);
       alert('An unexpected error occurred. Please try again.');

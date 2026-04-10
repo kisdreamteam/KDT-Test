@@ -272,13 +272,21 @@ export default function BottomNavSeatingEdit({
   };
 
   const handleSaveSeatingChanges = () => {
-    window.dispatchEvent(new CustomEvent('seatingChartSave'));
-    window.dispatchEvent(new CustomEvent('seatingChartEditMode', { detail: { isEditMode: false } }));
-    // Remove mode parameter from URL
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('mode');
-    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-    router.push(newUrl);
+    window.dispatchEvent(
+      new CustomEvent('seatingChartSave', {
+        detail: {
+          onSaveComplete: () => {
+            const params = new URLSearchParams(searchParams.toString());
+            params.delete('mode');
+            const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+            router.push(newUrl);
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('seatingChartEditMode', { detail: { isEditMode: false } }));
+            }, 100);
+          },
+        },
+      })
+    );
   };
 
   const handleAddGroups = (numGroups: number) => {

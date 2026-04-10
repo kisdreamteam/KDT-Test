@@ -506,6 +506,21 @@ export default function AppViewSeatingChart({
     }
   }, [selectedLayoutId, fetchGroups, students.length]);
 
+  // After leaving the editor, Supabase has the latest assignments — refetch so the view is not stale.
+  useEffect(() => {
+    const handleSeatingEditMode = (event: Event) => {
+      const detail = (event as CustomEvent<{ isEditMode?: boolean }>).detail;
+      if (detail?.isEditMode === false) {
+        void fetchGroups();
+      }
+    };
+
+    window.addEventListener('seatingChartEditMode', handleSeatingEditMode as EventListener);
+    return () => {
+      window.removeEventListener('seatingChartEditMode', handleSeatingEditMode as EventListener);
+    };
+  }, [fetchGroups]);
+
   const studentAtSlot = useCallback((groupId: string, seatIndex: number): Student | null => {
     const list = groupAssignments.get(groupId) ?? [];
     const found = list.find(a => a.seat_index === seatIndex);

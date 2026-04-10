@@ -435,7 +435,7 @@ export default function AppViewStudents() {
             // Seating Chart View or Edit Mode
             // Use URL parameter as source of truth to match layout's provider
             (isSeatingEditMode || isEditModeFromURL) ? (
-              <AppViewSeatingChartEditor classId={classId} />
+              <AppViewSeatingChartEditor classId={classId} students={students} />
             ) : (
               <AppViewSeatingChart
                 classId={classId}
