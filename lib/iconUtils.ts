@@ -2,85 +2,14 @@
  * Utility functions for detecting and managing icon files
  */
 
+/** Count of `icon-pos-*.png` files in `public/images/dashboard/award-points-icons/icons-positive/`. Bump when assets change. */
+const POSITIVE_ICON_FILE_COUNT = 60;
+
 /**
- * Detects how many positive skill icons exist by trying to load them
- * Returns a promise that resolves to the count of available icons
- * Uses binary search approach for efficiency
+ * Returns how many positive skill icons are shipped (static count; avoids client-side HTTP probing).
  */
-export async function detectAvailablePositiveIcons(maxIcons: number = 60): Promise<number> {
-  // First, do a quick check in larger batches to find approximate range
-  const quickBatchSize = 50;
-  let approximateEnd = 0;
-  
-  // Quick scan to find approximate end
-  for (let start = 1; start <= maxIcons; start += quickBatchSize) {
-    const end = Math.min(start + quickBatchSize - 1, maxIcons);
-    const promises = [];
-
-    for (let i = start; i <= end; i++) {
-      const iconPath = `/images/dashboard/award-points-icons/icons-positive/icon-pos-${i}.png`;
-      promises.push(
-        new Promise<boolean>((resolve) => {
-          const img = new Image();
-          const timeout = setTimeout(() => resolve(false), 1000); // 1 second timeout per image
-          img.onload = () => {
-            clearTimeout(timeout);
-            resolve(true);
-          };
-          img.onerror = () => {
-            clearTimeout(timeout);
-            resolve(false);
-          };
-          img.src = iconPath;
-        })
-      );
-    }
-
-    const results = await Promise.all(promises);
-    const batchFound = results.filter(Boolean).length;
-
-    if (batchFound > 0) {
-      approximateEnd = end;
-    } else if (approximateEnd > 0) {
-      // Found range, now do detailed check
-      break;
-    }
-  }
-
-  if (approximateEnd === 0) {
-    return 0; // No icons found
-  }
-
-  // Now do detailed check in the approximate range
-  const detailedStart = Math.max(1, approximateEnd - quickBatchSize + 1);
-  const detailedEnd = Math.min(approximateEnd + quickBatchSize, maxIcons);
-  let lastFoundIndex = 0;
-
-  for (let i = detailedStart; i <= detailedEnd; i++) {
-    const iconPath = `/images/dashboard/award-points-icons/icons-positive/icon-pos-${i}.png`;
-    const exists = await new Promise<boolean>((resolve) => {
-      const img = new Image();
-      const timeout = setTimeout(() => resolve(false), 1000);
-      img.onload = () => {
-        clearTimeout(timeout);
-        resolve(true);
-      };
-      img.onerror = () => {
-        clearTimeout(timeout);
-        resolve(false);
-      };
-      img.src = iconPath;
-    });
-
-    if (exists) {
-      lastFoundIndex = i;
-    } else if (lastFoundIndex > 0) {
-      // Found a gap after finding icons, we've reached the end
-      break;
-    }
-  }
-
-  return lastFoundIndex;
+export async function detectAvailablePositiveIcons(_maxIcons: number = 60): Promise<number> {
+  return Promise.resolve(POSITIVE_ICON_FILE_COUNT);
 }
 
 /**
