@@ -20,7 +20,6 @@ export default function EditSkillModal({ isOpen, onClose, skill, refreshCategori
   const [points, setPoints] = useState<number>(1);
   const [selectedIcon, setSelectedIcon] = useState<string>('/images/dashboard/award-points-icons/icons-positive/icon-pos-1.png');
   const [isIconDropdownOpen, setIsIconDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const previousValueRef = useRef<number>(1);
@@ -32,60 +31,8 @@ export default function EditSkillModal({ isOpen, onClose, skill, refreshCategori
   // Use appropriate icon list based on activeTab
   const availableIcons = activeTab === 'positive' ? positiveIcons : negativeIcons;
 
-  // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsIconDropdownOpen(false);
-      }
-    };
-
-    if (isIconDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [isIconDropdownOpen]);
-
-  // Populate form when skill data is available
-  useEffect(() => {
-    if (skill) {
-      const pointsValue = skill.points ?? skill.default_points ?? 0;
-      setSkillName(skill.name);
-      setPoints(pointsValue);
-      previousValueRef.current = pointsValue;
-      setActiveTab(pointsValue > 0 ? 'positive' : 'negative');
-      // Set icon from skill or default to first icon of the type
-      const defaultIcon = pointsValue > 0
-        ? '/images/dashboard/award-points-icons/icons-positive/icon-pos-1.png'
-        : '/images/dashboard/award-points-icons/icons-negative/icon-neg-1.png';
-      setSelectedIcon(skill.icon || defaultIcon);
-    }
-  }, [skill]);
-
-  // Update icon when activeTab changes
-  useEffect(() => {
-    if (skill) {
-      // If skill has an icon that matches the current type, keep it
-      // Otherwise, default to first icon of the new type
-      if (activeTab === 'positive') {
-        if (skill.icon && skill.icon.includes('icon-pos-')) {
-          setSelectedIcon(skill.icon);
-        } else {
-          setSelectedIcon('/images/dashboard/award-points-icons/icons-positive/icon-pos-1.png');
-        }
-      } else {
-        if (skill.icon && skill.icon.includes('icon-neg-')) {
-          setSelectedIcon(skill.icon);
-        } else {
-          setSelectedIcon('/images/dashboard/award-points-icons/icons-negative/icon-neg-1.png');
-        }
-      }
-    }
-  }, [activeTab, skill]);
-
-  // Reset form when modal closes
-  useEffect(() => {
-    if (!isOpen && skill) {
+    if (isOpen && skill) {
       const pointsValue = skill.points ?? skill.default_points ?? 0;
       setSkillName(skill.name);
       setPoints(pointsValue);
@@ -192,17 +139,6 @@ export default function EditSkillModal({ isOpen, onClose, skill, refreshCategori
   };
 
   const handleCancel = () => {
-    if (skill) {
-      const pointsValue = skill.points ?? skill.default_points ?? 0;
-      setSkillName(skill.name);
-      setPoints(pointsValue);
-      previousValueRef.current = pointsValue;
-      setActiveTab(pointsValue > 0 ? 'positive' : 'negative');
-      const defaultIcon = pointsValue > 0
-        ? '/images/dashboard/award-points-icons/icons-positive/icon-pos-1.png'
-        : '/images/dashboard/award-points-icons/icons-negative/icon-neg-1.png';
-      setSelectedIcon(skill.icon || defaultIcon);
-    }
     onClose();
   };
 
@@ -247,7 +183,7 @@ export default function EditSkillModal({ isOpen, onClose, skill, refreshCategori
           <div className="space-y-4">
             {/* Icon Picker */}
             <div className="flex justify-center mb-6">
-              <div className="relative" ref={dropdownRef}>
+              <div className="relative">
                 {/* Selected Icon Display (Clickable) */}
                 <button
                   type="button"
