@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -15,6 +15,10 @@ import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
 import IconAddPlus from '@/components/iconsCustom/iconAddPlus';
 import IconPresentationBoard from '@/components/iconsCustom/iconPresentationBoard';
 import IconDocumentClock from '@/components/iconsCustom/iconDocumentClock';
+import CanvasToolbar from '@/components/dashboard/CanvasToolbar';
+import ClassPointLogSlidePanel from '@/components/dashboard/ClassPointLogSlidePanel';
+import { useClassPointLog } from '@/hooks/useClassPointLog';
+import { useDashboardToolbarInset } from '@/hooks/useDashboardToolbarInset';
 
 interface SeatingChart {
   id: string;
@@ -46,13 +50,6 @@ interface StudentSeatAssignment {
 
 /** Per-group assignment with seat_index for fixed-slot grid (matches editor). */
 type GroupAssignment = { student: Student; seat_index: number };
-type PointLogRow = {
-  id: string;
-  studentName: string;
-  reason: string;
-  points: number;
-  createdAt: string;
-};
 
 interface AppViewSeatingChartProps {
   classId: string;
@@ -107,13 +104,22 @@ export default function AppViewSeatingChart({
   const [showObjects, setShowObjects] = useState<boolean>(true);
   const [layoutOrientation, setLayoutOrientation] = useState<string>('Left');
   const [isTeacherView, setIsTeacherView] = useState(false);
-  const [isPointLogOpen, setIsPointLogOpen] = useState(false);
-  const [isPointLogLoading, setIsPointLogLoading] = useState(false);
-  const [pointLogError, setPointLogError] = useState<string | null>(null);
-  const [pointLogRows, setPointLogRows] = useState<PointLogRow[]>([]);
-  const [logPage, setLogPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(20);
-  const [logTotalCount, setLogTotalCount] = useState(0);
+
+  const toolbarInset = useDashboardToolbarInset();
+  const {
+    isPointLogOpen,
+    setIsPointLogOpen,
+    isPointLogLoading,
+    pointLogError,
+    logPage,
+    setLogPage,
+    rowsPerPage,
+    setRowsPerPage,
+    logTotalCount,
+    totalPages,
+    safeLogPage,
+    pagedPointLogRows,
+  } = useClassPointLog(classId, students);
 
   const applyLayoutViewSettings = useCallback((data: {
     show_grid?: boolean | null;
@@ -134,130 +140,6 @@ export default function AppViewSeatingChart({
       setIsTeacherView(stored === 'true');
     }
   }, [classId]);
-
-  const formatDateDDMMYYYY = useCallback((isoDate: string) => {
-    const d = new Date(isoDate);
-    if (Number.isNaN(d.getTime())) return '-';
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = String(d.getFullYear());
-    return `${day}/${month}/${year}`;
-  }, []);
-
-  const fetchPointLogRows = useCallback(async () => {
-    if (!classId) return;
-    try {
-      setIsPointLogLoading(true);
-      setPointLogError(null);
-      const supabase = createClient();
-
-      const studentNameMap = new Map<string, string>();
-      const studentIds = students.map((s) => {
-        const first = s.first_name ?? '';
-        const last = s.last_name ?? '';
-        studentNameMap.set(s.id, `${first} ${last}`.trim() || 'Unknown student');
-        return s.id;
-      });
-
-      if (studentIds.length === 0) {
-        setPointLogRows([]);
-        setLogTotalCount(0);
-        return;
-      }
-
-      const { data: pointEvents, error: pointEventsError } = await supabase
-        .from('point_events')
-        .select('id, student_id, category_id, points, created_at')
-        .in('student_id', studentIds)
-        .order('created_at', { ascending: false });
-
-      const { data: customEvents, error: customEventsError } = await supabase
-        .from('custom_point_events')
-        .select('id, student_id, points, memo, created_at')
-        .in('student_id', studentIds)
-        .order('created_at', { ascending: false });
-
-      if (pointEventsError) {
-        console.error('Error fetching point events:', pointEventsError);
-      }
-      if (customEventsError) {
-        console.error('Error fetching custom point events:', customEventsError);
-      }
-
-      const categoryIds = Array.from(
-        new Set(
-          ((pointEvents ?? []) as any[])
-            .map((ev) => ev.category_id)
-            .filter(Boolean)
-        )
-      );
-
-      const categoryMap = new Map<string, string>();
-      if (categoryIds.length > 0) {
-        const { data: categoriesData, error: categoriesError } = await supabase
-          .from('point_categories')
-          .select('id, name')
-          .in('id', categoryIds);
-        if (categoriesError) {
-          console.error('Error fetching point categories for log:', categoriesError);
-        } else {
-          (categoriesData ?? []).forEach((c: any) => {
-            categoryMap.set(c.id, c.name ?? 'Category');
-          });
-        }
-      }
-
-      const standardRows: PointLogRow[] = ((pointEvents ?? []) as any[]).map((ev) => {
-        const categoryId = ev.category_id;
-        return {
-          id: `standard-${ev.id}`,
-          studentName: studentNameMap.get(ev.student_id) ?? 'Unknown student',
-          reason: categoryMap.get(categoryId) ?? 'Point award',
-          points: Number(ev.points ?? 0),
-          createdAt: ev.created_at,
-        };
-      });
-
-      const customRows: PointLogRow[] = ((customEvents ?? []) as any[]).map((ev) => {
-        const memo = String(ev.memo ?? '').trim();
-        return {
-          id: `custom-${ev.id}`,
-          studentName: studentNameMap.get(ev.student_id) ?? 'Unknown student',
-          reason: memo ? `Custom: ${memo}` : 'Custom',
-          points: Number(ev.points ?? 0),
-          createdAt: ev.created_at,
-        };
-      });
-
-      const mergedRows = [...standardRows, ...customRows].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-      setPointLogRows(mergedRows);
-      setLogTotalCount(mergedRows.length);
-    } catch (err) {
-      console.error('Unexpected error fetching point log rows:', err);
-      setPointLogError('Failed to load point log.');
-      setPointLogRows([]);
-      setLogTotalCount(0);
-    } finally {
-      setIsPointLogLoading(false);
-    }
-  }, [classId, students]);
-
-  useEffect(() => {
-    if (isPointLogOpen) {
-      setLogPage(1);
-      fetchPointLogRows();
-    }
-  }, [isPointLogOpen, fetchPointLogRows]);
-
-  const totalPages = Math.max(1, Math.ceil(logTotalCount / rowsPerPage));
-  const safeLogPage = Math.min(Math.max(logPage, 1), totalPages);
-  const pagedPointLogRows = useMemo(() => {
-    const start = (safeLogPage - 1) * rowsPerPage;
-    const end = start + rowsPerPage;
-    return pointLogRows.slice(start, end);
-  }, [pointLogRows, rowsPerPage, safeLogPage]);
 
   const fetchLayouts = useCallback(async () => {
     try {
@@ -793,52 +675,74 @@ export default function AppViewSeatingChart({
   if (layouts.length === 0) {
     return (
       <div className="font-spartan w-full min-h-full bg-[#4A3B8D] relative">
-        {/* Vertical menu bar on the right - Create layout (+) and Seating Editor (pencil, disabled) */}
-        <div
-          className="fixed right-2 top-2 bottom-2 flex flex-col gap-2 p-2 rounded-xl bg-white z-50"
-          aria-label="Canvas actions"
-        >
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="w-10 h-10 rounded-lg bg-white/90 hover:bg-white flex items-center justify-center transition-colors shadow"
-            title="Create new layout"
-          >
-            <IconAddPlus className="w-6 h-6 text-black" />
-          </button>
-          <button
-            className="w-10 h-10 rounded-lg bg-white/60 flex items-center justify-center shadow cursor-not-allowed opacity-60"
-            title="Seating Editor (create a layout first)"
-            disabled
-            aria-disabled="true"
-          >
-            <IconEditPencil className="w-6 h-6 text-gray-500" strokeWidth={2} />
-          </button>
-          <div className="flex-1 min-h-2" aria-hidden="true" />
-          <button
-            type="button"
-            onClick={() =>
-              setIsTeacherView((v) => {
-                const next = !v;
-                if (classId) localStorage.setItem(`seatingChart_teacherView_${classId}`, String(next));
-                return next;
-              })
-            }
-            className={`w-10 h-10 rounded-lg flex items-center justify-center shadow transition-colors ${isTeacherView ? 'bg-purple-100 hover:bg-purple-200' : 'bg-gray-200 hover:bg-gray-300 opacity-75'}`}
-            title={isTeacherView ? "Teacher's view (click to exit)" : "Teacher's view"}
-            aria-label={isTeacherView ? "Teacher's view (click to exit)" : "Teacher's view"}
-          >
-            <IconPresentationBoard className={`w-6 h-6 ${isTeacherView ? 'text-black' : 'text-gray-500'}`} strokeWidth={2} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsPointLogOpen((v) => !v)}
-            className={`w-10 h-10 rounded-lg flex items-center justify-center shadow transition-colors ${isPointLogOpen ? 'bg-purple-100 hover:bg-purple-200' : 'bg-white/90 hover:bg-white'}`}
-            title={isPointLogOpen ? 'Close point log' : 'Open point log'}
-            aria-label={isPointLogOpen ? 'Close point log' : 'Open point log'}
-          >
-            <IconDocumentClock className="w-6 h-6 text-black" strokeWidth={2} />
-          </button>
-        </div>
+        <CanvasToolbar
+          className="!z-50"
+          style={{
+            position: 'fixed',
+            right: 8,
+            top: toolbarInset.top,
+            bottom: toolbarInset.bottom,
+            zIndex: 50,
+          }}
+          topActions={[
+            {
+              id: 'add',
+              title: 'Create new layout',
+              onClick: () => setIsCreateModalOpen(true),
+              icon: <IconAddPlus className="w-6 h-6 text-black" />,
+            },
+            {
+              id: 'edit',
+              title: 'Seating Editor (create a layout first)',
+              disabled: true,
+              icon: <IconEditPencil className="w-6 h-6 text-gray-500" strokeWidth={2} />,
+            },
+          ]}
+          bottomActions={[
+            {
+              id: 'teacher-view',
+              title: isTeacherView ? "Teacher's view (click to exit)" : "Teacher's view",
+              active: isTeacherView,
+              onClick: () =>
+                setIsTeacherView((v) => {
+                  const next = !v;
+                  if (classId) localStorage.setItem(`seatingChart_teacherView_${classId}`, String(next));
+                  return next;
+                }),
+              icon: (
+                <IconPresentationBoard
+                  className={`w-6 h-6 ${isTeacherView ? 'text-black' : 'text-gray-500'}`}
+                  strokeWidth={2}
+                />
+              ),
+            },
+            {
+              id: 'point-log',
+              title: isPointLogOpen ? 'Close point log' : 'Open point log',
+              active: isPointLogOpen,
+              onClick: () => setIsPointLogOpen((v) => !v),
+              icon: <IconDocumentClock className="w-6 h-6 text-black" strokeWidth={2} />,
+            },
+          ]}
+        />
+
+        <ClassPointLogSlidePanel
+          isOpen={isPointLogOpen}
+          position="fixed"
+          rightPx={72}
+          topPx={toolbarInset.top}
+          bottomPx={toolbarInset.bottom}
+          zIndex={40}
+          logTotalCount={logTotalCount}
+          pointLogError={pointLogError}
+          isPointLogLoading={isPointLogLoading}
+          pagedRows={pagedPointLogRows}
+          safeLogPage={safeLogPage}
+          totalPages={totalPages}
+          rowsPerPage={rowsPerPage}
+          setLogPage={setLogPage}
+          setRowsPerPage={setRowsPerPage}
+        />
 
         <div className="p-6 sm:p-8 md:p-10">
           <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
@@ -1125,138 +1029,66 @@ export default function AppViewSeatingChart({
               </div>
             ) : null}
           </div>
-          {/* Vertical menu bar on the right - Create layout (+) and Seating Editor (pencil) */}
-          <div
-            className="absolute right-2 top-2 bottom-2 flex flex-col gap-2 p-2 rounded-xl bg-white/80 z-10 border-2 border-black"
-            aria-label="Canvas actions"
-          >
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="w-10 h-10 rounded-lg bg-white/90 hover:bg-white flex items-center justify-center transition-colors shadow"
-              title="Create new layout"
-            >
-              <IconAddPlus className="w-6 h-6 text-black" />
-            </button>
-            <button
-              onClick={handleOpenSeatingEditor}
-              className="w-10 h-10 rounded-lg bg-white/90 hover:bg-white flex items-center justify-center transition-colors shadow"
-              title="Seating Editor View"
-            >
-              <IconEditPencil className="w-6 h-6 text-black" strokeWidth={2} />
-            </button>
-            <div className="flex-1 min-h-2" aria-hidden="true" />
-            <button
-              type="button"
-              onClick={() =>
-                setIsTeacherView((v) => {
-                  const next = !v;
-                  if (classId) localStorage.setItem(`seatingChart_teacherView_${classId}`, String(next));
-                  return next;
-                })
-              }
-              className={`w-10 h-10 rounded-lg flex items-center justify-center shadow transition-colors ${isTeacherView ? 'bg-purple-100 hover:bg-purple-200' : 'bg-gray-200 hover:bg-gray-300 opacity-75'}`}
-              title={isTeacherView ? "Teacher's view (click to exit)" : "Teacher's view"}
-              aria-label={isTeacherView ? "Teacher's view (click to exit)" : "Teacher's view"}
-            >
-              <IconPresentationBoard className={`w-6 h-6 ${isTeacherView ? 'text-black' : 'text-gray-500'}`} strokeWidth={2} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsPointLogOpen((v) => !v)}
-              className={`w-10 h-10 rounded-lg flex items-center justify-center shadow transition-colors ${isPointLogOpen ? 'bg-purple-100 hover:bg-purple-200' : 'bg-white/90 hover:bg-white'}`}
-              title={isPointLogOpen ? 'Close point log' : 'Open point log'}
-              aria-label={isPointLogOpen ? 'Close point log' : 'Open point log'}
-            >
-              <IconDocumentClock className="w-6 h-6 text-black" strokeWidth={2} />
-            </button>
-          </div>
-          {/* Point Log slide-in panel */}
-          <div
-            className="absolute top-2 bottom-2 z-20 transition-all duration-300 ease-out"
-            style={{
-              right: '72px',
-              width: 'min(720px, calc(100% - 160px))',
-              transform: isPointLogOpen ? 'translateX(0)' : 'translateX(110%)',
-              opacity: isPointLogOpen ? 1 : 0,
-              pointerEvents: isPointLogOpen ? 'auto' : 'none',
-            }}
-          >
-            <div className="h-full rounded-xl border-2 border-black bg-white shadow-lg overflow-hidden flex flex-col">
-              <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                <h3 className="font-semibold text-gray-900">Point Log</h3>
-                <span className="text-sm text-gray-500">{logTotalCount} records</span>
-              </div>
+          <CanvasToolbar
+            className="absolute right-2 top-2 bottom-2 z-10"
+            topActions={[
+              {
+                id: 'add',
+                title: 'Create new layout',
+                onClick: () => setIsCreateModalOpen(true),
+                icon: <IconAddPlus className="w-6 h-6 text-black" />,
+              },
+              {
+                id: 'edit',
+                title: 'Seating Editor View',
+                onClick: handleOpenSeatingEditor,
+                icon: <IconEditPencil className="w-6 h-6 text-black" strokeWidth={2} />,
+              },
+            ]}
+            bottomActions={[
+              {
+                id: 'teacher-view',
+                title: isTeacherView ? "Teacher's view (click to exit)" : "Teacher's view",
+                active: isTeacherView,
+                onClick: () =>
+                  setIsTeacherView((v) => {
+                    const next = !v;
+                    if (classId) localStorage.setItem(`seatingChart_teacherView_${classId}`, String(next));
+                    return next;
+                  }),
+                icon: (
+                  <IconPresentationBoard
+                    className={`w-6 h-6 ${isTeacherView ? 'text-black' : 'text-gray-500'}`}
+                    strokeWidth={2}
+                  />
+                ),
+              },
+              {
+                id: 'point-log',
+                title: isPointLogOpen ? 'Close point log' : 'Open point log',
+                active: isPointLogOpen,
+                onClick: () => setIsPointLogOpen((v) => !v),
+                icon: <IconDocumentClock className="w-6 h-6 text-black" strokeWidth={2} />,
+              },
+            ]}
+          />
 
-              {pointLogError && (
-                <div className="px-4 py-2 text-sm text-red-600 border-b border-red-100 bg-red-50">
-                  {pointLogError}
-                </div>
-              )}
-
-              <div className="grid grid-cols-[1.3fr_1.6fr_1fr_0.7fr] gap-3 px-4 py-2 text-xs font-semibold text-gray-600 bg-gray-50 border-b border-gray-200">
-                <div>Student</div>
-                <div>Point category / reason</div>
-                <div>Awarded date</div>
-                <div className="text-right">Points</div>
-              </div>
-
-              <div className="flex-1 overflow-auto">
-                {isPointLogLoading ? (
-                  <div className="h-full flex items-center justify-center text-gray-500">Loading point log...</div>
-                ) : pagedPointLogRows.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-gray-500">No point log entries yet.</div>
-                ) : (
-                  <div>
-                    {pagedPointLogRows.map((row, rowIndex) => (
-                      <div
-                        key={row.id}
-                        className={`grid grid-cols-[1.3fr_1.6fr_1fr_0.7fr] gap-3 px-4 py-2 text-sm border-b border-gray-100 ${rowIndex % 2 === 0 ? 'bg-white' : 'bg-[#fcf1f0]'}`}
-                      >
-                        <div className="text-gray-900 truncate">{row.studentName}</div>
-                        <div className="text-gray-700 truncate">{row.reason}</div>
-                        <div className="text-gray-700">{formatDateDDMMYYYY(row.createdAt)}</div>
-                        <div className={`text-right font-semibold ${row.points >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {row.points > 0 ? `+${row.points}` : row.points}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="px-4 py-2 border-t border-gray-200 flex items-center gap-3 text-sm">
-                <button
-                  type="button"
-                  onClick={() => setLogPage((p) => Math.max(1, p - 1))}
-                  disabled={safeLogPage <= 1}
-                  className="px-2 py-1 rounded border border-gray-300 disabled:opacity-40"
-                >
-                  &larr;
-                </button>
-                <span className="text-gray-700">Page {safeLogPage} of {totalPages}</span>
-                <button
-                  type="button"
-                  onClick={() => setLogPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={safeLogPage >= totalPages}
-                  className="px-2 py-1 rounded border border-gray-300 disabled:opacity-40"
-                >
-                  &rarr;
-                </button>
-                <select
-                  value={rowsPerPage}
-                  onChange={(e) => {
-                    setRowsPerPage(Number(e.target.value));
-                    setLogPage(1);
-                  }}
-                  className="ml-auto border border-gray-300 rounded px-2 py-1"
-                >
-                  <option value={20}>20 rows</option>
-                  <option value={50}>50 rows</option>
-                  <option value={100}>100 rows</option>
-                </select>
-              </div>
-            </div>
-          </div>
+          <ClassPointLogSlidePanel
+            isOpen={isPointLogOpen}
+            position="absolute"
+            rightPx={72}
+            topPx={8}
+            bottomPx={8}
+            logTotalCount={logTotalCount}
+            pointLogError={pointLogError}
+            isPointLogLoading={isPointLogLoading}
+            pagedRows={pagedPointLogRows}
+            safeLogPage={safeLogPage}
+            totalPages={totalPages}
+            rowsPerPage={rowsPerPage}
+            setLogPage={setLogPage}
+            setRowsPerPage={setRowsPerPage}
+          />
       </div>
 
       {/* Delete Layout Confirmation Modal */}

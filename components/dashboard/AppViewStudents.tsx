@@ -17,6 +17,14 @@ import StudentCardsGrid from './maincontent/viewStudentsGrid/StudentCardsGrid';
 import StudentCardsGridMulti from './maincontent/viewStudentsGrid/StudentCardsGridMulti';
 import AppViewSeatingChart from './AppViewSeatingChart';
 import AppViewSeatingChartEditor from './AppViewSeatingChartEditor';
+import CanvasToolbar from '@/components/dashboard/CanvasToolbar';
+import ClassPointLogSlidePanel from '@/components/dashboard/ClassPointLogSlidePanel';
+import IconAddPlus from '@/components/iconsCustom/iconAddPlus';
+import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
+import IconPresentationBoard from '@/components/iconsCustom/iconPresentationBoard';
+import IconDocumentClock from '@/components/iconsCustom/iconDocumentClock';
+import { useClassPointLog } from '@/hooks/useClassPointLog';
+import { useDashboardToolbarInset } from '@/hooks/useDashboardToolbarInset';
 
 export default function AppViewStudents() {
   const params = useParams();
@@ -418,6 +426,28 @@ export default function AppViewStudents() {
     return students.reduce((total, student) => total + (student.points || 0), 0);
   }, [students]);
 
+  const toolbarInset = useDashboardToolbarInset();
+  const {
+    isPointLogOpen,
+    setIsPointLogOpen,
+    isPointLogLoading,
+    pointLogError,
+    logPage,
+    setLogPage,
+    rowsPerPage,
+    setRowsPerPage,
+    logTotalCount,
+    totalPages,
+    safeLogPage,
+    pagedPointLogRows,
+  } = useClassPointLog(classId, students);
+
+  useEffect(() => {
+    if (currentView !== 'grid') {
+      setIsPointLogOpen(false);
+    }
+  }, [currentView, setIsPointLogOpen]);
+
   if (isLoading) {
     return <LoadingState message="Loading students..." />;
   }
@@ -430,7 +460,13 @@ export default function AppViewStudents() {
     <>
       {/* Main Content Container for student cards */}
       <div className={currentView === 'seating' ? 'min-h-full' : ''}>
-        <div className="max-w-10xl mx-auto text-white-500">
+        <div
+          className={
+            currentView === 'grid'
+              ? 'max-w-10xl mx-auto text-white-500 pr-[5.75rem] sm:pr-24'
+              : 'max-w-10xl mx-auto text-white-500'
+          }
+        >
           {currentView === 'seating' ? (
             // Seating Chart View or Edit Mode
             // Use URL parameter as source of truth to match layout's provider
@@ -449,6 +485,63 @@ export default function AppViewStudents() {
           ) : (
             // Student Grid View (default)
             <>
+              <CanvasToolbar
+                style={{
+                  position: 'fixed',
+                  right: 8,
+                  top: toolbarInset.top,
+                  bottom: toolbarInset.bottom,
+                  zIndex: 40,
+                }}
+                topActions={[
+                  {
+                    id: 'add',
+                    title: 'Create layout (seating view only)',
+                    disabled: true,
+                    icon: <IconAddPlus className="w-6 h-6 text-gray-500" />,
+                  },
+                  {
+                    id: 'edit',
+                    title: 'Seating Editor (seating view only)',
+                    disabled: true,
+                    icon: <IconEditPencil className="w-6 h-6 text-gray-500" strokeWidth={2} />,
+                  },
+                ]}
+                bottomActions={[
+                  {
+                    id: 'teacher-view',
+                    title: "Teacher's view (seating view only)",
+                    disabled: true,
+                    icon: <IconPresentationBoard className="w-6 h-6 text-gray-500" strokeWidth={2} />,
+                  },
+                  {
+                    id: 'point-log',
+                    title: isPointLogOpen ? 'Close point log' : 'Open point log',
+                    active: isPointLogOpen,
+                    onClick: () => setIsPointLogOpen((v) => !v),
+                    icon: <IconDocumentClock className="w-6 h-6 text-black" strokeWidth={2} />,
+                  },
+                ]}
+              />
+
+              <ClassPointLogSlidePanel
+                isOpen={isPointLogOpen}
+                position="fixed"
+                rightPx={72}
+                topPx={toolbarInset.top}
+                bottomPx={toolbarInset.bottom}
+                zIndex={35}
+                logTotalCount={logTotalCount}
+                pointLogError={pointLogError}
+                isPointLogLoading={isPointLogLoading}
+                pagedRows={pagedPointLogRows}
+                safeLogPage={safeLogPage}
+                totalPages={totalPages}
+                rowsPerPage={rowsPerPage}
+                setLogPage={setLogPage}
+                setRowsPerPage={setRowsPerPage}
+              />
+
               {students.length === 0 ? (
                 <EmptyState
                   title="No students yet"
