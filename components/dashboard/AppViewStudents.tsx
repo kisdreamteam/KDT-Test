@@ -529,10 +529,11 @@ export default function AppViewStudents() {
             // Student Grid View (default)
             <>
               <CanvasToolbar
+                className="!border-0 !bg-white"
                 style={{
                   position: 'fixed',
                   right: hasVerticalScrollbar ? 24 : 8,
-                  top: toolbarInset.top,
+                  top: toolbarInset.top+1,
                   bottom: toolbarInset.bottom,
                   zIndex: 40,
                   borderRadius: 0,
