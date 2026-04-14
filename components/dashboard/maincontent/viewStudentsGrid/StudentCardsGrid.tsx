@@ -2,6 +2,7 @@ import { Student } from '@/lib/types';
 import StudentCard from '../../cards/StudentCard';
 import AddStudentCard from '../../cards/AddStudentCard';
 import WholeClassCard from '../../cards/WholeClassCard';
+import { useLayoutEffect, useRef, useState } from 'react';
 
 interface StudentCardsGridProps {
   students: Student[];
@@ -28,41 +29,75 @@ export default function StudentCardsGrid({
   onStudentClick,
   onAddStudent,
 }: StudentCardsGridProps) {
+  const SCALE = 0.67;
+  const scaledContainerRef = useRef<HTMLDivElement | null>(null);
+  const [scaledHeight, setScaledHeight] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    const updateScaledHeight = () => {
+      if (!scaledContainerRef.current) return;
+      const unscaledHeight = scaledContainerRef.current.offsetHeight;
+      setScaledHeight(unscaledHeight * SCALE);
+    };
+
+    updateScaledHeight();
+    window.addEventListener('resize', updateScaledHeight);
+
+    const observer =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(updateScaledHeight)
+        : null;
+    if (observer && scaledContainerRef.current) {
+      observer.observe(scaledContainerRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', updateScaledHeight);
+      observer?.disconnect();
+    };
+  }, [students.length]);
+
   return (
-    <div 
+    <div
       style={{
-        transform: 'scale(0.67)',
-        transformOrigin: 'top left',
-        width: '149.25%' // Compensate for 0.67 scale: 100% / 0.67
+        height: scaledHeight ? `${scaledHeight}px` : undefined,
       }}
     >
-      <div 
-        // smaller contained with only the cards (contained in a bigger container)
-        className="grid gap-6"
+      <div
+        ref={scaledContainerRef}
         style={{
-          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))'
+          transform: `scale(${SCALE})`,
+          transformOrigin: 'top left',
+          width: `${100 / SCALE}%`, // Compensate for scaling: preserve visual width
         }}
       >
-        {/* Whole Class Card - Always First */}
-        <WholeClassCard 
-          classIcon={classIcon}
-          totalPoints={totalClassPoints}
-          onClick={onWholeClassClick}
-        />
-        
-        {/* Student Cards */}
-        {students.map((student) => (
-          <StudentCard
-            key={student.id}
-            student={student}
-            openDropdownId={openDropdownId}
-            onToggleDropdown={onToggleDropdown}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onClick={onStudentClick}
+        <div
+          className="grid gap-6"
+          style={{
+            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+          }}
+        >
+          {/* Whole Class Card - Always First */}
+          <WholeClassCard
+            classIcon={classIcon}
+            totalPoints={totalClassPoints}
+            onClick={onWholeClassClick}
           />
-        ))}
-        <AddStudentCard onClick={onAddStudent} />
+
+          {/* Student Cards */}
+          {students.map((student) => (
+            <StudentCard
+              key={student.id}
+              student={student}
+              openDropdownId={openDropdownId}
+              onToggleDropdown={onToggleDropdown}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onClick={onStudentClick}
+            />
+          ))}
+          <AddStudentCard onClick={onAddStudent} />
+        </div>
       </div>
     </div>
   );

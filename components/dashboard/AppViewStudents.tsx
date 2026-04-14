@@ -60,6 +60,7 @@ export default function AppViewStudents() {
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [isMultiStudentAwardModalOpen, setIsMultiStudentAwardModalOpen] = useState(false);
   const [isSeatingEditMode, setIsSeatingEditMode] = useState(false);
+  const [hasVerticalScrollbar, setHasVerticalScrollbar] = useState(false);
   const prevViewRef = useRef<string | null>(null);
 
   // Dispatch initial state to BottomNav
@@ -448,6 +449,48 @@ export default function AppViewStudents() {
     }
   }, [currentView, setIsPointLogOpen]);
 
+  useEffect(() => {
+    const checkForVerticalScrollbar = () => {
+      const docHasScrollbar = document.documentElement.scrollHeight > window.innerHeight;
+      const bodyHasScrollbar = document.body.scrollHeight > window.innerHeight;
+      const scrollingEl = document.scrollingElement as HTMLElement | null;
+      const scrollingElHasScrollbar = scrollingEl ? scrollingEl.scrollHeight > scrollingEl.clientHeight : false;
+      const dashboardScrollContainer = document.querySelector('[data-dashboard-scroll-container]') as HTMLElement | null;
+      const dashboardContainerHasScrollbar = dashboardScrollContainer
+        ? dashboardScrollContainer.scrollHeight > dashboardScrollContainer.clientHeight
+        : false;
+      const nestedScrollableCount = Array.from(document.querySelectorAll<HTMLElement>('div')).filter((el) => {
+        const styles = window.getComputedStyle(el);
+        const allowsYScroll = styles.overflowY === 'auto' || styles.overflowY === 'scroll';
+        return allowsYScroll && el.scrollHeight > el.clientHeight;
+      }).length;
+      const resolvedHasScrollbar =
+        dashboardContainerHasScrollbar || docHasScrollbar || bodyHasScrollbar || scrollingElHasScrollbar;
+      setHasVerticalScrollbar(resolvedHasScrollbar);
+    };
+
+    checkForVerticalScrollbar();
+    window.addEventListener('resize', checkForVerticalScrollbar);
+
+    return () => {
+      window.removeEventListener('resize', checkForVerticalScrollbar);
+    };
+  }, []);
+
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      const dashboardScrollContainer = document.querySelector('[data-dashboard-scroll-container]') as HTMLElement | null;
+      const nextHasScrollbar = dashboardScrollContainer
+        ? dashboardScrollContainer.scrollHeight > dashboardScrollContainer.clientHeight
+        : document.documentElement.scrollHeight > window.innerHeight;
+      setHasVerticalScrollbar(nextHasScrollbar);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [students.length, currentView, isPointLogOpen]);
+
   if (isLoading) {
     return <LoadingState message="Loading students..." />;
   }
@@ -488,10 +531,11 @@ export default function AppViewStudents() {
               <CanvasToolbar
                 style={{
                   position: 'fixed',
-                  right: 8,
+                  right: hasVerticalScrollbar ? 24 : 8,
                   top: toolbarInset.top,
                   bottom: toolbarInset.bottom,
                   zIndex: 40,
+                  borderRadius: 0,
                 }}
                 topActions={[
                   {

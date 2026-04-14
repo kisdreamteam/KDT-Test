@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useLayoutEffect, useCallback } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 export type DashboardToolbarInset = {
   top: number;
@@ -32,9 +33,13 @@ function measureInset(): DashboardToolbarInset {
  */
 export function useDashboardToolbarInset(): DashboardToolbarInset {
   const [inset, setInset] = useState<DashboardToolbarInset>({ top: 0, bottom: FALLBACK_BOTTOM });
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const searchKey = searchParams.toString();
 
   const update = useCallback(() => {
-    setInset(measureInset());
+    const nextInset = measureInset();
+    setInset(nextInset);
   }, []);
 
   useLayoutEffect(() => {
@@ -59,7 +64,7 @@ export function useDashboardToolbarInset(): DashboardToolbarInset {
       window.removeEventListener('resize', update);
       ro?.disconnect();
     };
-  }, [update]);
+  }, [update, pathname, searchKey]);
 
   return inset;
 }

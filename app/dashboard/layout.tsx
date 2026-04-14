@@ -268,7 +268,11 @@ function DashboardLayoutContent({
                   <Random onClose={() => setIsRandomOpen(false)} />
                 ) : (
                   <div className="flex-1 flex flex-col min-h-0">
-                    <div className="flex-1 overflow-y-auto " style={currentClassName && !isTimerOpen && !isRandomOpen ? { maxHeight: 'calc(100% - 80px)' } : {}}>
+                    <div
+                      className="flex-1 overflow-y-auto "
+                      data-dashboard-scroll-container
+                      style={currentClassName && !isTimerOpen && !isRandomOpen ? { maxHeight: 'calc(100% - 80px)' } : {}}
+                    >
                       <MainContent currentClassName={currentClassName}>
                         {children}
                       </MainContent>
