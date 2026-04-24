@@ -2,10 +2,17 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Modal from '@/components/modals/Modal';
-import { createClient } from '@/lib/client';
 import AddSkillModal from '@/components/modals/AddSkillModal';
 import EditSkillsModal from '@/components/modals/EditSkillsModal';
 import { PointCategory, Student } from '@/lib/types';
+import {
+  fetchPointCategoriesByClassIds,
+  fetchStudentIdsByClassId,
+  fetchStudentIdsByClassIds,
+  awardPointsToStudents,
+  getAuthenticatedUserId,
+  awardCustomPointsToStudents,
+} from '@/api/points';
 
 // Helper function to add cache-busting parameter to icon URLs
 // Uses modal open state to generate a fresh cache-busting parameter
@@ -76,40 +83,29 @@ export default function AwardPointsModal({
     setIsLoading(true);
 
     try {
-      const supabase = createClient();
-      
       // For multi-class mode, fetch categories from all selected classes
       // For other modes, use the single classId
       const classIdsToFetch = (selectedClassIds && selectedClassIds.length > 0)
         ? selectedClassIds 
         : [classId];
 
-      const { data, error } = await supabase
-        .from('point_categories')
-        .select('*')
-        .in('class_id', classIdsToFetch);
+      const data = await fetchPointCategoriesByClassIds(classIdsToFetch);
 
       console.log('AWARD POINTS MODAL: Fetched categories data:', data);
 
-      if (error) {
-        console.error('AWARD POINTS MODAL: Fetched categories error:', error);
-        console.error('Error fetching categories:', error?.message || error);
-        setCategories([]);
-      } else {
-        // Normalize icon paths for categories (convert old paths to new paths)
-        const normalizedData = (data || []).map((category: any) => ({
-          ...category,
-          icon: category.icon?.includes('/images/classes/icons/icon-pos-')
-            ? category.icon.replace('/images/classes/icons/icon-pos-', '/images/dashboard/award-points-icons/icons-positive/icon-pos-')
-            : category.icon?.includes('/images/classes/icons/icon-neg-')
-            ? category.icon.replace('/images/classes/icons/icon-neg-', '/images/dashboard/award-points-icons/icons-negative/icon-neg-')
-            : category.icon
-        }));
-        
-        // For multi-class mode, we might have duplicate categories, so we'll use unique ones
-        // For now, we'll just use all categories (they should be class-specific anyway)
-        setCategories(normalizedData);
-      }
+      // Normalize icon paths for categories (convert old paths to new paths)
+      const normalizedData = (data || []).map((category: any) => ({
+        ...category,
+        icon: category.icon?.includes('/images/classes/icons/icon-pos-')
+          ? category.icon.replace('/images/classes/icons/icon-pos-', '/images/dashboard/award-points-icons/icons-positive/icon-pos-')
+          : category.icon?.includes('/images/classes/icons/icon-neg-')
+          ? category.icon.replace('/images/classes/icons/icon-neg-', '/images/dashboard/award-points-icons/icons-negative/icon-neg-')
+          : category.icon
+      }));
+
+      // For multi-class mode, we might have duplicate categories, so we'll use unique ones
+      // For now, we'll just use all categories (they should be class-specific anyway)
+      setCategories(normalizedData);
     } catch (err) {
       console.error('Unexpected error fetching categories:', err);
       setCategories([]);
@@ -170,514 +166,122 @@ export default function AwardPointsModal({
   }, [categories]);
 
 
+  const resolveTargetStudentIds = useCallback(async (): Promise<string[]> => {
+    if (isMultiClassMode && selectedClassIds) {
+      return fetchStudentIdsByClassIds(selectedClassIds);
+    }
+    if (isMultiStudentMode && selectedStudentIds) {
+      return selectedStudentIds;
+    }
+    if (isWholeClassMode) {
+      return fetchStudentIdsByClassId(classId);
+    }
+    if (student) {
+      return [student.id];
+    }
+    return [];
+  }, [isMultiClassMode, selectedClassIds, isMultiStudentMode, selectedStudentIds, isWholeClassMode, classId, student]);
+
+  const afterAwardSuccess = useCallback((pointsValue: number, categoryName: string, categoryIcon?: string) => {
+    if (isMultiClassMode && selectedClassIds && onAwardComplete) {
+      onAwardComplete(selectedClassIds, 'classes');
+    }
+    if (isMultiStudentMode && selectedStudentIds && onAwardComplete) {
+      onAwardComplete(selectedStudentIds, 'students');
+    }
+
+    if (onRefresh) {
+      onRefresh();
+    }
+
+    if (onPointsAwarded) {
+      if (isMultiStudentMode && selectedStudentIds) {
+        onPointsAwarded({
+          studentAvatar: classIcon || '/images/dashboard/student-avatars/avatar-01.png',
+          studentFirstName: `${selectedStudentIds.length} ${selectedStudentIds.length === 1 ? 'Student' : 'Students'}`,
+          points: pointsValue,
+          categoryName,
+          categoryIcon,
+        });
+      } else if (isWholeClassMode) {
+        onPointsAwarded({
+          studentAvatar: classIcon || '/images/dashboard/student-avatars/avatar-01.png',
+          studentFirstName: className || 'Whole Class',
+          points: pointsValue,
+          categoryName,
+          categoryIcon,
+        });
+      } else if (student) {
+        onPointsAwarded({
+          studentAvatar: student.avatar || '/images/dashboard/student-avatars/avatar-01.png',
+          studentFirstName: student.first_name,
+          points: pointsValue,
+          categoryName,
+          categoryIcon,
+        });
+      }
+    }
+
+    onClose();
+  }, [isMultiClassMode, selectedClassIds, onAwardComplete, isMultiStudentMode, selectedStudentIds, onRefresh, onPointsAwarded, classIcon, isWholeClassMode, className, student, onClose]);
+
   // Handle awarding points for a skill/category
   const handleAwardSkill = async (category: PointCategory) => {
     try {
-      const supabase = createClient();
       const points = category.points ?? category.default_points ?? 0;
-      
-      if (isMultiClassMode && selectedClassIds) {
-        // Award points to all students in all selected classes
-        const { data: students, error: fetchError } = await supabase
-          .from('students')
-          .select('id')
-          .in('class_id', selectedClassIds);
-
-        if (fetchError) {
-          console.error('Error fetching students:', fetchError);
-          alert('Failed to fetch students. Please try again.');
-          return;
-        }
-
-        if (!students || students.length === 0) {
-          alert('No students found in the selected classes.');
-          return;
-        }
-
-        // Award points to each student
-        const awardPromises = students.map(async (s) => {
-          const { error } = await supabase.rpc('award_points_to_student', {
-            student_id_in: s.id,
-            category_id_in: category.id,
-            points_in: points,
-            memo_in: '' // Empty memo for a standard skill click
-          });
-          return error;
-        });
-
-        const errors = await Promise.all(awardPromises);
-        const hasError = errors.some(err => err !== null);
-
-        if (hasError) {
-          console.error('Error awarding skill points to some students:', errors);
-          alert('Failed to award points to some students. Please try again.');
-          return;
-        }
-
-        // Store selected class IDs in localStorage and notify parent
-        if (onAwardComplete) {
-          onAwardComplete(selectedClassIds, 'classes');
-        }
-
-        // Refresh if onRefresh is provided
-        if (onRefresh) {
-          onRefresh();
-        }
-        
-        // Close the modal
-        onClose();
-      } else if (isMultiStudentMode && selectedStudentIds) {
-        // Award points to selected students
-        const awardPromises = selectedStudentIds.map(async (studentId) => {
-          const { error } = await supabase.rpc('award_points_to_student', {
-            student_id_in: studentId,
-            category_id_in: category.id,
-            points_in: points,
-            memo_in: '' // Empty memo for a standard skill click
-          });
-          return error;
-        });
-
-        const errors = await Promise.all(awardPromises);
-        const hasError = errors.some(err => err !== null);
-
-        if (hasError) {
-          console.error('Error awarding skill points to some students:', errors);
-          alert('Failed to award points to some students. Please try again.');
-          return;
-        }
-
-        // Store selected student IDs in localStorage and notify parent
-        if (onAwardComplete) {
-          onAwardComplete(selectedStudentIds, 'students');
-        }
-
-        // Notify parent about the award for multiple students
-        if (onPointsAwarded) {
-          onPointsAwarded({
-            studentAvatar: classIcon || "/images/dashboard/student-avatars/avatar-01.png",
-            studentFirstName: `${selectedStudentIds.length} ${selectedStudentIds.length === 1 ? 'Student' : 'Students'}`,
-            points: points,
-            categoryName: category.name,
-            categoryIcon: category.icon,
-          });
-        }
-
-        // Refresh if onRefresh is provided
-        if (onRefresh) {
-          onRefresh();
-        }
-        
-        // Close the modal
-        onClose();
-      } else if (isWholeClassMode) {
-        // Award points to all students in the class
-        const { data: students, error: fetchError } = await supabase
-          .from('students')
-          .select('id')
-          .eq('class_id', classId);
-
-        if (fetchError) {
-          console.error('Error fetching students:', fetchError);
-          alert('Failed to fetch students. Please try again.');
-          return;
-        }
-
-        if (!students || students.length === 0) {
-          alert('No students found in this class.');
-          return;
-        }
-
-        // Award points to each student
-        const awardPromises = students.map(async (s) => {
-          const { error } = await supabase.rpc('award_points_to_student', {
-            student_id_in: s.id,
-            category_id_in: category.id,
-            points_in: points,
-            memo_in: '' // Empty memo for a standard skill click
-          });
-          return error;
-        });
-
-        const errors = await Promise.all(awardPromises);
-        const hasError = errors.some(err => err !== null);
-
-        if (hasError) {
-          console.error('Error awarding skill points to some students:', errors);
-          alert('Failed to award points to some students. Please try again.');
-          return;
-        }
-
-        // Refresh the student list if onRefresh is provided
-        if (onRefresh) {
-          onRefresh();
-        }
-        
-        // Notify parent about the award
-        if (onPointsAwarded) {
-          onPointsAwarded({
-            studentAvatar: classIcon || "/images/dashboard/student-avatars/avatar-01.png",
-            studentFirstName: className || 'Whole Class',
-            points: points,
-            categoryName: category.name,
-            categoryIcon: category.icon,
-          });
-        }
-        
-        // Close the modal
-        onClose();
-      } else {
-        // Single student mode
-        if (!student) return;
-        
-        const { error } = await supabase.rpc('award_points_to_student', {
-          student_id_in: student.id,
-          category_id_in: category.id,
-          points_in: points,
-          memo_in: '' // Empty memo for a standard skill click
-        });
-
-        if (error) {
-          console.error('Error awarding skill points:', error);
-          alert('Failed to award points. Please try again.');
-        } else {
-          // Refresh the student list if onRefresh is provided
-          if (onRefresh) {
-            onRefresh();
-          }
-          
-          // Notify parent about the award
-          if (onPointsAwarded) {
-            onPointsAwarded({
-              studentAvatar: student.avatar || "/images/dashboard/student-avatars/avatar-01.png",
-              studentFirstName: student.first_name,
-              points: points,
-              categoryName: category.name,
-              categoryIcon: category.icon,
-            });
-          }
-          
-          // Close the modal
-          onClose();
-        }
+      const studentIds = await resolveTargetStudentIds();
+      if (studentIds.length === 0) {
+        alert('No students found for the current selection.');
+        return;
       }
+
+      await awardPointsToStudents({
+        studentIds,
+        categoryId: category.id,
+        points,
+        memo: '',
+      });
+
+      afterAwardSuccess(points, category.name, category.icon);
     } catch (err) {
       console.error('Unexpected error awarding points:', err);
-      alert('An unexpected error occurred. Please try again.');
+      alert('Failed to award points. Please try again.');
     }
   };
 
   // Handle custom points submission
   const handleCustomAward = async () => {
-    // Validate custom points - allow positive or negative, but not zero or empty
     if (customPoints === 0 || customPoints === null || customPoints === undefined || isNaN(customPoints)) {
       alert('Please enter a valid point value (positive or negative, but not zero).');
       return;
     }
 
     try {
-      const supabase = createClient();
-      
-      // Use getSession() to avoid "Refresh Token Not Found" when no session exists
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      const user = session?.user;
-
-      if (sessionError || !user) {
-        if (sessionError) console.error('Session error:', sessionError);
+      const teacherId = await getAuthenticatedUserId();
+      if (!teacherId) {
         alert('You must be logged in to award custom points.');
         return;
       }
-      
-      if (isMultiClassMode && selectedClassIds) {
-        // Award custom points to all students in all selected classes
-        const { data: students, error: fetchError } = await supabase
-          .from('students')
-          .select('id, points')
-          .in('class_id', selectedClassIds);
 
-        if (fetchError) {
-          console.error('Error fetching students:', fetchError);
-          alert('Failed to fetch students. Please try again.');
-          return;
-        }
-
-        if (!students || students.length === 0) {
-          alert('No students found in the selected classes.');
-          return;
-        }
-
-        // Insert custom point events for each student
-        const insertPromises = students.map(async (s) => {
-          const { error: insertError } = await supabase
-            .from('custom_point_events')
-            .insert({
-              student_id: s.id,
-              teacher_id: user.id,
-              points: customPoints,
-              memo: customMemo || null
-            });
-          
-          if (insertError) {
-            return insertError;
-          }
-
-          // Update student's total points
-          const currentPoints = s.points || 0;
-          const newPoints = currentPoints + customPoints;
-          
-          const { error: updateError } = await supabase
-            .from('students')
-            .update({ points: newPoints })
-            .eq('id', s.id);
-
-          return updateError;
-        });
-
-        const errors = await Promise.all(insertPromises);
-        const hasError = errors.some(err => err !== null);
-
-        if (hasError) {
-          console.error('Error awarding custom points to some students:', errors);
-          alert('Failed to award points to some students. Please try again.');
-          return;
-        }
-
-        // Store selected class IDs in localStorage and notify parent
-        if (onAwardComplete) {
-          onAwardComplete(selectedClassIds, 'classes');
-        }
-
-        // Success - reset form
-        setCustomPoints(0);
-        setCustomMemo('');
-        // Refresh if onRefresh is provided
-        if (onRefresh) {
-          onRefresh();
-        }
-        
-        // Close the modal
-        onClose();
-      } else if (isMultiStudentMode && selectedStudentIds) {
-        // Award custom points to selected students
-        const { data: students, error: fetchError } = await supabase
-          .from('students')
-          .select('id, points')
-          .in('id', selectedStudentIds);
-
-        if (fetchError) {
-          console.error('Error fetching students:', fetchError);
-          alert('Failed to fetch students. Please try again.');
-          return;
-        }
-
-        if (!students || students.length === 0) {
-          alert('No students found.');
-          return;
-        }
-
-        // Insert custom point events for each student
-        const insertPromises = students.map(async (s) => {
-          const { error: insertError } = await supabase
-            .from('custom_point_events')
-            .insert({
-              student_id: s.id,
-              teacher_id: user.id,
-              points: customPoints,
-              memo: customMemo || null
-            });
-          
-          if (insertError) {
-            return insertError;
-          }
-
-          // Update student's total points
-          const currentPoints = s.points || 0;
-          const newPoints = currentPoints + customPoints;
-          
-          const { error: updateError } = await supabase
-            .from('students')
-            .update({ points: newPoints })
-            .eq('id', s.id);
-
-          return updateError;
-        });
-
-        const errors = await Promise.all(insertPromises);
-        const hasError = errors.some(err => err !== null);
-
-        if (hasError) {
-          console.error('Error awarding custom points to some students:', errors);
-          alert('Failed to award points to some students. Please try again.');
-          return;
-        }
-
-        // Store selected student IDs in localStorage and notify parent
-        if (onAwardComplete) {
-          onAwardComplete(selectedStudentIds, 'students');
-        }
-
-        // Notify parent about the award for multiple students (custom points)
-        if (onPointsAwarded) {
-          onPointsAwarded({
-            studentAvatar: classIcon || "/images/dashboard/student-avatars/avatar-01.png",
-            studentFirstName: `${selectedStudentIds.length} ${selectedStudentIds.length === 1 ? 'Student' : 'Students'}`,
-            points: customPoints,
-            categoryName: customMemo || 'Custom Points',
-            categoryIcon: undefined, // No icon for custom points
-          });
-        }
-
-        // Success - reset form
-        setCustomPoints(0);
-        setCustomMemo('');
-        // Refresh if onRefresh is provided
-        if (onRefresh) {
-          onRefresh();
-        }
-        
-        // Close the modal
-        onClose();
-      } else if (isWholeClassMode) {
-        // Award custom points to all students in the class
-        const { data: students, error: fetchError } = await supabase
-          .from('students')
-          .select('id, points')
-          .eq('class_id', classId);
-
-        if (fetchError) {
-          console.error('Error fetching students:', fetchError);
-          alert('Failed to fetch students. Please try again.');
-          return;
-        }
-
-        if (!students || students.length === 0) {
-          alert('No students found in this class.');
-          return;
-        }
-
-        // Insert custom point events for each student
-        const insertPromises = students.map(async (s) => {
-          const { error: insertError } = await supabase
-            .from('custom_point_events')
-            .insert({
-              student_id: s.id,
-              teacher_id: user.id,
-              points: customPoints,
-              memo: customMemo || null
-            });
-          
-          if (insertError) {
-            return insertError;
-          }
-
-          // Update student's total points
-          const currentPoints = s.points || 0;
-          const newPoints = currentPoints + customPoints;
-          
-          const { error: updateError } = await supabase
-            .from('students')
-            .update({ points: newPoints })
-            .eq('id', s.id);
-
-          return updateError;
-        });
-
-        const errors = await Promise.all(insertPromises);
-        const hasError = errors.some(err => err !== null);
-
-        if (hasError) {
-          console.error('Error awarding custom points to some students:', errors);
-          alert('Failed to award points to some students. Please try again.');
-          return;
-        }
-
-        // Success - reset form and notify
-        setCustomPoints(0);
-        setCustomMemo('');
-        // Refresh the student list if onRefresh is provided
-        if (onRefresh) {
-          onRefresh();
-        }
-        
-        // Notify parent about the award (custom points)
-        if (onPointsAwarded) {
-          onPointsAwarded({
-            studentAvatar: classIcon || "/images/dashboard/student-avatars/avatar-01.png",
-            studentFirstName: className || 'Whole Class',
-            points: customPoints,
-            categoryName: customMemo || 'Custom Points',
-            categoryIcon: undefined, // No icon for custom points
-          });
-        }
-        
-        // Close the modal
-        onClose();
-      } else {
-        // Single student mode
-        if (!student) return;
-        
-        // Insert directly into custom_point_events table
-        const { error: insertError } = await supabase
-          .from('custom_point_events')
-          .insert({
-            student_id: student.id,
-            teacher_id: user.id, // Required for RLS policy and foreign key
-            points: customPoints,
-            memo: customMemo || null
-          });
-
-        if (insertError) {
-          console.error('Error inserting custom points into custom_point_events:', insertError);
-          console.error('Error details:', {
-            message: insertError.message,
-            details: insertError.details,
-            hint: insertError.hint,
-            code: insertError.code
-          });
-          alert(`Failed to award custom points: ${insertError.message || 'Please try again.'}`);
-          return;
-        }
-
-        // Update student's total points
-        const currentPoints = student.points || 0;
-        const newPoints = currentPoints + customPoints;
-        
-        const { error: updateError } = await supabase
-          .from('students')
-          .update({ points: newPoints })
-          .eq('id', student.id);
-
-        if (updateError) {
-          console.error('Error updating student points:', updateError);
-          alert('Points were recorded but failed to update student total. Please refresh the page.');
-          return;
-        }
-
-        // Success - reset form and notify
-        setCustomPoints(0);
-        setCustomMemo('');
-        // Refresh the student list if onRefresh is provided
-        if (onRefresh) {
-          onRefresh();
-        }
-        
-        // Notify parent about the award (custom points)
-        if (onPointsAwarded) {
-          onPointsAwarded({
-            studentAvatar: student.avatar || "/images/dashboard/student-avatars/avatar-01.png",
-            studentFirstName: student.first_name,
-            points: customPoints,
-            categoryName: customMemo || 'Custom Points',
-            categoryIcon: undefined, // No icon for custom points
-          });
-        }
-        
-        // Close the modal
-        onClose();
+      const studentIds = await resolveTargetStudentIds();
+      if (studentIds.length === 0) {
+        alert('No students found for the current selection.');
+        return;
       }
+
+      await awardCustomPointsToStudents({
+        studentIds,
+        teacherId,
+        points: customPoints,
+        memo: customMemo,
+      });
+
+      setCustomPoints(0);
+      setCustomMemo('');
+      afterAwardSuccess(customPoints, customMemo || 'Custom Points');
     } catch (err) {
       console.error('Unexpected error awarding custom points:', err);
-      alert('An unexpected error occurred. Please try again.');
+      alert('Failed to award custom points. Please try again.');
     }
   };
 
