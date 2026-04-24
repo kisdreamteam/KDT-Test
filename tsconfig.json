@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "target": "ES2017",
     "lib": [
       "dom",
@@ -23,6 +24,33 @@
       }
     ],
     "paths": {
+      "@/context/*": [
+        "./src/context/*"
+      ],
+      "@/assets/*": [
+        "./src/assets/*"
+      ],
+      "@/layouts/*": [
+        "./src/layouts/*"
+      ],
+      "@/styles/*": [
+        "./src/styles/*"
+      ],
+      "@/pages/*": [
+        "./src/views/*"
+      ],
+      "@/api/*": [
+        "./src/api/*"
+      ],
+      "@/lib/*": [
+        "./src/lib/*"
+      ],
+      "@/hooks/*": [
+        "./src/hooks/*"
+      ],
+      "@/components/*": [
+        "./src/components/*"
+      ],
       "@/*": [
         "./*"
       ]

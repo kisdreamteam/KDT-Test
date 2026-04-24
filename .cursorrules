@@ -1,0 +1,17 @@
+# KIS-Points Architectural Rules
+
+You are an expert developer helping to refactor KIS-Points to match the "Visual North Star" architecture. Always follow this structure:
+
+## 1. Directory Structure
+- /src/api: Shared Supabase DB logic (Point adding/deducting).
+- /src/components/ui: Atomic Design blocks (Buttons, Badges, Cards).
+- /src/hooks: Custom React hooks (logic only).
+- /src/layouts: Master screen layouts (e.g., Dashboard Sidebar/Frame).
+- /src/lib: Shared utilities (Supabase client, TypeScript types).
+- /src/pages: Route-specific screen views.
+- /src/app: Next.js routing shells only.
+
+## 2. Refactoring Principles
+- "Bridge & Burn": Duplicate components to the new structure, update imports, then delete the old.
+- "Logic Separation": Keep JSX in /pages, state in /hooks, and DB calls in /api.
+- "Unified UI": Use the shared Atoms in /components/ui to ensure a consistent ecosystem.

@@ -1,0 +1,131 @@
+/**
+ * Utility functions for detecting and managing icon files
+ */
+
+/** Count of `icon-pos-*.png` files in `public/images/dashboard/award-points-icons/icons-positive/`. Bump when assets change. */
+const POSITIVE_ICON_FILE_COUNT = 60;
+
+/**
+ * Returns how many positive skill icons are shipped (static count; avoids client-side HTTP probing).
+ */
+export async function detectAvailablePositiveIcons(_maxIcons: number = 60): Promise<number> {
+  return Promise.resolve(POSITIVE_ICON_FILE_COUNT);
+}
+
+/**
+ * Generates an array of positive icon paths up to the specified count
+ */
+export function generatePositiveIconPaths(count: number): string[] {
+  return Array.from({ length: count }, (_, i) => 
+    `/images/dashboard/award-points-icons/icons-positive/icon-pos-${i + 1}.png`
+  );
+}
+
+/**
+ * Generates an array of default positive icon paths (only first 5 icons)
+ * Used for the 5 default positive point cards
+ */
+export function generateDefaultPositiveIconPaths(): string[] {
+  return generatePositiveIconPaths(5);
+}
+
+/**
+ * Generates an array of negative icon paths
+ */
+export function generateNegativeIconPaths(count: number = 7): string[] {
+  return Array.from({ length: count }, (_, i) => 
+    `/images/dashboard/award-points-icons/icons-negative/icon-neg-${i + 1}.png`
+  );
+}
+
+/**
+ * Normalizes icon paths by converting old icon paths to the new location
+ * Converts /images/classes/icons/icon-pos-X.png to /images/dashboard/award-points-icons/icons-positive/icon-pos-X.png
+ * Converts /images/classes/icons/icon-neg-X.png to /images/dashboard/award-points-icons/icons-negative/icon-neg-X.png
+ */
+export function normalizeIconPath(iconPath: string | null | undefined): string | undefined {
+  if (!iconPath) return undefined;
+  
+  // If it's an old positive icon path, convert it to the new path
+  if (iconPath.includes('/images/classes/icons/icon-pos-')) {
+    const iconName = iconPath.split('/').pop(); // Get the filename (e.g., icon-pos-1.png)
+    return `/images/dashboard/award-points-icons/icons-positive/${iconName}`;
+  }
+  
+  // If it's an old negative icon path, convert it to the new path
+  if (iconPath.includes('/images/classes/icons/icon-neg-')) {
+    const iconName = iconPath.split('/').pop(); // Get the filename (e.g., icon-neg-1.png)
+    return `/images/dashboard/award-points-icons/icons-negative/${iconName}`;
+  }
+  
+  return iconPath;
+}
+
+/**
+ * Normalizes student avatar paths
+ * Converts old paths (/images/classes/avatars/) to new paths (/images/dashboard/student-avatars/)
+ * If the avatar is just a filename (e.g., "avatar-01.png"), prepends the full path
+ * If it's already a full path, returns it as-is
+ * Returns default avatar path if avatar is null/undefined/empty
+ */
+export function normalizeAvatarPath(avatar: string | null | undefined): string {
+  if (!avatar) {
+    return '/images/dashboard/student-avatars/avatar-01.png';
+  }
+  
+  // Convert old path format to new path format
+  if (avatar.includes('/images/classes/avatars/')) {
+    const filename = avatar.split('/').pop(); // Get the filename (e.g., avatar-01.png)
+    return `/images/dashboard/student-avatars/${filename}`;
+  }
+  
+  // If it's already the correct full path, return it
+  if (avatar.startsWith('/images/dashboard/student-avatars/')) {
+    return avatar;
+  }
+  
+  // If it's just a filename (e.g., "avatar-01.png"), prepend the path
+  if (avatar.startsWith('avatar-') && avatar.endsWith('.png')) {
+    return `/images/dashboard/student-avatars/${avatar}`;
+  }
+  
+  // If it's an unexpected path format, try to extract filename
+  const filename = avatar.split('/').pop();
+  if (filename && filename.startsWith('avatar-') && filename.endsWith('.png')) {
+    return `/images/dashboard/student-avatars/${filename}`;
+  }
+  
+  // Fallback to default
+  return '/images/dashboard/student-avatars/avatar-01.png';
+}
+
+/**
+ * Normalizes class icon paths
+ * If the icon is just a filename (e.g., "icon-1.png"), prepends the full path
+ * If it's already a full path, returns it as-is
+ * Returns default icon path if icon is null/undefined/empty
+ */
+export function normalizeClassIconPath(icon: string | null | undefined): string {
+  if (!icon) {
+    return '/images/dashboard/class-icons/icon-1.png';
+  }
+  
+  // If it's already a full path, return it
+  if (icon.startsWith('/images/dashboard/class-icons/')) {
+    return icon;
+  }
+  
+  // If it's just a filename (e.g., "icon-1.png"), prepend the path
+  if (icon.startsWith('icon-') && icon.endsWith('.png')) {
+    return `/images/dashboard/class-icons/${icon}`;
+  }
+  
+  // If it's an old path format or unexpected format, try to extract filename
+  const filename = icon.split('/').pop();
+  if (filename && filename.startsWith('icon-') && filename.endsWith('.png')) {
+    return `/images/dashboard/class-icons/${filename}`;
+  }
+  
+  // Fallback to default
+  return '/images/dashboard/class-icons/icon-1.png';
+}
