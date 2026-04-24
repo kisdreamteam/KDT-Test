@@ -4,12 +4,15 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/client';
-import IconEye from '@/components/iconsCustom/iconEye';
+import FormLabel from '@/components/ui/FormLabel';
+import TextInput from '@/components/ui/TextInput';
+import PasswordInput from '@/components/ui/PasswordInput';
+import PrimaryButton from '@/components/ui/PrimaryButton';
+import InlineErrorText from '@/components/ui/InlineErrorText';
 
 export default function LoginForm() {
   const router = useRouter();
   const supabase = createClient();
-  const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -29,10 +32,10 @@ export default function LoginForm() {
     }}>
       {/* Email Field */}
       <div className="grid gap-2">
-        <label htmlFor="email" className="text-base font-semibold text-[24px] text-black font-spartan">
+        <FormLabel htmlFor="email" className="text-base font-semibold text-[24px] text-black font-spartan">
           Email address
-        </label>
-        <input
+        </FormLabel>
+        <TextInput
           id="email"
           name="email"
           type="email"
@@ -47,30 +50,19 @@ export default function LoginForm() {
 
       {/* Password Field */}
       <div className="grid gap-2">
-        <label htmlFor="password" className="text-base font-semibold text-black text-[24px] font-spartan">
+        <FormLabel htmlFor="password" className="text-base font-semibold text-black text-[24px] font-spartan">
           Password
-        </label>
-        <div className="relative">
-          <input
-            id="password"
-            name="password"
-            type={showPassword ? 'text' : 'password'}
-            autoComplete="current-password"
-            required
-            className="h-12 w-full rounded-[12px] border border-black/20 bg-white px-4 pr-12 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-[#4A3B8D]/30 font-sans"
-            placeholder=""
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword((v) => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-black/50 hover:text-black/80 "
-            aria-label={showPassword ? 'Hide password' : 'Show password'}
-          >
-            <IconEye hidden={showPassword} />
-          </button>
-        </div>
+        </FormLabel>
+        <PasswordInput
+          id="password"
+          name="password"
+          autoComplete="current-password"
+          required
+          className="h-12 w-full rounded-[12px] border border-black/20 bg-white px-4 pr-12 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-[#4A3B8D]/30 font-sans"
+          placeholder=""
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
       </div>
 
       {/* Forgot Password Link - Left Aligned */}
@@ -82,16 +74,16 @@ export default function LoginForm() {
 
       {/* Login Button */}
       <div className="flex justify-center gap-3">
-        <button
+        <PrimaryButton
           type="submit"
           className="h-12 w-[750px] px-8 rounded-[12px] bg-[#D96B7B] text-white font-bold text-2xl tracking-tight hover:brightness-95 transition focus:outline-none focus:ring-4 focus:ring-[#D96B7B]/30 font-spartan"
         >
           Login
-        </button>
+        </PrimaryButton>
       </div>
 
       {error && (
-        <p className="text-sm text-red-600 text-center">{error}</p>
+        <InlineErrorText className="text-sm text-red-600 text-center">{error}</InlineErrorText>
       )}
     </form>
   );

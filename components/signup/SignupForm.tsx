@@ -3,7 +3,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/client';
-import IconEye from '@/components/iconsCustom/iconEye';
+import FormLabel from '@/components/ui/FormLabel';
+import TextInput from '@/components/ui/TextInput';
+import SelectInput from '@/components/ui/SelectInput';
+import PasswordInput from '@/components/ui/PasswordInput';
+import PrimaryButton from '@/components/ui/PrimaryButton';
+import InlineErrorText from '@/components/ui/InlineErrorText';
 
 export default function SignupForm() {
   const router = useRouter();
@@ -15,9 +20,6 @@ export default function SignupForm() {
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [role, setRole] = useState<string>('Teacher');
-
-  const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [showConfirm, setShowConfirm] = useState<boolean>(false);
 
   const [emailError, setEmailError] = useState<string>('');
   const [roleError, setRoleError] = useState<string>('');
@@ -95,7 +97,7 @@ export default function SignupForm() {
       <form onSubmit={handleSignUp} className="space-y-4">
         {/* Title Dropdown */}
         <div className="relative">
-          <select
+          <SelectInput
             id="title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -103,7 +105,7 @@ export default function SignupForm() {
           >
             <option>Mr.</option>
             <option>Ms.</option>
-          </select>
+          </SelectInput>
           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
             <svg className="w-5 h-5 text-black/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -113,7 +115,7 @@ export default function SignupForm() {
 
         {/* First Name */}
         <div>
-          <input
+          <TextInput
             id="firstName"
             type="text"
             value={firstName}
@@ -125,7 +127,7 @@ export default function SignupForm() {
 
         {/* Last Name */}
         <div>
-          <input
+          <TextInput
             id="lastName"
             type="text"
             value={lastName}
@@ -138,7 +140,7 @@ export default function SignupForm() {
         {/* Email with @kshcm.net */}
         <div>
           <div className="relative">
-            <input
+            <TextInput
               id="email"
               type="text"
               value={email}
@@ -155,57 +157,35 @@ export default function SignupForm() {
             </span>
           </div>
           {emailError && (
-            <p className="mt-2 text-sm text-red-600">{emailError}</p>
+            <InlineErrorText className="mt-2 text-sm text-red-600">{emailError}</InlineErrorText>
           )}
         </div>
 
         {/* Password */}
         <div>
-          <div className="relative">
-            <input
-              id="password"
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              className="w-full h-12 rounded-[12px] border border-black/20 bg-white px-4 pr-12 text-[16px] text-black placeholder:text-black/50 outline-none focus:border-black/40 focus:ring-2 focus:ring-[#3B47E0]/30"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-black/50 hover:text-black/80"
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-            >
-              <IconEye hidden={showPassword} />
-            </button>
-          </div>
+          <PasswordInput
+            id="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            className="w-full h-12 rounded-[12px] border border-black/20 bg-white px-4 pr-12 text-[16px] text-black placeholder:text-black/50 outline-none focus:border-black/40 focus:ring-2 focus:ring-[#3B47E0]/30"
+          />
         </div>
 
         {/* Confirm Password */}
         <div>
-          <div className="relative">
-            <input
-              id="confirmPassword"
-              type={showConfirm ? 'text' : 'password'}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm Password"
-              className="w-full h-12 rounded-[12px] border border-black/20 bg-white px-4 pr-12 text-[16px] text-black placeholder:text-black/50 outline-none focus:border-black/40 focus:ring-2 focus:ring-[#3B47E0]/30"
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirm((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-black/50 hover:text-black/80"
-              aria-label={showConfirm ? 'Hide confirm password' : 'Show confirm password'}
-            >
-              <IconEye hidden={showConfirm} />
-            </button>
-          </div>
+          <PasswordInput
+            id="confirmPassword"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Confirm Password"
+            className="w-full h-12 rounded-[12px] border border-black/20 bg-white px-4 pr-12 text-[16px] text-black placeholder:text-black/50 outline-none focus:border-black/40 focus:ring-2 focus:ring-[#3B47E0]/30"
+          />
         </div>
 
         {/* Role Dropdown */}
         <div className="relative">
-          <select
+          <SelectInput
             id="role"
             value={role}
             onChange={(e) => setRole(e.target.value)}
@@ -214,27 +194,27 @@ export default function SignupForm() {
             <option>Teacher</option>
             <option>Parent</option>
             <option>Student</option>
-          </select>
+          </SelectInput>
           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
             <svg className="w-5 h-5 text-black/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </div>
-          {roleError && <p className="mt-2 text-sm text-red-600">{roleError}</p>}
+          {roleError && <InlineErrorText className="mt-2 text-sm text-red-600">{roleError}</InlineErrorText>}
         </div>
 
         {/* Submit Button */}
-        <button
+        <PrimaryButton
           type="submit"
           className="w-full h-12 rounded-[24px] bg-[#DE8680] text-white font-bold text-lg tracking-tight hover:brightness-95 transition focus:outline-none focus:ring-4 focus:ring-[#DE8680]/30 mt-6"
         >
           Create Account
-        </button>
+        </PrimaryButton>
 
         {message && (
-          <p className={`text-sm text-center ${message.startsWith('Success') ? 'text-green-600' : 'text-red-600'}`}>
+          <InlineErrorText className={`text-sm text-center ${message.startsWith('Success') ? 'text-green-600' : 'text-red-600'}`}>
             {message}
-          </p>
+          </InlineErrorText>
         )}
       </form>
 
