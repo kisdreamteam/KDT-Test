@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/client';
 import { Student } from '@/lib/types';
 import { useSeatingLayoutNav } from '@/context/SeatingLayoutNavContext';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
@@ -15,8 +15,8 @@ import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
 import IconAddPlus from '@/components/iconsCustom/iconAddPlus';
 import IconPresentationBoard from '@/components/iconsCustom/iconPresentationBoard';
 import IconDocumentClock from '@/components/iconsCustom/iconDocumentClock';
-import CanvasToolbar from '@/components/dashboard/CanvasToolbar';
-import ClassPointLogSlidePanel from '@/components/dashboard/ClassPointLogSlidePanel';
+import CanvasToolbar from '@/components/ui/CanvasToolbar';
+import ClassPointLogSlidePanel from '@/components/ui/ClassPointLogSlidePanel';
 import { useClassPointLog } from '@/hooks/useClassPointLog';
 import { useDashboardToolbarInset } from '@/hooks/useDashboardToolbarInset';
 

@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/client';
 import { useBottomNavPosition } from '@/hooks/useBottomNavPosition';
 import IconRandomArrows from '@/components/iconsCustom/iconRandomArrows';
 import IconSettingsWheel from '@/components/iconsCustom/iconSettingsWheel';
 import IconAutoAssign from '@/components/iconsCustom/iconAutoAssign';
 import IconAddPlus from '@/components/iconsCustom/iconAddPlus';
-import BotNavGrayButton from './botNavGrayButton';
+import BotNavGrayButton from '@/components/ui/BotNavGrayButton';
 
 interface BottomNavSeatingEditProps {
   currentClassName: string | null;

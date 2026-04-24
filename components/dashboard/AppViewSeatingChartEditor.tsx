@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/client';
 import { useSeatingChart } from '@/context/SeatingChartContext';
 import { Student } from '@/lib/types';
 import CreateLayoutModal from '@/components/modals/CreateLayoutModal';

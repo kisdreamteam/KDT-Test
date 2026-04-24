@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/client';
 import { Student } from '@/lib/types';
 import Image from 'next/image';
 import AwardPointsModal from '@/components/modals/AwardPointsModal';

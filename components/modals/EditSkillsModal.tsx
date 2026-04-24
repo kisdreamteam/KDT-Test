@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Modal from '@/components/modals/Modal';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/client';
 import EditSkillModal from '@/components/modals/EditSkillModal';
 import { PointCategory } from '@/lib/types';
 import Image from 'next/image';

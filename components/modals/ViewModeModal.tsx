@@ -2,12 +2,12 @@
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
-interface ViewPopupProps {
+interface ViewModeModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export default function ViewPopup({ isOpen, onClose }: ViewPopupProps) {
+export default function ViewModeModal({ isOpen, onClose }: ViewModeModalProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -32,9 +32,7 @@ export default function ViewPopup({ isOpen, onClose }: ViewPopupProps) {
   if (!isOpen) return null;
 
   return (
-    <div 
-      className="absolute bottom-full left-0 mb-2 bg-blue-100 rounded-lg shadow-lg border-4 border-[#4A3B8D] py-2 z-[100] min-w-[200px]"
-    >
+    <div className="absolute bottom-full left-0 mb-2 bg-blue-100 rounded-lg shadow-lg border-4 border-[#4A3B8D] py-2 z-[100] min-w-[200px]">
       <div className="px-4 py-2 text-sm font-semibold text-gray-700 border-b border-gray-200">
         View mode:
       </div>

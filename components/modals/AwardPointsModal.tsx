@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Modal from '@/components/modals/Modal';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/client';
 import AddSkillModal from '@/components/modals/AddSkillModal';
 import EditSkillsModal from '@/components/modals/EditSkillsModal';
 import { PointCategory, Student } from '@/lib/types';

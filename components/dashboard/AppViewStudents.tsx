@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/client';
 import AddStudentsModal from '@/components/modals/AddStudentsModal';
 import AwardPointsModal from '@/components/modals/AwardPointsModal';
 import EditStudentModal from '@/components/modals/EditStudentModal';
@@ -10,15 +10,15 @@ import PointsAwardedConfirmationModal from '@/components/modals/PointsAwardedCon
 import { Student } from '@/lib/types';
 import { useStudentSort } from '@/context/StudentSortContext';
 import { normalizeClassIconPath } from '@/lib/iconUtils';
-import LoadingState from './maincontent/LoadingState';
-import ErrorState from './maincontent/ErrorState';
-import EmptyState from './maincontent/EmptyState';
+import LoadingState from '@/components/ui/LoadingState';
+import ErrorState from '@/components/ui/ErrorState';
+import EmptyState from '@/components/ui/EmptyState';
 import StudentCardsGrid from './maincontent/viewStudentsGrid/StudentCardsGrid';
 import StudentCardsGridMulti from './maincontent/viewStudentsGrid/StudentCardsGridMulti';
 import AppViewSeatingChart from './AppViewSeatingChart';
 import AppViewSeatingChartEditor from './AppViewSeatingChartEditor';
-import CanvasToolbar from '@/components/dashboard/CanvasToolbar';
-import ClassPointLogSlidePanel from '@/components/dashboard/ClassPointLogSlidePanel';
+import CanvasToolbar from '@/components/ui/CanvasToolbar';
+import ClassPointLogSlidePanel from '@/components/ui/ClassPointLogSlidePanel';
 import IconAddPlus from '@/components/iconsCustom/iconAddPlus';
 import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
 import IconPresentationBoard from '@/components/iconsCustom/iconPresentationBoard';

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Modal from '@/components/modals/Modal';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/client';
 import { Student } from '@/lib/types';
 import { normalizeAvatarPath } from '@/lib/iconUtils';
 

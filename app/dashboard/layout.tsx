@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/client';
 import { DashboardProvider } from '@/context/DashboardContext';
 import { StudentSortProvider } from '@/context/StudentSortContext';
 import { SeatingChartProvider } from '@/context/SeatingChartContext';
@@ -12,7 +12,7 @@ import TopNav from '@/components/dashboard/navbars/TopNav';
 import BottomNavStudents from '@/components/dashboard/navbars/BottomNavStudents';
 import BottomNavMulti from '@/components/dashboard/navbars/BottomNavMulti';
 import BottomNavSeatingEdit from '@/components/dashboard/navbars/BottomNavSeatingEdit';
-import MainContent from '@/components/dashboard/maincontent/MainContent';
+import MainContent from '@/components/layout/dashboard/MainContent';
 import Timer from '@/components/dashboard/tools/Timer';
 import Random from '@/components/dashboard/tools/Random';
 import EditClassModal from '@/components/modals/EditClassModal';

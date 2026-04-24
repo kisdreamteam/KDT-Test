@@ -8,7 +8,7 @@ import IconCheckCircle from '@/components/iconsCustom/iconCheckCircle';
 import IconCircleX from '@/components/iconsCustom/iconCircleX';
 import IconNoCircleX from '@/components/iconsCustom/iconNoCircleX';
 import IconStarTrophy from '@/components/iconsCustom/iconStarTrophy';
-import BotNavGrayButton from './botNavGrayButton';
+import BotNavGrayButton from '@/components/ui/BotNavGrayButton';
 
 interface BottomNavMultiProps {
   sidebarOpen: boolean;

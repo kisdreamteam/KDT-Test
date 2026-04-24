@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Modal from '@/components/modals/Modal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/client';
 import { Student } from '@/lib/types';
 import AddStudentsModal from '@/components/modals/AddStudentsModal';
 import { normalizeAvatarPath } from '@/lib/iconUtils';

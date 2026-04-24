@@ -1,15 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import Modal from '@/components/modals/Modal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
-import CreateClassForm from '@/components/forms/CreateClassForm';
+import CreateClassModal from '@/components/modals/CreateClassModal';
 import EditClassModal from '@/components/modals/EditClassModal';
 import { useDashboard } from '@/context/DashboardContext';
-import LoadingState from './maincontent/LoadingState';
-import EmptyState from './maincontent/EmptyState';
+import LoadingState from '@/components/ui/LoadingState';
+import EmptyState from '@/components/ui/EmptyState';
 import ClassCardsGrid from './maincontent/viewClassesGrid/ClassCardsGrid';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/client';
 
 export default function AppViewClasses() {
   const { classes, isLoadingClasses, refreshClasses, viewMode } = useDashboard();  
@@ -254,9 +253,7 @@ export default function AppViewClasses() {
 
       {/* Create Class Modal - only for active view */}
       {!isArchivedView && (
-        <Modal isOpen={isModalOpen} onClose={handleModalClose}>
-          <CreateClassForm onClose={handleModalClose} />
-        </Modal>
+        <CreateClassModal isOpen={isModalOpen} onClose={handleModalClose} />
       )}
 
       {/* Edit Class Modal */}

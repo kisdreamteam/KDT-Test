@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/client';
 interface CreateClassFormProps {
   onClose: () => void;
 }

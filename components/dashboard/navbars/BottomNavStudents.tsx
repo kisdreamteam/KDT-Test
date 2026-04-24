@@ -2,17 +2,17 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/client';
 import { useStudentSort } from '@/context/StudentSortContext';
 import { useBottomNavPosition } from '@/hooks/useBottomNavPosition';
-import ViewPopup from './ViewPopup';
+import ViewModeModal from '@/components/modals/ViewModeModal';
 import IconViewDots from '@/components/iconsCustom/iconViewDots';
 import IconRandomArrows from '@/components/iconsCustom/iconRandomArrows';
 import IconTimerClock from '@/components/iconsCustom/iconTimerClock';
 import IconSortingArrows from '@/components/iconsCustom/iconSortingArrows';
 import IconCheckBox from '@/components/iconsCustom/iconCheckBox';
 import IconSettingsWheel from '@/components/iconsCustom/iconSettingsWheel';
-import BotNavGrayButton from './botNavGrayButton';
+import BotNavGrayButton from '@/components/ui/BotNavGrayButton';
 
 interface BottomNavStudentsProps {
   currentClassName: string | null;
@@ -102,7 +102,7 @@ export default function BottomNavStudents({
             }}
             stopPropagation={true}
           />
-          <ViewPopup 
+          <ViewModeModal 
             isOpen={isViewPopupOpen} 
             onClose={() => setIsViewPopupOpen(false)} 
           />

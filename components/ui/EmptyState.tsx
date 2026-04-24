@@ -5,11 +5,11 @@ interface EmptyStateProps {
   buttonText?: string;
 }
 
-export default function EmptyState({ 
-  onAddClick, 
-  title = "Welcome to your dashboard!",
+export default function EmptyState({
+  onAddClick,
+  title = 'Welcome to your dashboard!',
   message = "You haven't created any classes yet. Create your first class to get started with managing your students.",
-  buttonText = "Create Your First Class"
+  buttonText = 'Create Your First Class',
 }: EmptyStateProps) {
   return (
     <div className="text-center py-16">
@@ -18,14 +18,14 @@ export default function EmptyState({
           <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a2 2 0 114 0 2 2 0 01-4 0zm8 0a2 2 0 114 0 2 2 0 01-4 0z" clipRule="evenodd" />
         </svg>
       </div>
-      
+
       <h2 className="text-2xl font-bold text-gray-400 mb-4">{title}</h2>
       <p className="text-gray-400 mb-8 max-w-md mx-auto">
         {message}
       </p>
-      
+
       {buttonText && (
-        <div 
+        <div
           className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer transform hover:scale-105"
           onClick={onAddClick}
         >

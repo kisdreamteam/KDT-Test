@@ -1,4 +1,4 @@
-export default function LoadingState({ message = "Loading..." }: { message?: string }) {
+export default function LoadingState({ message = 'Loading...' }: { message?: string }) {
   return (
     <div className="max-w-6xl mx-auto">
       <div className="flex justify-center items-center h-64">

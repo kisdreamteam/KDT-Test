@@ -14,7 +14,7 @@ export default function ErrorState({ error, onRetry }: ErrorStateProps) {
             </svg>
           </div>
           <p className="text-red-600 mb-4">{error}</p>
-          <button 
+          <button
             onClick={onRetry}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
           >

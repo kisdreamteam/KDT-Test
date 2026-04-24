@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/client';
 import type { Student } from '@/lib/types';
 
 export type PointLogRow = {
