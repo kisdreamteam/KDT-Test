@@ -49,7 +49,8 @@ export default function DashboardStage({
   onRandomClick,
 }: DashboardStageProps) {
   const [toolbarConfig, setToolbarConfig] = useState<StageToolbarConfig | null>(null);
-  const showTopNav = !(isSeatingView && !isEditMode);
+  const showTopNav = !isSeatingView;
+  const stageContentPadding = isSeatingView ? '' : 'pl-2 pt-2';
   const showBottomNav = currentClassName && !isTimerOpen && !isRandomOpen;
 
   return (
@@ -66,7 +67,7 @@ export default function DashboardStage({
       )}
 
       {/* Main stage: stage-left (content) + stage-right (toolbar rail) */}
-      <div className="flex-1 min-h-0 overflow-hidden flex flex-row relative pl-2 pt-2">
+      <div className={`flex-1 min-h-0 overflow-hidden flex flex-row relative ${stageContentPadding}`}>
         <div className="flex-1 min-w-0 h-full overflow-y-auto">
           <StageToolbarProvider value={{ setToolbar: setToolbarConfig }}>
             {isTimerOpen ? (
@@ -83,7 +84,7 @@ export default function DashboardStage({
 
         <div
           data-stage-toolbar-slot
-          className={`w-14 h-full flex-shrink-0 ${isSeatingView ? '-ml-2 z-10' : ''}`}
+          className={`w-14 h-full flex-shrink-0 ${isSeatingView ? '-ml-0 z-10' : ''}`}
         >
           {toolbarConfig && (
             <CanvasToolbar

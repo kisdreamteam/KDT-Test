@@ -5,6 +5,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/client';
 import { useSeatingChart } from '@/context/SeatingChartContext';
 import { Student } from '@/lib/types';
+import { useStageToolbar } from './StageToolbarContext';
 import CreateLayoutModal from '@/components/modals/CreateLayoutModal';
 import EditGroupModal from '@/components/modals/EditGroupModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
@@ -50,6 +51,7 @@ interface AppViewSeatingChartEditorProps {
 }
 
 export default function AppViewSeatingChartEditor({ classId, students }: AppViewSeatingChartEditorProps) {
+  const { setToolbar } = useStageToolbar();
   const { selectedStudentForGroup, setSelectedStudentForGroup, setUnseatedStudents, unseatedStudents } = useSeatingChart();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -78,6 +80,7 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
   /** Fixed-slot: groupId -> list of { student, seat_index } (may have gaps). */
   const [groupAssignments, setGroupAssignments] = useState<Map<string, GroupAssignment[]>>(new Map());
   const groupAssignmentsRef = useRef<Map<string, GroupAssignment[]>>(new Map());
+  const handleCloseRef = useRef<() => void>(() => {});
   const addStudentToGroupInFlightRef = useRef<{ studentId: string; groupId: string } | null>(null);
   const saveAllChangesInFlightRef = useRef(false);
   const [targetGroupId, setTargetGroupId] = useState<string | null>(null);
@@ -170,6 +173,31 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
       window.dispatchEvent(new CustomEvent('seatingChartEditMode', { detail: { isEditMode: false } }));
     });
   };
+
+  useEffect(() => {
+    handleCloseRef.current = handleClose;
+  }, [handleClose]);
+
+  useEffect(() => {
+    setToolbar({
+      className: 'z-10',
+      topActions: [
+        {
+          id: 'close-editor',
+          title: 'Close editor',
+          onClick: () => handleCloseRef.current(),
+          icon: (
+            <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          ),
+        },
+      ],
+      bottomActions: [],
+    });
+
+    return () => setToolbar(null);
+  }, [setToolbar]);
 
   // Track the offset from where the user clicked to the group's top-left corner
   const dragOffsetRef = useRef<{ x: number; y: number } | null>(null);
@@ -2127,31 +2155,6 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
                 </div>
               </>
             )}
-          </div>
-          {/* Vertical menu bar on the right - Close editor (X) */}
-          <div
-            className="absolute right-2 top-2 bottom-2 flex flex-col gap-2 p-2 rounded-xl bg-white/80 z-10 border-2 border-black"
-            aria-label="Canvas actions"
-          >
-            <button
-              onClick={handleClose}
-              className="w-10 h-10 rounded-lg bg-white/90 hover:bg-white flex items-center justify-center transition-colors shadow"
-              title="Close editor"
-            >
-              <svg
-                className="w-6 h-6 text-black"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
           </div>
           {isLoadingGroups ? (
             <div className="flex items-center justify-center p-8 relative" style={{ zIndex: 1 }}>

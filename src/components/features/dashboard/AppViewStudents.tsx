@@ -461,7 +461,7 @@ export default function AppViewStudents() {
     }
 
     setToolbar({
-      className: '!border-0 !bg-white',
+      className: '!bg-white',
       topActions: [
         {
           id: 'add',
@@ -511,7 +511,7 @@ export default function AppViewStudents() {
         <div
           className={
             currentView === 'grid'
-              ? 'max-w-10xl mx-auto text-white-500 pr-[5.75rem] sm:pr-24'
+              ? 'max-w-10xl mx-auto text-white-500 pr-[5.75rem] sm:pr-24 !pl-0'
               : 'h-full min-h-0 w-full text-white-500'
           }
         >

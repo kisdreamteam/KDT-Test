@@ -47,7 +47,7 @@ export default function CanvasToolbar({
 }: CanvasToolbarProps) {
   return (
     <div
-      className={`flex min-h-0 flex-col gap-2 overflow-hidden p-2 rounded-xl bg-white/80 border-2 border-black ${className}`}
+      className={`flex min-h-0 flex-col gap-2 overflow-hidden p-2 bg-white/80 border-0 border-top-brand-purple ${className}`}
       style={style}
       aria-label={ariaLabel}
     >
