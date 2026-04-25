@@ -8,13 +8,7 @@ import { StudentSortProvider } from '@/context/StudentSortContext';
 import { SeatingChartProvider } from '@/context/SeatingChartContext';
 import { SeatingLayoutNavProvider, SeatingLayoutNavData } from '@/context/SeatingLayoutNavContext';
 import LeftNav from '@/components/features/navbars/left/LeftNav';
-import TopNav from '@/components/features/navbars/top/TopNav';
-import BottomNavStudents from '@/components/features/navbars/bottom/BottomNavStudents';
-import BottomNavMulti from '@/components/features/navbars/bottom/BottomNavMulti';
-import BottomNavSeatingEdit from '@/components/features/navbars/bottom/BottomNavSeatingEdit';
-import MainContent from '@/components/layout/dashboard/MainContent';
-import Timer from '@/components/features/dashboard/tools/Timer';
-import Random from '@/components/features/dashboard/tools/Random';
+import DashboardStage from '@/components/features/dashboard/DashboardStage';
 import EditClassModal from '@/components/modals/EditClassModal';
 
 interface TeacherProfile {
@@ -223,100 +217,58 @@ function DashboardLayoutContent({
   }, [fetchClasses]);
 
   return (
-    // Outer Container of the left-nav and main content container
-    <div className="flex flex-row h-screen bg-[#4A3B8D] pl-2 pb-0 pt-0">
-      {/* Wrap everything in SeatingChartProvider so sidebar and editor can share state */}
+    <DashboardProvider value={{ 
+      classes: filteredClasses, 
+      isLoadingClasses, 
+      teacherProfile, 
+      isLoadingProfile,
+      refreshClasses: fetchClasses,
+      viewMode,
+      setViewMode
+    }}>
       <SeatingChartProvider>
-        <SeatingLayoutNavProvider setSeatingLayoutData={setSeatingLayoutData}>
-        {/* Left Sidebar - Always show LeftNav with classes; when in seating view (not edit), include layout list */}
-        <div className={`${sidebarOpen ? 'w-76' : 'w-0'} transition-all duration-300 overflow-hidden bg-white flex flex-col`} data-sidebar-container>
-          <LeftNav 
-            classes={classes}
-            isLoadingClasses={isLoadingClasses}
-            viewMode={viewMode}
-            setViewMode={setViewMode}
-            seatingLayoutData={isSeatingView && !isEditMode ? seatingLayoutData : null}
-          />
-        </div>
+        <StudentSortProvider>
+          <SeatingLayoutNavProvider setSeatingLayoutData={setSeatingLayoutData}>
+            <div className="h-screen w-screen overflow-hidden flex flex-row bg-[#4A3B8D]">
+              <div className="w-76 h-full pl-2 flex-shrink-0">
+                <div className="h-full overflow-hidden bg-white">
+                  <LeftNav
+                    classes={classes}
+                    isLoadingClasses={isLoadingClasses}
+                    viewMode={viewMode}
+                    setViewMode={setViewMode}
+                    seatingLayoutData={isSeatingView && !isEditMode ? seatingLayoutData : null}
+                  />
+                </div>
+              </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col relative pl-2 pr-2 pt-2">
-            <StudentSortProvider>
-              {/* Top Bar - hidden in seating chart view so canvas matches editor size */}
-              {!(isSeatingView && !isEditMode) && (
-                <TopNav
+              <div className="flex-1 h-full overflow-hidden pl-2 pr-2 pt-2">
+                <DashboardStage
+                  isSeatingView={isSeatingView}
+                  isEditMode={isEditMode}
                   isLoadingProfile={isLoadingProfile}
                   currentClassName={currentClassName}
                   teacherProfile={teacherProfile}
                   onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-                />
-              )}
-
-              {/* Main Content */}
-              <DashboardProvider value={{ 
-                classes: filteredClasses, 
-                isLoadingClasses, 
-                teacherProfile, 
-                isLoadingProfile,
-                refreshClasses: fetchClasses,
-                viewMode,
-                setViewMode
-              }}>
-                {isTimerOpen ? (
-                  <Timer onClose={() => setIsTimerOpen(false)} />
-                ) : isRandomOpen ? (
-                  <Random onClose={() => setIsRandomOpen(false)} />
-                ) : (
-                  <div className="flex-1 flex flex-col min-h-0">
-                    <div
-                      className="flex-1 overflow-y-auto "
-                      data-dashboard-scroll-container
-                      style={currentClassName && !isTimerOpen && !isRandomOpen ? { maxHeight: 'calc(100% - 80px)' } : {}}
-                    >
-                      <MainContent currentClassName={currentClassName}>
-                        {children}
-                      </MainContent>
-                    </div>
-                    {currentClassName && !isTimerOpen && !isRandomOpen && (
-                      <div className="h-20 flex-shrink-0"></div>
-                    )}
-                  </div>
-                )}
-              </DashboardProvider>
-
-              {/* Bottom Bar - Only visible when on a class page and not viewing timer/random */}
-              {currentClassName && !isTimerOpen && !isRandomOpen && (
-                <>
-                  {isSeatingView && isEditMode ? (
-                    <BottomNavSeatingEdit
-                      currentClassName={currentClassName}
-                      sidebarOpen={sidebarOpen}
-                      classId={currentClassId}
-                      onEditClass={() => setIsEditClassModalOpen(true)}
-                    />
-                  ) : isMultiSelectMode ? (
-                    <BottomNavMulti
-                      sidebarOpen={sidebarOpen}
-                    />
-                  ) : (
-                    <BottomNavStudents
-                      currentClassName={currentClassName}
-                      sidebarOpen={sidebarOpen}
-                      onTimerClick={() => setIsTimerOpen(true)}
-                      onRandomClick={() => setIsRandomOpen(true)}
-                      sortingDisabled={isSeatingView}
-                      classId={currentClassId}
-                      onEditClass={() => setIsEditClassModalOpen(true)}
-                    />
-                  )}
-                </>
-              )}
-          </StudentSortProvider>
-        </div>
-        </SeatingLayoutNavProvider>
+                  isTimerOpen={isTimerOpen}
+                  isRandomOpen={isRandomOpen}
+                  onCloseTimer={() => setIsTimerOpen(false)}
+                  onCloseRandom={() => setIsRandomOpen(false)}
+                  isMultiSelectMode={isMultiSelectMode}
+                  sidebarOpen={sidebarOpen}
+                  classId={currentClassId}
+                  onEditClass={() => setIsEditClassModalOpen(true)}
+                  onTimerClick={() => setIsTimerOpen(true)}
+                  onRandomClick={() => setIsRandomOpen(true)}
+                >
+                  {children}
+                </DashboardStage>
+              </div>
+            </div>
+          </SeatingLayoutNavProvider>
+        </StudentSortProvider>
       </SeatingChartProvider>
 
-      {/* Edit Class Modal (opened from bottom nav settings) */}
       {currentClassId && (
         <EditClassModal
           isOpen={isEditClassModalOpen}
@@ -325,7 +277,7 @@ function DashboardLayoutContent({
           onRefresh={fetchClasses}
         />
       )}
-    </div>
+    </DashboardProvider>
   );
 }
 
@@ -335,8 +287,16 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center h-screen bg-[#4A3B8D]"><div className="text-white">Loading...</div></div>}>
+    <Suspense fallback={<DashboardLayoutFallback />}>
       <DashboardLayoutContent>{children}</DashboardLayoutContent>
     </Suspense>
+  );
+}
+
+function DashboardLayoutFallback() {
+  return (
+    <div className="flex items-center justify-center h-screen bg-[#4A3B8D]">
+      <div className="text-white">Loading...</div>
+    </div>
   );
 }

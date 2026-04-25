@@ -1,8 +1,8 @@
 import SignupAvatar from './SignupAvatar';
 import SignupForm from './SignupForm';
-import AuthPageLayout from '@/components/layout/auth/AuthPageLayout';
-import AuthCard from '@/components/layout/auth/AuthCard';
-import AuthBackLink from '@/components/layout/auth/AuthBackLink';
+import AuthPageLayout from '@/layouts/auth/AuthPageLayout';
+import AuthCard from '@/layouts/auth/AuthCard';
+import AuthBackLink from '@/layouts/auth/AuthBackLink';
 
 export default function SignupApp() {
   return (
