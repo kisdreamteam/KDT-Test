@@ -9,6 +9,7 @@ import IconSettingsWheel from '@/components/iconsCustom/iconSettingsWheel';
 import IconAutoAssign from '@/components/iconsCustom/iconAutoAssign';
 import IconAddPlus from '@/components/iconsCustom/iconAddPlus';
 import BotNavGrayButton from '@/components/ui/BotNavGrayButton';
+import BaseBottomNav from '@/components/ui/BaseBottomNav';
 
 interface BottomNavSeatingEditProps {
   currentClassName: string | null;
@@ -220,11 +221,7 @@ export default function BottomNavSeatingEdit({
   };
 
   return (
-    <div 
-      data-bottom-nav
-      className="fixed bottom-0 font-spartan bg-white h-12 sm:h-14 md:h-16 lg:h-20 flex items-center justify-start gap-2 sm:gap-4 md:gap-8 lg:gap-15 pr-4 sm:pr-6 md:pr-8 lg:pr-10 z-50 border-t border-[#4A3B8D] overflow-visible"
-      style={{ left: `${leftPosition}px`, right: '0.5rem' }}
-    >
+    <BaseBottomNav leftOffsetPx={leftPosition} className="overflow-visible">
       <div className="flex items-center justify-between w-full">
         {/* Left side buttons */}
         <div className="flex flex-row items-center gap-2 sm:gap-4 md:gap-8 lg:gap-15">
@@ -478,7 +475,7 @@ export default function BottomNavSeatingEdit({
           </div>
         </div>
       </div>
-    </div>
+    </BaseBottomNav>
   );
 }
 

@@ -13,6 +13,7 @@ import IconSortingArrows from '@/components/iconsCustom/iconSortingArrows';
 import IconCheckBox from '@/components/iconsCustom/iconCheckBox';
 import IconSettingsWheel from '@/components/iconsCustom/iconSettingsWheel';
 import BotNavGrayButton from '@/components/ui/BotNavGrayButton';
+import BaseBottomNav from '@/components/ui/BaseBottomNav';
 
 interface BottomNavStudentsProps {
   currentClassName: string | null;
@@ -85,11 +86,7 @@ export default function BottomNavStudents({
   };
 
   return (
-    <div 
-      data-bottom-nav
-      className="fixed bottom-0 font-spartan bg-white h-12 sm:h-14 md:h-16 lg:h-20 flex items-center justify-start gap-2 sm:gap-4 md:gap-8 lg:gap-15 pr-4 sm:pr-6 md:pr-8 lg:pr-10 z-50 border-t border-[#4A3B8D] overflow-visible"
-      style={{ left: `${leftPosition}px`, right: '0.5rem' }}
-    >
+    <BaseBottomNav leftOffsetPx={leftPosition} className="overflow-visible">
       {/* View Button - Only show when on a class page */}
       {currentClassName && (
         <div className="relative flex-shrink-0" ref={viewButtonRef}>
@@ -228,7 +225,7 @@ export default function BottomNavStudents({
           </div>
         )}
       </div>
-    </div>
+    </BaseBottomNav>
   );
 }
 

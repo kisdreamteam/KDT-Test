@@ -9,7 +9,7 @@ import CreateLayoutModal from '@/components/modals/CreateLayoutModal';
 import EditGroupModal from '@/components/modals/EditGroupModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import SuccessNotificationModal from '@/components/modals/SuccessNotificationModal';
-import LeftNavSeatingChartEdit from '@/components/features/dashboard/navbars/LeftNavSeatingChartEdit';
+import LeftNavSeatingChartEdit from '@/components/features/navbars/left/LeftNavSeatingChartEdit';
 import IconSettingsWheel from '@/components/iconsCustom/iconSettingsWheel';
 import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
 
