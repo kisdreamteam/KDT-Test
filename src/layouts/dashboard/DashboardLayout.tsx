@@ -8,6 +8,7 @@ import { StudentSortProvider } from '@/context/StudentSortContext';
 import { SeatingChartProvider } from '@/context/SeatingChartContext';
 import { SeatingLayoutNavProvider, SeatingLayoutNavData } from '@/context/SeatingLayoutNavContext';
 import LeftNav from '@/components/features/navbars/left/LeftNav';
+import LeftNavSeatingChartEdit from '@/components/features/navbars/left/LeftNavSeatingChartEdit';
 import DashboardStage from '@/components/features/dashboard/DashboardStage';
 import EditClassModal from '@/components/modals/EditClassModal';
 
@@ -233,13 +234,17 @@ function DashboardLayoutContent({
               {/* God Box split: Left nav */}
               <div className="w-76 h-full pl-2 flex-shrink-0">
                 <div className="h-full overflow-hidden bg-white">
-                  <LeftNav
-                    classes={classes}
-                    isLoadingClasses={isLoadingClasses}
-                    viewMode={viewMode}
-                    setViewMode={setViewMode}
-                    seatingLayoutData={isSeatingView && !isEditMode ? seatingLayoutData : null}
-                  />
+                  {isSeatingView && isEditMode ? (
+                    <LeftNavSeatingChartEdit />
+                  ) : (
+                    <LeftNav
+                      classes={classes}
+                      isLoadingClasses={isLoadingClasses}
+                      viewMode={viewMode}
+                      setViewMode={setViewMode}
+                      seatingLayoutData={isSeatingView && !isEditMode ? seatingLayoutData : null}
+                    />
+                  )}
                 </div>
               </div>
               {/* God Box split: DashboardStage (top nav, main content, bottom nav) */}
@@ -247,9 +252,7 @@ function DashboardLayoutContent({
                 <DashboardStage
                   isSeatingView={isSeatingView}
                   isEditMode={isEditMode}
-                  isLoadingProfile={isLoadingProfile}
                   currentClassName={currentClassName}
-                  teacherProfile={teacherProfile}
                   isTimerOpen={isTimerOpen}
                   isRandomOpen={isRandomOpen}
                   onCloseTimer={() => setIsTimerOpen(false)}

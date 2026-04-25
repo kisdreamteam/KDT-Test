@@ -9,7 +9,6 @@ import CreateLayoutModal from '@/components/modals/CreateLayoutModal';
 import EditGroupModal from '@/components/modals/EditGroupModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import SuccessNotificationModal from '@/components/modals/SuccessNotificationModal';
-import LeftNavSeatingChartEdit from '@/components/features/navbars/left/LeftNavSeatingChartEdit';
 import IconSettingsWheel from '@/components/iconsCustom/iconSettingsWheel';
 import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
 
@@ -122,9 +121,6 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
   // Store pixel positions for each group (x, y coordinates)
   const [groupPositions, setGroupPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
-  const mainContentRef = useRef<HTMLDivElement | null>(null);
-  const leftSidebarRef = useRef<HTMLDivElement | null>(null);
-  const [canvasLeft, setCanvasLeft] = useState(320); // Default left position (8px sidebar left + 304px width + 8px spacing)
   // Track which group is being dragged
   const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null);
   // Color coding mode: "Gender" or "Level"
@@ -175,37 +171,6 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
     });
   };
 
-  // Calculate canvas left position based on left sidebar position
-  useEffect(() => {
-    const updateCanvasLeft = () => {
-      if (leftSidebarRef.current) {
-        const rect = leftSidebarRef.current.getBoundingClientRect();
-        // Start canvas right after the sidebar with 8px spacing
-        // Sidebar: left: 8px, width: 304px (w-76), so right edge is at 312px
-        // Canvas should start at 312px + 8px spacing = 320px
-        const sidebarRight = rect.left + rect.width;
-        const newLeft = sidebarRight + 8;
-        setCanvasLeft(newLeft);
-      } else {
-        // Fallback: sidebar is 8px left + 304px width (w-76) + 8px spacing = 320px
-        setCanvasLeft(320);
-      }
-    };
-    
-    // Initial update with a small delay to ensure sidebar is rendered
-    const timeoutId = setTimeout(updateCanvasLeft, 10);
-    updateCanvasLeft();
-    
-    window.addEventListener('resize', updateCanvasLeft);
-    const interval = setInterval(updateCanvasLeft, 100); // Update periodically to catch sidebar changes
-    
-    return () => {
-      clearTimeout(timeoutId);
-      window.removeEventListener('resize', updateCanvasLeft);
-      clearInterval(interval);
-    };
-  }, []);
-  
   // Track the offset from where the user clicked to the group's top-left corner
   const dragOffsetRef = useRef<{ x: number; y: number } | null>(null);
   // Animation state for randomize
@@ -2095,37 +2060,19 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
   }
 
   return (
-    <div 
-      className="flex flex-row bg-red-600 font-spartan relative w-full h-screen" 
-      style={{ 
-        height: '100vh',
-        width: '100vw',
-        position: 'fixed',
-            top: 0, 
-        left: 0
-      }}
-    >
-      {/* Main Content Area - Add left padding to account for left sidebar (w-76 = 304px) + spacing (8px) */}
-      {/* Note: Removed overflow-y-auto from this container to avoid nested scroll container warning with drag-and-drop */}
-      <div ref={mainContentRef} className="flex-1 p-1 bg-brand-purple sm:p-11md:p-2 relative" style={{ paddingLeft: '312px', minHeight: '100%', overflow: 'visible' }}>
-        <div className="space-y-8 relative" style={{ zIndex: 1 }}>
+    <div className="font-spartan relative w-full h-full min-h-0 bg-brand-purple">
+      {/* Main Content Area */}
+      <div className="w-full h-full min-h-0 bg-brand-purple relative overflow-visible">
+        <div className="h-full min-h-0 relative" style={{ zIndex: 1 }}>
 
         {/* Seating Groups Canvas */}
-        <div className="flex-1 flex flex-col relative" style={{ minHeight: 'calc(100vh - 300px)' }}>
+        <div className="h-full min-h-0 flex flex-col relative">
           {/* Canvas for groups display */}
           <div 
-            className="bg-brand-cream fixed border-2 border-black rounded-lg pt-2"
+            className="bg-brand-cream border-2 border-black rounded-lg pt-2 h-full w-full relative"
             style={{
-              top: '6px', // Start at the top of the screen
-              left: `${canvasLeft}px`, // Dynamically calculated from left sidebar right edge + spacing
-              right: '8px', // Small padding from right edge
-              bottom: '85px', // Always extend to bottom nav (80px height) - this ensures it reaches the nav regardless of zoom
               overflow: 'auto',
-              zIndex: 1, // Lower than sidebar (z-40) so sidebar appears on top
-              width: 'auto', // Width is constrained by left and right
-              height: 'auto', // Height is constrained by top and bottom
-              maxWidth: '100%', // Prevent overflow
-              maxHeight: '100%' // Prevent overflow
+              zIndex: 1
             }}
           >
           {/* Grid Lines Overlay - Visual guide only (only show if show_grid is true) */}
@@ -2584,20 +2531,6 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
           </div>
         </div>
         </div>
-      </div>
-
-      {/* Left Sidebar - Unseated Students - Full height without top/bottom navs */}
-      <div 
-        ref={leftSidebarRef}
-        className="fixed w-76 bg-white flex flex-col h-screen overflow-y-auto z-40" 
-        style={{ 
-          left: '8px',
-          top: '0px', // Small padding from top
-          bottom: '0px', // Small padding from bottom
-          height: 'calc(100vh - 0px)' // Full viewport minus small padding
-        }}
-      >
-        <LeftNavSeatingChartEdit />
       </div>
 
       {/* Create Layout Modal */}

@@ -507,12 +507,12 @@ export default function AppViewStudents() {
   return (
     <>
       {/* Main Content Container for student cards */}
-      <div className={currentView === 'seating' ? 'min-h-full' : ''}>
+      <div className={currentView === 'seating' ? 'h-full min-h-0 w-full' : ''}>
         <div
           className={
             currentView === 'grid'
               ? 'max-w-10xl mx-auto text-white-500 pr-[5.75rem] sm:pr-24'
-              : 'max-w-10xl mx-auto text-white-500'
+              : 'h-full min-h-0 w-full text-white-500'
           }
         >
           {currentView === 'seating' ? (

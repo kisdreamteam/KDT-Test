@@ -17,7 +17,6 @@ import IconPresentationBoard from '@/components/iconsCustom/iconPresentationBoar
 import IconDocumentClock from '@/components/iconsCustom/iconDocumentClock';
 import ClassPointLogSlidePanel from '@/components/ui/ClassPointLogSlidePanel';
 import { useClassPointLog } from '@/hooks/useClassPointLog';
-import { useDashboardToolbarInset } from '@/hooks/useDashboardToolbarInset';
 import { useStageToolbar } from './StageToolbarContext';
 
 interface SeatingChart {
@@ -107,7 +106,6 @@ export default function AppViewSeatingChart({
   const [layoutOrientation, setLayoutOrientation] = useState<string>('Left');
   const [isTeacherView, setIsTeacherView] = useState(false);
 
-  const toolbarInset = useDashboardToolbarInset();
   const {
     isPointLogOpen,
     setIsPointLogOpen,
@@ -736,13 +734,13 @@ export default function AppViewSeatingChart({
 
   if (layouts.length === 0) {
     return (
-      <div className="font-spartan w-full min-h-full bg-brand-purple relative">
+      <div className="font-spartan w-full h-full min-h-0 bg-brand-purple relative">
         <ClassPointLogSlidePanel
           isOpen={isPointLogOpen}
-          position="fixed"
+          position="absolute"
           rightPx={72}
-          topPx={toolbarInset.top}
-          bottomPx={toolbarInset.bottom}
+          topPx={8}
+          bottomPx={8}
           zIndex={40}
           logTotalCount={logTotalCount}
           pointLogError={pointLogError}
@@ -776,17 +774,11 @@ export default function AppViewSeatingChart({
   }
 
   return (
-    <div className="font-spartan w-full min-h-full bg-brand-purple relative">
-      {/* Canvas - fixed position, same size as AppViewSeatingChartEditor (no top nav) */}
+    <div className="font-spartan w-full h-full min-h-0 bg-brand-purple relative">
+      {/* Canvas - anchored to the stage area (flex flow, no viewport-fixed offsets) */}
       <div
-        className="bg-brand-cream fixed border-2 border-black rounded-lg pt-2 overflow-hidden"
-        style={{
-          top: '6px',
-          left: '320px',
-          right: '8px',
-          bottom: '85px',
-          zIndex: 1,
-        }}
+        className="bg-brand-cream border-2 border-black rounded-lg pt-2 overflow-hidden min-h-0 h-full w-full relative"
+        style={{ zIndex: 1 }}
       >
           {/* Rotatable canvas content: grid, objects, loading/groups (menu bar stays outside) */}
           <div
