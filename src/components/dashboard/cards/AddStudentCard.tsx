@@ -1,4 +1,5 @@
-import IconPlus from '@/components/iconsCustom/iconPlus';
+import BaseCard from "@/components/ui/BaseCard";
+import IconPlus from "@/components/iconsCustom/iconPlus";
 
 interface AddStudentCardProps {
   onClick: () => void;
@@ -6,29 +7,19 @@ interface AddStudentCardProps {
 
 export default function AddStudentCard({ onClick }: AddStudentCardProps) {
   return (
-    <div
+    <BaseCard
+      variant="action"
+      title="Add New Student"
+      subtitle="Add another student"
       onClick={onClick}
-      className="bg-blue-300 font-spartan rounded-2xl border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 shadow-md p-6 cursor-pointer transition-all duration-200 aspect-square flex flex-col relative overflow-hidden hover:shadow-lg"
-    >
-      <div className="flex flex-col items-center justify-center h-full text-center">
-        {/* Add Icon */}
-        <div className="mb-4 flex-shrink-0">
-          <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto">
-            <IconPlus className="w-10 h-10 text-white" />
+      className="border-2 border-dashed border-gray-300 hover:border-blue-400"
+      icon={
+        <div className="mb-1">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-500">
+            <IconPlus className="h-10 w-10 text-white" />
           </div>
         </div>
-
-        {/* Add Text */}
-        <h3 className="text-lg font-semibold text-gray-800 mb-2 flex-shrink-0">
-          Add New Student
-        </h3>
-
-        {/* Placeholder Text */}
-        <p className="text-sm text-gray-600">
-          Add another student
-        </p>
-      </div>
-    </div>
+      }
+    />
   );
 }
-

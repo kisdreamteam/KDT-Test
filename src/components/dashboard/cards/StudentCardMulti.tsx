@@ -1,6 +1,6 @@
-import { Student } from '@/lib/types';
-import { normalizeAvatarPath } from '@/lib/iconUtils';
-import IconCheckCircle from '@/components/iconsCustom/iconCheckCircle';
+import { Student } from "@/lib/types";
+import { normalizeAvatarPath } from "@/lib/iconUtils";
+import BaseCard from "@/components/ui/BaseCard";
 
 interface StudentCardMultiProps {
   student: Student;
@@ -14,48 +14,32 @@ export default function StudentCardMulti({
   onSelect,
 }: StudentCardMultiProps) {
   return (
-    <div 
+    <BaseCard
+      className={isSelected ? "overflow-hidden hover:shadow-md" : "overflow-hidden hover:shadow-md hover:!bg-blue-100"}
+      variant="default"
+      contentLayout="space-between"
+      isSelected={isSelected}
+      aria-pressed={isSelected}
+      title={student.first_name}
+      titleClassName="pointer-events-none text-gray-900"
+      iconWrapperClassName="pointer-events-none"
       onClick={() => onSelect(student.id)}
-      className={`rounded-3xl hover:rounded-3xl shadow-md font-spartan p-6 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group aspect-square flex flex-col cursor-pointer ${
+      topRightSlot={
         isSelected
-          ? 'bg-blue-300 hover:bg-blue-400'
-          : 'bg-white hover:bg-blue-100'
-      }`}
-    >
-      {/* Radio Button */}
-      <div className="absolute top-4 right-4 z-10">
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onSelect(student.id);
-          }}
-          className={`w-12 h-12 flex items-center justify-center rounded-full transition-all duration-200 shadow-md border-2 ${
-            isSelected
-              ? 'bg-blue-500 text-white hover:bg-blue-600 border-blue-600'
-              : 'bg-white text-gray-400 hover:bg-gray-50 hover:text-gray-600 border-gray-300'
-          }`}
-        >
-          {isSelected ? (
-            <svg
-              className="w-7 h-7"
-              fill="currentColor"
-              viewBox="0 0 20 20"
+          ? undefined
+          : (
+            <div
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center pointer-events-none"
+              title="Select"
+              aria-hidden
             >
-              <path
-                fillRule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                clipRule="evenodd"
+              <span
+                className="inline-block h-5 w-5 rounded-full border-[3px] border-gray-400 bg-white shadow-sm ring-1 ring-gray-200/80"
               />
-            </svg>
-          ) : (
-            <IconCheckCircle className="w-6 h-6" strokeWidth={3} />
-          )}
-        </button>
-      </div>
-
-      {/* Student Avatar */}
-      <div className="flex justify-center mb-1 pointer-events-none flex-shrink-0">
+            </div>
+            )
+      }
+      icon={
         <img
           src={normalizeAvatarPath(student.avatar)}
           alt={`${student.first_name} ${student.last_name} avatar`}
@@ -64,22 +48,13 @@ export default function StudentCardMulti({
           className="rounded-xl bg-[#FDF2F0]"
           decoding="async"
         />
-      </div>
-
-      {/* Student Name */}
-      <div className="text-center mb-1 pointer-events-none flex-shrink-0">
-        <h3 className="text-lg font-semibold text-gray-900">
-          {student.first_name}
-        </h3>
-      </div>
-
-      {/* Student Points */}
-      <div className="text-center pointer-events-none mt-auto">
-        <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#FDF2F0] text-red-400 text-xl font-large font-bold">
+      }
+    >
+      <div className="pointer-events-none w-full text-center">
+        <div className="inline-flex items-center rounded-full bg-[#FDF2F0] px-3 py-1 text-xl font-bold text-red-400">
           {student.points || 0}
         </div>
       </div>
-    </div>
+    </BaseCard>
   );
 }
-

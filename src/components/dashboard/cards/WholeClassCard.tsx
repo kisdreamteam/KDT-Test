@@ -1,4 +1,5 @@
-import { normalizeClassIconPath } from '@/lib/iconUtils';
+import { normalizeClassIconPath } from "@/lib/iconUtils";
+import BaseCard from "@/components/ui/BaseCard";
 
 interface WholeClassCardProps {
   classIcon: string;
@@ -12,13 +13,15 @@ export default function WholeClassCard({
   onClick,
 }: WholeClassCardProps) {
   return (
-    <div
+    <BaseCard
+      variant="action"
+      contentLayout="space-between"
+      title="Whole Class"
       onClick={onClick}
-      className="bg-blue-300 font-spartan rounded-3xl hover:bg-blue-100 hover:rounded-3xl shadow-md p-6 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer aspect-square flex flex-col"
-      style={{ position: 'relative', zIndex: 1 }}
-    >
-      {/* Class Icon */}
-      <div className="flex justify-center mb-4 pointer-events-none flex-shrink-0">
+      className="overflow-hidden !bg-blue-300 !border-blue-200 hover:shadow-md hover:!bg-blue-200"
+      iconWrapperClassName="!mb-0"
+      titleClassName="!mb-0"
+      icon={
         <img
           src={normalizeClassIconPath(classIcon)}
           alt="Whole Class icon"
@@ -27,22 +30,13 @@ export default function WholeClassCard({
           className="rounded-xl bg-[#FDF2F0]"
           decoding="async"
         />
-      </div>
-
-      {/* Card Title */}
-      <div className="text-center mb-3 pointer-events-none flex-shrink-0">
-        <h3 className="text-lg font-semibold text-gray-900">
-          Whole Class
-        </h3>
-      </div>
-
-      {/* Total Points */}
-      <div className="text-center pointer-events-none mt-auto">
-        <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#FDF2F0] text-red-400 text-xl font-large font-bold">
+      }
+    >
+      <div className="pointer-events-none w-full text-center">
+        <div className="inline-flex items-center rounded-full bg-[#FDF2F0] px-3 py-1 text-xl font-bold text-red-400">
           {totalPoints}
         </div>
       </div>
-    </div>
+    </BaseCard>
   );
 }
-

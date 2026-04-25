@@ -1,6 +1,7 @@
-import Link from 'next/link';
-import { normalizeClassIconPath } from '@/lib/iconUtils';
-import IconSettingsWheel from '@/components/iconsCustom/iconSettingsWheel';
+import Link from "next/link";
+import { normalizeClassIconPath } from "@/lib/iconUtils";
+import IconSettingsWheel from "@/components/iconsCustom/iconSettingsWheel";
+import BaseCard from "@/components/ui/BaseCard";
 
 interface Class {
   id: string;
@@ -28,65 +29,109 @@ export default function ClassCard({
   onToggleDropdown,
   onEdit,
   onArchive,
-  archiveButtonText = 'Archive Class',
+  archiveButtonText = "Archive Class",
   onDelete,
   showDelete = false,
 }: ClassCardProps) {
   const isOwner = classItem.is_owner !== false;
   return (
-    <Link
-      href={`/dashboard/classes/${classItem.id}`}
-      className="block aspect-square"
-    >
-      <div className="bg-white rounded-lg font-spartan shadow-md py-6 hover:shadow-xl hover:rounded-3xl hover:bg-blue-100 transition-shadow cursor-pointer relative group h-full flex flex-col">
-        {/* Settings Icon with Dropdown */}
-        <div className="absolute top-2 right-2 z-10">
-          <div className="relative">
+    <Link href={`/dashboard/classes/${classItem.id}`} className="block aspect-square w-full min-h-0">
+      <BaseCard
+        className="!aspect-auto h-full min-h-0 hover:shadow-md hover:!bg-blue-100"
+        variant="default"
+        title={
+          <h3
+            className="w-full overflow-hidden break-words text-center font-semibold text-gray-800"
+            style={{
+              fontSize: `clamp(0.75rem, ${Math.max(0.75, Math.min(1.5, 1.5 - (classItem.name.length - 8) * 0.04))}rem, 1.5rem)`,
+              lineHeight: "1.2",
+            }}
+          >
+            {classItem.name}
+          </h3>
+        }
+        subtitle={
+          studentCount !== undefined
+            ? `${studentCount} ${studentCount === 1 ? "Student" : "Students"}`
+            : "Loading..."
+        }
+        subtitleClassName="!text-xs !text-gray-400 !mb-0 !font-bold"
+        topRightSlot={
+          <div className="relative z-10">
             <button
-              onClick={(e) => onToggleDropdown(classItem.id, e)}
-              className={`w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all duration-200 ${
-                openDropdownId === classItem.id ? 'text-gray-700 bg-gray-100' : ''
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggleDropdown(classItem.id, e);
+              }}
+              className={`flex h-10 w-10 items-center justify-center rounded-full text-gray-400 transition-all duration-200 hover:bg-gray-100 hover:text-gray-700 ${
+                openDropdownId === classItem.id ? "bg-gray-100 text-gray-700" : ""
               }`}
             >
-              <IconSettingsWheel className="w-5 h-5" />
+              <IconSettingsWheel className="h-5 w-5" />
             </button>
 
-            {/* Dropdown Menu */}
             {openDropdownId === classItem.id && (
-              <div className="absolute right-0 top-12 w-56 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 transform transition-all duration-200 ease-out opacity-100 translate-y-0">
-                {/* Arrow pointer */}
-                <div className="absolute -top-2 right-4 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
-                
+              <div className="absolute right-0 top-12 z-50 w-56 transform rounded-xl border border-gray-200 bg-white shadow-2xl transition-all duration-200 ease-out">
+                <div className="absolute -top-2 right-4 h-4 w-4 rotate-45 border-l border-t border-gray-200 bg-white" />
                 <div className="py-2">
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       onEdit(classItem.id);
                     }}
-                    className="w-full px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center transition-colors duration-150 group"
+                    className="group flex w-full items-center px-4 py-3 text-left text-sm font-medium text-gray-700 transition-colors duration-150 hover:bg-blue-50 hover:text-blue-700"
                   >
-                    <svg className="w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    <svg
+                      className="mr-3 h-5 w-5 text-gray-400 transition-colors group-hover:text-blue-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      />
                     </svg>
                     <span>Edit Class</span>
                   </button>
                   {isOwner && (
                     <>
-                      <div className="my-1 border-t border-gray-100"></div>
+                      <div className="my-1 border-t border-gray-100" />
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
                           onArchive(classItem.id, classItem.name);
                         }}
-                        className="w-full px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-purple-50 hover:text-purple-700 flex items-center transition-colors duration-150 group"
+                        className="group flex w-full items-center px-4 py-3 text-left text-sm font-medium text-gray-700 transition-colors duration-150 hover:bg-purple-50 hover:text-purple-700"
                       >
-                        <svg className="w-5 h-5 mr-3 text-gray-400 group-hover:text-purple-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          {archiveButtonText === 'Unarchive Class' ? (
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                        <svg
+                          className="mr-3 h-5 w-5 text-gray-400 transition-colors group-hover:text-purple-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          {archiveButtonText === "Unarchive Class" ? (
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 10l7-7m0 0l7 7m-7-7v18"
+                            />
                           ) : (
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l6 6m0 0l6-6m-6 6V3" />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 8l6 6m0 0l6-6m-6 6V3"
+                            />
                           )}
                         </svg>
                         <span>{archiveButtonText}</span>
@@ -95,17 +140,28 @@ export default function ClassCard({
                   )}
                   {isOwner && showDelete && onDelete && (
                     <>
-                      <div className="my-1 border-t border-gray-100"></div>
+                      <div className="my-1 border-t border-gray-100" />
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
                           onDelete(classItem.id, classItem.name);
                         }}
-                        className="w-full px-4 py-3 text-left text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center transition-colors duration-150 group"
+                        className="group flex w-full items-center px-4 py-3 text-left text-sm font-medium text-red-600 transition-colors duration-150 hover:bg-red-50 hover:text-red-700"
                       >
-                        <svg className="w-5 h-5 mr-3 text-red-400 group-hover:text-red-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        <svg
+                          className="mr-3 h-5 w-5 text-red-400 transition-colors group-hover:text-red-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
                         </svg>
                         <span>Delete Class</span>
                       </button>
@@ -115,45 +171,24 @@ export default function ClassCard({
               </div>
             )}
           </div>
-        </div>
-
-        {/* Class Icon - Fixed */}
-        <div className="text-center mb-4 flex-shrink-0">
+        }
+        titleClassName="!mb-2 flex-1 min-h-0 flex items-center justify-center px-2"
+        iconWrapperClassName="!mb-2 flex-shrink-0"
+        icon={
           <img
             src={normalizeClassIconPath(classItem.icon)}
             alt={`${classItem.name} icon`}
             width={80}
             height={80}
-            className="mx-auto mb-2"
+            className="mb-0 mx-auto"
             decoding="async"
           />
-        </div>
-
-        {/* Class Name - Flexible with dynamic font sizing */}
-        <div className="flex-1 flex items-center justify-center min-h-0 mb-2 px-2">
-          <h3 
-            className="font-semibold text-gray-800 text-center break-words overflow-hidden w-full"
-            style={{
-              fontSize: `clamp(0.75rem, ${Math.max(0.75, Math.min(1.5, 1.5 - (classItem.name.length - 8) * 0.04))}rem, 1.5rem)`,
-              lineHeight: '1.2'
-            }}
-          >
-            {classItem.name}
-          </h3>
-        </div>
-
-        {/* Student Count - Fixed */}
-        <p className="text-xs text-gray-400 text-center font-bold flex-shrink-0">
-          {studentCount !== undefined 
-            ? `${studentCount} ${studentCount === 1 ? 'Student' : 'Students'}`
-            : 'Loading...'
-          }
-        </p>
+        }
+      >
         {!isOwner && (
-          <p className="text-[11px] text-blue-600 text-center font-semibold mt-1">Shared with you</p>
+          <p className="!mt-1 text-center text-[11px] font-semibold text-blue-600">Shared with you</p>
         )}
-      </div>
+      </BaseCard>
     </Link>
   );
 }
-

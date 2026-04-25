@@ -1,6 +1,7 @@
-import { Student } from '@/lib/types';
-import { normalizeAvatarPath } from '@/lib/iconUtils';
-import IconSettingsWheel from '@/components/iconsCustom/iconSettingsWheel';
+import { Student } from "@/lib/types";
+import { normalizeAvatarPath } from "@/lib/iconUtils";
+import IconSettingsWheel from "@/components/iconsCustom/iconSettingsWheel";
+import BaseCard from "@/components/ui/BaseCard";
 
 interface StudentCardProps {
   student: Student;
@@ -20,58 +21,71 @@ export default function StudentCard({
   onClick,
 }: StudentCardProps) {
   return (
-    <div
-      key={student.id}
-      data-student-card={`${student.id}`}
+    <BaseCard
+      data-student-card={student.id}
+      className="z-[1] overflow-hidden hover:shadow-md hover:!bg-blue-100"
+      variant="default"
+      contentLayout="space-between"
+      title={student.first_name}
+      titleClassName="pointer-events-none text-gray-900"
+      iconWrapperClassName="pointer-events-none"
       onClick={() => onClick(student)}
-      className="bg-white font-spartan rounded-3xl hover:bg-blue-100 hover:rounded-3xl shadow-md p-6 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group cursor-pointer aspect-square flex flex-col"
-      style={{ position: 'relative', zIndex: 1 }}
-    >
-      {/* Settings Icon with Dropdown */}
-      <div 
-        className="absolute top-4 right-4 z-10"
-        data-dropdown-container
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-      >
-        <div className="relative">
+      topRightSlot={
+        <div
+          className="relative"
+          data-dropdown-container
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
           <button
+            type="button"
             onClick={(e) => onToggleDropdown(student.id, e)}
-            className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
             data-dropdown-button
           >
-            <IconSettingsWheel className="w-10 h-10" />
+            <IconSettingsWheel className="h-10 w-10" />
           </button>
 
-          {/* Dropdown Menu */}
           {openDropdownId === student.id && (
-            <div className="absolute right-0 top-8 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+            <div className="absolute right-0 top-8 z-10 w-48 rounded-md border border-gray-200 bg-white shadow-lg">
               <div className="py-1">
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     onEdit(student.id);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                  className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                 >
-                  <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  <svg className="mr-3 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
                   </svg>
                   Edit
                 </button>
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     onDelete(student.id, `${student.first_name} ${student.last_name}`);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 flex items-center"
+                  className="flex w-full items-center px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100"
                 >
-                  <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  <svg className="mr-3 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
                   </svg>
                   Delete
                 </button>
@@ -79,10 +93,8 @@ export default function StudentCard({
             </div>
           )}
         </div>
-      </div>
-
-      {/* Student Avatar */}
-      <div className="flex justify-center mb-1 pointer-events-none flex-shrink-0">
+      }
+      icon={
         <img
           src={normalizeAvatarPath(student.avatar)}
           alt={`${student.first_name} ${student.last_name} avatar`}
@@ -91,22 +103,13 @@ export default function StudentCard({
           className="rounded-xl bg-[#FDF2F0]"
           decoding="async"
         />
-      </div>
-
-      {/* Student Name */}
-      <div className="text-center mb-1 pointer-events-none flex-shrink-0">
-        <h3 className="text-lg font-semibold text-gray-900">
-          {student.first_name}
-        </h3>
-      </div>
-
-      {/* Student Points */}
-      <div className="text-center pointer-events-none mt-auto">
-        <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#FDF2F0] text-red-400 text-xl font-large font-bold">
+      }
+    >
+      <div className="pointer-events-none w-full text-center">
+        <div className="inline-flex items-center rounded-full bg-[#FDF2F0] px-3 py-1 text-xl font-bold text-red-400">
           {student.points || 0}
         </div>
       </div>
-    </div>
+    </BaseCard>
   );
 }
-
