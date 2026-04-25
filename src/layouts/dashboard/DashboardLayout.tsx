@@ -252,7 +252,9 @@ function DashboardLayoutContent({
                 <DashboardStage
                   isSeatingView={isSeatingView}
                   isEditMode={isEditMode}
+                  isLoadingProfile={isLoadingProfile}
                   currentClassName={currentClassName}
+                  teacherProfile={teacherProfile}
                   isTimerOpen={isTimerOpen}
                   isRandomOpen={isRandomOpen}
                   onCloseTimer={() => setIsTimerOpen(false)}

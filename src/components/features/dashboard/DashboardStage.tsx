@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import TopNav from '@/components/features/navbars/top/TopNav';
 import BottomNavStudents from '@/components/features/navbars/bottom/BottomNavStudents';
 import BottomNavMulti from '@/components/features/navbars/bottom/BottomNavMulti';
 import BottomNavSeatingEdit from '@/components/features/navbars/bottom/BottomNavSeatingEdit';
@@ -13,7 +14,12 @@ interface DashboardStageProps {
   children: React.ReactNode;
   isSeatingView: boolean;
   isEditMode: boolean;
+  isLoadingProfile: boolean;
   currentClassName: string | null;
+  teacherProfile: {
+    title: string;
+    name: string;
+  } | null;
   isTimerOpen: boolean;
   isRandomOpen: boolean;
   onCloseTimer: () => void;
@@ -29,7 +35,9 @@ export default function DashboardStage({
   children,
   isSeatingView,
   isEditMode,
+  isLoadingProfile,
   currentClassName,
+  teacherProfile,
   isTimerOpen,
   isRandomOpen,
   onCloseTimer,
@@ -41,10 +49,22 @@ export default function DashboardStage({
   onRandomClick,
 }: DashboardStageProps) {
   const [toolbarConfig, setToolbarConfig] = useState<StageToolbarConfig | null>(null);
+  const showTopNav = !(isSeatingView && !isEditMode);
   const showBottomNav = currentClassName && !isTimerOpen && !isRandomOpen;
 
   return (
     <div className={`h-full w-full flex flex-col overflow-hidden ${currentClassName ? 'bg-brand-purple' : 'bg-brand-cream'}`}>
+      {/* Top nav */}
+      {showTopNav && (
+        <div className="h-30 w-full flex-shrink-0 overflow-hidden">
+          <TopNav
+            isLoadingProfile={isLoadingProfile}
+            currentClassName={currentClassName}
+            teacherProfile={teacherProfile}
+          />
+        </div>
+      )}
+
       {/* Main stage: stage-left (content) + stage-right (toolbar rail) */}
       <div className="flex-1 min-h-0 overflow-hidden flex flex-row relative pl-2 pt-2">
         <div className="flex-1 min-w-0 h-full overflow-y-auto">
