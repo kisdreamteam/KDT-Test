@@ -1,5 +1,5 @@
-import LandingHeader from "@/components/landing/LandingHeader";
-import LandingMain from "@/components/landing/LandingMain";
+import LandingHeader from "@/components/features/landing/LandingHeader";
+import LandingMain from "@/components/features/landing/LandingMain";
 
 export default function Home() {
   return (

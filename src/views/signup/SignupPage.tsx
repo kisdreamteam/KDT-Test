@@ -1,4 +1,4 @@
-import SignupApp from '@/components/signup/SignupApp';
+import SignupApp from '@/components/features/signup/SignupApp';
 
 export default function SignupPage() {
   return <SignupApp />;

@@ -7,14 +7,14 @@ import { DashboardProvider } from '@/context/DashboardContext';
 import { StudentSortProvider } from '@/context/StudentSortContext';
 import { SeatingChartProvider } from '@/context/SeatingChartContext';
 import { SeatingLayoutNavProvider, SeatingLayoutNavData } from '@/context/SeatingLayoutNavContext';
-import LeftNav from '@/components/dashboard/navbars/LeftNav';
-import TopNav from '@/components/dashboard/navbars/TopNav';
-import BottomNavStudents from '@/components/dashboard/navbars/BottomNavStudents';
-import BottomNavMulti from '@/components/dashboard/navbars/BottomNavMulti';
-import BottomNavSeatingEdit from '@/components/dashboard/navbars/BottomNavSeatingEdit';
+import LeftNav from '@/components/features/dashboard/navbars/LeftNav';
+import TopNav from '@/components/features/dashboard/navbars/TopNav';
+import BottomNavStudents from '@/components/features/dashboard/navbars/BottomNavStudents';
+import BottomNavMulti from '@/components/features/dashboard/navbars/BottomNavMulti';
+import BottomNavSeatingEdit from '@/components/features/dashboard/navbars/BottomNavSeatingEdit';
 import MainContent from '@/components/layout/dashboard/MainContent';
-import Timer from '@/components/dashboard/tools/Timer';
-import Random from '@/components/dashboard/tools/Random';
+import Timer from '@/components/features/dashboard/tools/Timer';
+import Random from '@/components/features/dashboard/tools/Random';
 import EditClassModal from '@/components/modals/EditClassModal';
 
 interface TeacherProfile {

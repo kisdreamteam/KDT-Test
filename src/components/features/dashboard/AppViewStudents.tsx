@@ -13,8 +13,12 @@ import { normalizeClassIconPath } from '@/lib/iconUtils';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorState from '@/components/ui/ErrorState';
 import EmptyState from '@/components/ui/EmptyState';
-import StudentCardsGrid from './maincontent/viewStudentsGrid/StudentCardsGrid';
-import StudentCardsGridMulti from './maincontent/viewStudentsGrid/StudentCardsGridMulti';
+import CardsGrid from '@/components/ui/CardsGrid';
+import ScaledGridFrame from '@/components/ui/ScaledGridFrame';
+import WholeClassCard from './cards/WholeClassCard';
+import StudentCard from './cards/StudentCard';
+import StudentCardMulti from './cards/StudentCardMulti';
+import AddStudentCard from './cards/AddStudentCard';
 import AppViewSeatingChart from './AppViewSeatingChart';
 import AppViewSeatingChartEditor from './AppViewSeatingChartEditor';
 import CanvasToolbar from '@/components/ui/CanvasToolbar';
@@ -594,28 +598,41 @@ export default function AppViewStudents() {
                   buttonText="Add Your First Student"
                   onAddClick={() => setAddStudentModalOpen(true)}
                 />
-              ) : isMultiSelectMode ? (
-                <StudentCardsGridMulti
-                  students={sortedStudents}
-                  selectedStudentIds={selectedStudentIds}
-                  onSelectStudent={handleSelectStudent}
-                  classIcon={classIcon}
-                  totalClassPoints={totalClassPoints}
-                  onWholeClassClick={handleWholeClassClick}
-                />
               ) : (
-                <StudentCardsGrid
-                  students={sortedStudents}
-                  classIcon={classIcon}
-                  totalClassPoints={totalClassPoints}
-                  onWholeClassClick={handleWholeClassClick}
-                  openDropdownId={openDropdownId}
-                  onToggleDropdown={toggleDropdown}
-                  onEdit={handleEditStudent}
-                  onDelete={handleDeleteStudent}
-                  onStudentClick={handleStudentClick}
-                  onAddStudent={() => setAddStudentModalOpen(true)}
-                />
+                <ScaledGridFrame
+                  remeasureKey={`${sortedStudents.length}-${isMultiSelectMode ? 1 : 0}`}
+                >
+                  <CardsGrid>
+                    <WholeClassCard
+                      classIcon={classIcon}
+                      totalPoints={totalClassPoints}
+                      onClick={handleWholeClassClick}
+                    />
+                    {sortedStudents.map((student) =>
+                      isMultiSelectMode ? (
+                        <StudentCardMulti
+                          key={student.id}
+                          student={student}
+                          isSelected={selectedStudentIds.includes(student.id)}
+                          onSelect={handleSelectStudent}
+                        />
+                      ) : (
+                        <StudentCard
+                          key={student.id}
+                          student={student}
+                          openDropdownId={openDropdownId}
+                          onToggleDropdown={toggleDropdown}
+                          onEdit={handleEditStudent}
+                          onDelete={handleDeleteStudent}
+                          onClick={handleStudentClick}
+                        />
+                      )
+                    )}
+                    {!isMultiSelectMode && (
+                      <AddStudentCard onClick={() => setAddStudentModalOpen(true)} />
+                    )}
+                  </CardsGrid>
+                </ScaledGridFrame>
               )}
             </>
           )}

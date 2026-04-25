@@ -5,6 +5,7 @@ You are an expert developer helping to refactor KIS-Points to match the "Visual 
 ## 1. Directory Structure
 - /src/api: Shared Supabase DB logic (Point adding/deducting).
 - /src/components/ui: Atomic Design blocks (Buttons, Badges, Cards).
+- /src/components/features: Route-domain feature UIs (e.g. dashboard, landing, login, signup) composed from /ui and shared parts.
 - /src/hooks: Custom React hooks (logic only).
 - /src/layouts: Master screen layouts (e.g., Dashboard Sidebar/Frame).
 - /src/lib: Shared utilities (Supabase client, TypeScript types).
