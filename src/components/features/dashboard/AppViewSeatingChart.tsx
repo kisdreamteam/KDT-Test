@@ -15,10 +15,10 @@ import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
 import IconAddPlus from '@/components/iconsCustom/iconAddPlus';
 import IconPresentationBoard from '@/components/iconsCustom/iconPresentationBoard';
 import IconDocumentClock from '@/components/iconsCustom/iconDocumentClock';
-import CanvasToolbar from '@/components/ui/CanvasToolbar';
 import ClassPointLogSlidePanel from '@/components/ui/ClassPointLogSlidePanel';
 import { useClassPointLog } from '@/hooks/useClassPointLog';
 import { useDashboardToolbarInset } from '@/hooks/useDashboardToolbarInset';
+import { useStageToolbar } from './StageToolbarContext';
 
 interface SeatingChart {
   id: string;
@@ -69,9 +69,11 @@ export default function AppViewSeatingChart({
   selectedStudentIds = [],
   onSelectStudent,
 }: AppViewSeatingChartProps) {
+  const { setToolbar } = useStageToolbar();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const searchQuery = searchParams?.toString() ?? '';
   const [layouts, setLayouts] = useState<SeatingChart[]>([]);
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -120,6 +122,7 @@ export default function AppViewSeatingChart({
     safeLogPage,
     pagedPointLogRows,
   } = useClassPointLog(classId, students);
+
 
   const applyLayoutViewSettings = useCallback((data: {
     show_grid?: boolean | null;
@@ -481,16 +484,73 @@ export default function AppViewSeatingChart({
     setIsEditLayoutModalOpen(false);
   };
 
-  const handleOpenSeatingEditor = () => {
+  const handleOpenSeatingEditor = useCallback(() => {
     const base = pathname ?? '/';
     const storageKey = `seatingChart_selectedLayout_${classId}`;
     const layoutId = typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null;
     window.dispatchEvent(new CustomEvent('seatingChartEditMode', { detail: { isEditMode: true } }));
-    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    const params = new URLSearchParams(searchQuery);
     params.set('mode', 'edit');
     if (layoutId) params.set('layout', layoutId);
     router.push(params.toString() ? `${base}?${params.toString()}` : `${base}?mode=edit`);
-  };
+  }, [classId, pathname, router, searchQuery]);
+
+  useEffect(() => {
+    setToolbar({
+      className: 'z-10',
+      topActions: [
+        {
+          id: 'add',
+          title: 'Create new layout',
+          onClick: () => setIsCreateModalOpen(true),
+          icon: <IconAddPlus className="w-6 h-6 text-black" />,
+        },
+        {
+          id: 'edit',
+          title: layouts.length > 0 ? 'Seating Editor View' : 'Seating Editor (create a layout first)',
+          disabled: layouts.length === 0,
+          onClick: layouts.length > 0 ? handleOpenSeatingEditor : undefined,
+          icon: <IconEditPencil className={`w-6 h-6 ${layouts.length > 0 ? 'text-black' : 'text-gray-500'}`} strokeWidth={2} />,
+        },
+      ],
+      bottomActions: [
+        {
+          id: 'teacher-view',
+          title: isTeacherView ? "Teacher's view (click to exit)" : "Teacher's view",
+          active: isTeacherView,
+          onClick: () =>
+            setIsTeacherView((v) => {
+              const next = !v;
+              if (classId) localStorage.setItem(`seatingChart_teacherView_${classId}`, String(next));
+              return next;
+            }),
+          icon: (
+            <IconPresentationBoard
+              className={`w-6 h-6 ${isTeacherView ? 'text-black' : 'text-gray-500'}`}
+              strokeWidth={2}
+            />
+          ),
+        },
+        {
+          id: 'point-log',
+          title: isPointLogOpen ? 'Close point log' : 'Open point log',
+          active: isPointLogOpen,
+          onClick: () => setIsPointLogOpen((v) => !v),
+          icon: <IconDocumentClock className="w-6 h-6 text-black" strokeWidth={2} />,
+        },
+      ],
+    });
+
+    return () => setToolbar(null);
+  }, [
+    classId,
+    handleOpenSeatingEditor,
+    isPointLogOpen,
+    isTeacherView,
+    layouts.length,
+    setIsPointLogOpen,
+    setToolbar,
+  ]);
 
   const handleDeleteConfirmed = async () => {
     if (!layoutToDelete) return;
@@ -676,58 +736,7 @@ export default function AppViewSeatingChart({
 
   if (layouts.length === 0) {
     return (
-      <div className="font-spartan w-full min-h-full bg-[#4A3B8D] relative">
-        <CanvasToolbar
-          className="!z-50"
-          style={{
-            position: 'fixed',
-            right: 8,
-            top: toolbarInset.top,
-            bottom: toolbarInset.bottom,
-            zIndex: 50,
-          }}
-          topActions={[
-            {
-              id: 'add',
-              title: 'Create new layout',
-              onClick: () => setIsCreateModalOpen(true),
-              icon: <IconAddPlus className="w-6 h-6 text-black" />,
-            },
-            {
-              id: 'edit',
-              title: 'Seating Editor (create a layout first)',
-              disabled: true,
-              icon: <IconEditPencil className="w-6 h-6 text-gray-500" strokeWidth={2} />,
-            },
-          ]}
-          bottomActions={[
-            {
-              id: 'teacher-view',
-              title: isTeacherView ? "Teacher's view (click to exit)" : "Teacher's view",
-              active: isTeacherView,
-              onClick: () =>
-                setIsTeacherView((v) => {
-                  const next = !v;
-                  if (classId) localStorage.setItem(`seatingChart_teacherView_${classId}`, String(next));
-                  return next;
-                }),
-              icon: (
-                <IconPresentationBoard
-                  className={`w-6 h-6 ${isTeacherView ? 'text-black' : 'text-gray-500'}`}
-                  strokeWidth={2}
-                />
-              ),
-            },
-            {
-              id: 'point-log',
-              title: isPointLogOpen ? 'Close point log' : 'Open point log',
-              active: isPointLogOpen,
-              onClick: () => setIsPointLogOpen((v) => !v),
-              icon: <IconDocumentClock className="w-6 h-6 text-black" strokeWidth={2} />,
-            },
-          ]}
-        />
-
+      <div className="font-spartan w-full min-h-full bg-brand-purple relative">
         <ClassPointLogSlidePanel
           isOpen={isPointLogOpen}
           position="fixed"
@@ -767,10 +776,10 @@ export default function AppViewSeatingChart({
   }
 
   return (
-    <div className="font-spartan w-full min-h-full bg-[#4A3B8D] relative">
+    <div className="font-spartan w-full min-h-full bg-brand-purple relative">
       {/* Canvas - fixed position, same size as AppViewSeatingChartEditor (no top nav) */}
       <div
-        className="bg-[#fcf1f0] fixed border-2 border-black rounded-lg pt-2 overflow-hidden"
+        className="bg-brand-cream fixed border-2 border-black rounded-lg pt-2 overflow-hidden"
         style={{
           top: '6px',
           left: '320px',
@@ -1031,50 +1040,6 @@ export default function AppViewSeatingChart({
               </div>
             ) : null}
           </div>
-          <CanvasToolbar
-            className="absolute right-2 top-2 bottom-2 z-10"
-            topActions={[
-              {
-                id: 'add',
-                title: 'Create new layout',
-                onClick: () => setIsCreateModalOpen(true),
-                icon: <IconAddPlus className="w-6 h-6 text-black" />,
-              },
-              {
-                id: 'edit',
-                title: 'Seating Editor View',
-                onClick: handleOpenSeatingEditor,
-                icon: <IconEditPencil className="w-6 h-6 text-black" strokeWidth={2} />,
-              },
-            ]}
-            bottomActions={[
-              {
-                id: 'teacher-view',
-                title: isTeacherView ? "Teacher's view (click to exit)" : "Teacher's view",
-                active: isTeacherView,
-                onClick: () =>
-                  setIsTeacherView((v) => {
-                    const next = !v;
-                    if (classId) localStorage.setItem(`seatingChart_teacherView_${classId}`, String(next));
-                    return next;
-                  }),
-                icon: (
-                  <IconPresentationBoard
-                    className={`w-6 h-6 ${isTeacherView ? 'text-black' : 'text-gray-500'}`}
-                    strokeWidth={2}
-                  />
-                ),
-              },
-              {
-                id: 'point-log',
-                title: isPointLogOpen ? 'Close point log' : 'Open point log',
-                active: isPointLogOpen,
-                onClick: () => setIsPointLogOpen((v) => !v),
-                icon: <IconDocumentClock className="w-6 h-6 text-black" strokeWidth={2} />,
-              },
-            ]}
-          />
-
           <ClassPointLogSlidePanel
             isOpen={isPointLogOpen}
             position="absolute"

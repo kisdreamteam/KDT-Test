@@ -323,7 +323,7 @@ export default function Random({ onClose }: RandomProps) {
   }, [availableStudents.length, isSpinning]);
 
   return (
-    <div className="fixed inset-0 bg-[#4A3B8D] z-50 flex items-center justify-center">
+    <div className="fixed inset-0 bg-brand-purple z-50 flex items-center justify-center">
       {/* Close Button */}
       <button
         onClick={onClose}

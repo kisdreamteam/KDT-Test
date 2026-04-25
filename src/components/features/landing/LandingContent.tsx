@@ -1,6 +1,6 @@
 export default function LandingContent() {
   return (
-    <div className="text-[#4A3B8D]">
+    <div className="text-brand-purple">
       <h1 className=" lg:text-9xl md:text-7xl sm:text-5xl 
                       lg:leading-27.25 md:leading-22.25 sm:leading-16.25 
                       font-bold mb-9 font-spartan -translate-y-10">

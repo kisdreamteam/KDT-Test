@@ -15,7 +15,7 @@ export default function LeftNavSeatingChartEdit() {
   };
 
   return (
-    <div className="p-4 flex flex-col h-full bg-white text-[#4A3B8D]">
+    <div className="p-4 flex flex-col h-full bg-white text-brand-purple">
       {/* Header */}
       <div className="mb-4">
         <h2 className="text-xl font-semibold mb-2 text-center">Unseated Students</h2>
@@ -41,7 +41,7 @@ export default function LeftNavSeatingChartEdit() {
             >
               {/* Student Name with Number */}
               <div className="flex-1 min-w-0">
-                <span className="text-base font-medium text-[#4A3B8D] block truncate font-spartan">
+                <span className="text-base font-medium text-brand-purple block truncate font-spartan">
                   {student.student_number ? `${student.student_number}. ` : ''}{student.first_name}
                 </span>
               </div>

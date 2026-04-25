@@ -18,7 +18,7 @@ export default function LoginHeader() {
 
       {/* Login Title */}
       <div className="mb-8 mt-2">
-        <h1 className="text-6xl font-extrabold text-[#4A3B8D] font-spartan">
+        <h1 className="text-6xl font-extrabold text-brand-purple font-spartan">
           Login
         </h1>
       </div>

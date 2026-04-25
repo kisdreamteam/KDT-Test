@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/client';
 import { useStudentSort } from '@/context/StudentSortContext';
-import { useBottomNavPosition } from '@/hooks/useBottomNavPosition';
 import ViewModeModal from '@/components/modals/ViewModeModal';
 import IconViewDots from '@/components/iconsCustom/iconViewDots';
 import IconRandomArrows from '@/components/iconsCustom/iconRandomArrows';
@@ -17,7 +16,6 @@ import BaseBottomNav from '@/components/ui/BaseBottomNav';
 
 interface BottomNavStudentsProps {
   currentClassName: string | null;
-  sidebarOpen: boolean;
   onTimerClick: () => void;
   onRandomClick: () => void;
   /** When true (e.g. seating chart view), Sorting button is shown but disabled */
@@ -30,7 +28,6 @@ interface BottomNavStudentsProps {
 
 export default function BottomNavStudents({ 
   currentClassName, 
-  sidebarOpen,
   onTimerClick,
   onRandomClick,
   sortingDisabled = false,
@@ -39,7 +36,6 @@ export default function BottomNavStudents({
 }: BottomNavStudentsProps) {
   const { sortBy, setSortBy } = useStudentSort();
   const router = useRouter();
-  const leftPosition = useBottomNavPosition(sidebarOpen);
   const [isSortPopupOpen, setIsSortPopupOpen] = useState(false);
   const sortButtonRef = useRef<HTMLDivElement>(null);
   const [isSettingsPopupOpen, setIsSettingsPopupOpen] = useState(false);
@@ -86,7 +82,7 @@ export default function BottomNavStudents({
   };
 
   return (
-    <BaseBottomNav leftOffsetPx={leftPosition} className="overflow-visible">
+    <BaseBottomNav className="overflow-visible">
       {/* View Button - Only show when on a class page */}
       {currentClassName && (
         <div className="relative flex-shrink-0" ref={viewButtonRef}>
@@ -136,7 +132,7 @@ export default function BottomNavStudents({
           {/* Sort Popup */}
           {isSortPopupOpen && (
             <div 
-              className="absolute bottom-full left-0 mb-2 bg-blue-100 rounded-lg shadow-lg border-4 border-[#4A3B8D] py-2 z-[100] min-w-[200px]"
+              className="absolute bottom-full left-0 mb-2 bg-blue-100 rounded-lg shadow-lg border-4 border-brand-purple py-2 z-[100] min-w-[200px]"
             >
               <div className="px-4 py-2 text-sm font-semibold text-gray-700 border-b border-gray-200">
                 Sort by:
@@ -203,7 +199,7 @@ export default function BottomNavStudents({
         {/* Settings Popup */}
         {isSettingsPopupOpen && (
           <div 
-            className="absolute bottom-full left-0 mb-2 bg-blue-100 rounded-lg shadow-lg border-4 border-[#4A3B8D] py-2 z-[100] min-w-[200px]"
+            className="absolute bottom-full left-0 mb-2 bg-blue-100 rounded-lg shadow-lg border-4 border-brand-purple py-2 z-[100] min-w-[200px]"
           >
             {classId && onEditClass && (
               <button

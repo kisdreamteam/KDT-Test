@@ -107,7 +107,7 @@ export default function Timer({ onClose }: TimerProps) {
     : formatTime(time);
 
   return (
-    <div className="fixed inset-0 bg-[#4A3B8D] z-50 flex items-center justify-center">
+    <div className="fixed inset-0 bg-brand-purple z-50 flex items-center justify-center">
       {/* Close Button */}
       <button
         onClick={onClose}
@@ -135,7 +135,7 @@ export default function Timer({ onClose }: TimerProps) {
             onClick={() => handleTabChange('countdown')}
             className="text-3xl font-semibold pb-3 transition-colors text-white"
             style={{
-              borderBottom: `3px solid ${activeTab === 'countdown' ? 'white' : '#4A3B8D'}`,
+              borderBottom: `3px solid ${activeTab === 'countdown' ? 'white' : 'var(--color-brand-purple)'}`,
             }}
           >
             Countdown
@@ -144,7 +144,7 @@ export default function Timer({ onClose }: TimerProps) {
             onClick={() => handleTabChange('stopwatch')}
             className="text-3xl font-semibold pb-3 transition-colors text-white"
             style={{
-              borderBottom: `3px solid ${activeTab === 'stopwatch' ? 'white' : '#4A3B8D'}`,
+              borderBottom: `3px solid ${activeTab === 'stopwatch' ? 'white' : 'var(--color-brand-purple)'}`,
             }}
           >
             Stopwatch
@@ -152,7 +152,7 @@ export default function Timer({ onClose }: TimerProps) {
         </div>
 
         {/* Timer Display */}
-        <div className="bg-pink-600 rounded-3xl p-[60px] mb-8 border-[6px] border-white">
+        <div className="bg-brand-pink rounded-3xl p-[60px] mb-8 border-[6px] border-white">
           <div className="flex items-center justify-center gap-6">
             {/* Minutes */}
             <div className="text-center">
@@ -209,7 +209,7 @@ export default function Timer({ onClose }: TimerProps) {
           {!isRunning ? (
             <button
               onClick={handleStart}
-              className="bg-pink-600 border-white border-[6px] hover:bg-[#5a4b9d] text-white px-[72px] py-6 rounded-xl font-semibold text-2xl flex items-center gap-4 transition-colors shadow-lg"
+              className="bg-brand-pink border-white border-[6px] hover:bg-[#5a4b9d] text-white px-[72px] py-6 rounded-xl font-semibold text-2xl flex items-center gap-4 transition-colors shadow-lg"
             >
               <svg
                 className="w-9 h-9"
@@ -224,7 +224,7 @@ export default function Timer({ onClose }: TimerProps) {
             <>
               <button
                 onClick={handlePause}
-                className="bg-[#4A3B8D] hover:bg-[#5a4b9d] text-white px-[72px] py-6 rounded-xl font-semibold text-2xl flex items-center gap-4 transition-colors shadow-lg"
+                className="bg-brand-purple hover:bg-[#5a4b9d] text-white px-[72px] py-6 rounded-xl font-semibold text-2xl flex items-center gap-4 transition-colors shadow-lg"
               >
                 <svg
                   className="w-9 h-9"

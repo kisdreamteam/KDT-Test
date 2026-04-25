@@ -3,7 +3,7 @@ import Image from "next/image";
 
 export default function LandingHeader() {
   return (
-    <header className="w-full bg-[#4A3B8D] sm:h-[80px] md:h-[110px] lg:h-[150px] relative">
+    <header className="w-full bg-brand-purple sm:h-[80px] md:h-[110px] lg:h-[150px] relative">
       <div className="absolute flex items-center
                       bottom-3 right-2 
                       sm:gap-5 md:gap-7 lg-gap-9

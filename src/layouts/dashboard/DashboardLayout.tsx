@@ -47,7 +47,6 @@ function DashboardLayoutContent({
 }: {
   children: React.ReactNode;
 }) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [teacherProfile, setTeacherProfile] = useState<TeacherProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [classes, setClasses] = useState<Class[]>([]);
@@ -229,7 +228,9 @@ function DashboardLayoutContent({
       <SeatingChartProvider>
         <StudentSortProvider>
           <SeatingLayoutNavProvider setSeatingLayoutData={setSeatingLayoutData}>
-            <div className="h-screen w-screen overflow-hidden flex flex-row bg-[#4A3B8D]">
+            {/* God Box (Left Nav, DashboardStage)*/}
+            <div className="h-screen w-screen overflow-hidden flex flex-row bg-brand-purple">
+              {/* God Box split: Left nav */}
               <div className="w-76 h-full pl-2 flex-shrink-0">
                 <div className="h-full overflow-hidden bg-white">
                   <LeftNav
@@ -241,7 +242,7 @@ function DashboardLayoutContent({
                   />
                 </div>
               </div>
-
+              {/* God Box split: DashboardStage (top nav, main content, bottom nav) */}
               <div className="flex-1 h-full overflow-hidden pl-2 pr-2 pt-2">
                 <DashboardStage
                   isSeatingView={isSeatingView}
@@ -249,13 +250,11 @@ function DashboardLayoutContent({
                   isLoadingProfile={isLoadingProfile}
                   currentClassName={currentClassName}
                   teacherProfile={teacherProfile}
-                  onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
                   isTimerOpen={isTimerOpen}
                   isRandomOpen={isRandomOpen}
                   onCloseTimer={() => setIsTimerOpen(false)}
                   onCloseRandom={() => setIsRandomOpen(false)}
                   isMultiSelectMode={isMultiSelectMode}
-                  sidebarOpen={sidebarOpen}
                   classId={currentClassId}
                   onEditClass={() => setIsEditClassModalOpen(true)}
                   onTimerClick={() => setIsTimerOpen(true)}
@@ -295,7 +294,7 @@ export default function DashboardLayout({
 
 function DashboardLayoutFallback() {
   return (
-    <div className="flex items-center justify-center h-screen bg-[#4A3B8D]">
+    <div className="flex items-center justify-center h-screen bg-brand-purple">
       <div className="text-white">Loading...</div>
     </div>
   );

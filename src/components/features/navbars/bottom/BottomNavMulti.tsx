@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useBottomNavPosition } from '@/hooks/useBottomNavPosition';
 import IconTimerClock from '@/components/iconsCustom/iconTimerClock';
 import IconRandomArrows from '@/components/iconsCustom/iconRandomArrows';
 import IconCheckCircle from '@/components/iconsCustom/iconCheckCircle';
@@ -11,14 +10,9 @@ import IconStarTrophy from '@/components/iconsCustom/iconStarTrophy';
 import BotNavGrayButton from '@/components/ui/BotNavGrayButton';
 import BaseBottomNav from '@/components/ui/BaseBottomNav';
 
-interface BottomNavMultiProps {
-  sidebarOpen: boolean;
-}
-
-export default function BottomNavMulti({ sidebarOpen }: BottomNavMultiProps) {
+export default function BottomNavMulti() {
   const [selectedCount, setSelectedCount] = useState(0);
   const [hasRecentlySelected, setHasRecentlySelected] = useState(false);
-  const leftPosition = useBottomNavPosition(sidebarOpen);
 
   // Check for recently selected data in localStorage
   const checkRecentlySelected = () => {
@@ -86,7 +80,7 @@ export default function BottomNavMulti({ sidebarOpen }: BottomNavMultiProps) {
   };
 
   return (
-    <BaseBottomNav leftOffsetPx={leftPosition} className="overflow-hidden">
+    <BaseBottomNav className="overflow-hidden">
       <div className="flex items-center justify-between w-full">
         {/* Left side buttons */}
         <div className="flex flex-row items-center gap-2 sm:gap-4 md:gap-8 lg:gap-15">
@@ -137,7 +131,7 @@ export default function BottomNavMulti({ sidebarOpen }: BottomNavMultiProps) {
           {/* Award Points Button */}
           <div 
             onClick={handleAwardPoints}
-            className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-[#4A3B8D] rounded-xl text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
+            className="w-16 sm:w-24 md:w-32 lg:w-[200px] bg-brand-purple rounded-xl text-white p-1 sm:p-2 md:p-2.5 lg:p-3 hover:bg-pink-50 hover:shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0"
           >
             {/* Star/Trophy icon */}
             <IconStarTrophy className="w-3 h-3 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5 text-white" />

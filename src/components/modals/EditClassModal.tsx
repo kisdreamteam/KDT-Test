@@ -594,7 +594,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       <div className="bg-[#F5F5F5] rounded-[28px] p-8">
         {/* Header */}
         <div className="mb-6">
-          <h2 className="text-3xl font-extrabold text-[#4A3B8D] mb-2">Edit Class</h2>
+          <h2 className="text-3xl font-extrabold text-brand-purple mb-2">Edit Class</h2>
         </div>
 
         {/* Tab Navigation */}
@@ -603,52 +603,52 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
             onClick={() => setActiveTab('info')}
             className={`pb-3 font-medium text-sm transition-colors relative ${
               activeTab === 'info'
-                ? 'text-[#4A3B8D]'
+                ? 'text-brand-purple'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             Info
             {activeTab === 'info' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#D96B7B]"></span>
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-pink"></span>
             )}
           </button>
           <button
             onClick={() => setActiveTab('students')}
             className={`pb-3 font-medium text-sm transition-colors relative ${
               activeTab === 'students'
-                ? 'text-[#4A3B8D]'
+                ? 'text-brand-purple'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             Students
             {activeTab === 'students' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#D96B7B]"></span>
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-pink"></span>
             )}
           </button>
           <button
             onClick={() => setActiveTab('teachers')}
             className={`pb-3 font-medium text-sm transition-colors relative ${
               activeTab === 'teachers'
-                ? 'text-[#4A3B8D]'
+                ? 'text-brand-purple'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             Teachers
             {activeTab === 'teachers' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#D96B7B]"></span>
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-pink"></span>
             )}
           </button>
           <button
             onClick={() => setActiveTab('settings')}
             className={`pb-3 font-medium text-sm transition-colors relative ${
               activeTab === 'settings'
-                ? 'text-[#4A3B8D]'
+                ? 'text-brand-purple'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             Settings
             {activeTab === 'settings' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#D96B7B]"></span>
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-pink"></span>
             )}
           </button>
         </div>
@@ -661,7 +661,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
               {isLoadingData ? (
                 <div className="flex items-center justify-center py-16">
                   <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4A3B8D] mx-auto mb-4"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-purple mx-auto mb-4"></div>
                     <p className="text-gray-600">Loading class data...</p>
                   </div>
                 </div>
@@ -675,7 +675,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                         type="button"
                         onClick={() => setIsIconDropdownOpen(!isIconDropdownOpen)}
                         disabled={!isClassOwner}
-                        className="w-20 h-20 bg-white rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors border-2 border-gray-300 hover:border-[#4A3B8D] relative shadow-sm"
+                        className="w-20 h-20 bg-white rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors border-2 border-gray-300 hover:border-brand-purple relative shadow-sm"
                       >
                         <Image
                           src={selectedIcon}
@@ -685,7 +685,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                           className="w-14 h-14 object-contain"
                         />
                         {/* Down Arrow Indicator */}
-                        <div className="absolute bottom-0 right-0 bg-[#D96B7B] rounded-full p-1 border-2 border-white">
+                        <div className="absolute bottom-0 right-0 bg-brand-pink rounded-full p-1 border-2 border-white">
                           <svg
                             className="w-3 h-3 text-white"
                             fill="none"
@@ -729,7 +729,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                                   }}
                                   className={`w-12 h-12 rounded-lg flex items-center justify-center border-2 transition-all hover:scale-110 ${
                                     selectedIcon === icon
-                                      ? 'border-[#4A3B8D] bg-[#4A3B8D]/10'
+                                      ? 'border-brand-purple bg-brand-purple/10'
                                       : 'border-gray-200 hover:border-gray-300'
                                   }`}
                                 >
@@ -758,7 +758,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                       value={className}
                       onChange={(e) => setClassName(e.target.value)}
                       disabled={!isClassOwner}
-                      className="w-full h-12 rounded-[12px] border border-black/20 bg-white px-4 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-[#4A3B8D]/30"
+                      className="w-full h-12 rounded-[12px] border border-black/20 bg-white px-4 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-brand-purple/30"
                       placeholder="Enter class name"
                     />
                   </div>
@@ -771,7 +771,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                       value={grade}
                       onChange={(e) => setGrade(e.target.value)}
                       disabled={!isClassOwner}
-                      className="w-full h-12 rounded-[12px] border border-black/20 bg-white px-4 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-[#4A3B8D]/30"
+                      className="w-full h-12 rounded-[12px] border border-black/20 bg-white px-4 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-brand-purple/30"
                     >
                       <option value="">Select a grade</option>
                       <option value="Grade1">Grade 1</option>
@@ -795,7 +795,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                     <button
                       onClick={handleSaveInfo}
                       disabled={isLoading || !isClassOwner}
-                      className="px-6 py-2 bg-[#D96B7B] text-white rounded-lg font-bold hover:brightness-95 transition disabled:opacity-50"
+                      className="px-6 py-2 bg-brand-pink text-white rounded-lg font-bold hover:brightness-95 transition disabled:opacity-50"
                     >
                       {isLoading ? 'Saving...' : 'Save Changes'}
                     </button>
@@ -816,7 +816,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
               {isLoadingData ? (
                 <div className="flex items-center justify-center py-16">
                   <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4A3B8D] mx-auto mb-4"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-purple mx-auto mb-4"></div>
                     <p className="text-gray-600">Loading students...</p>
                   </div>
                 </div>
@@ -902,7 +902,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                                 );
                                 setHasUnsavedChanges(true);
                               }}
-                              className="w-50 h-8 rounded border border-gray-300 bg-white px-2 text-sm text-gray-800 outline-none focus:border-[#4A3B8D] focus:ring-1 focus:ring-[#4A3B8D]"
+                              className="w-50 h-8 rounded border border-gray-300 bg-white px-2 text-sm text-gray-800 outline-none focus:border-brand-purple focus:ring-1 focus:ring-brand-purple"
                               placeholder="First name"
                             />
                             {/* Last Name Input */}
@@ -920,7 +920,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                                 );
                                 setHasUnsavedChanges(true);
                               }}
-                              className="w-50 h-8 rounded border border-gray-300 bg-white px-2 text-sm text-gray-800 outline-none focus:border-[#4A3B8D] focus:ring-1 focus:ring-[#4A3B8D]"
+                              className="w-50 h-8 rounded border border-gray-300 bg-white px-2 text-sm text-gray-800 outline-none focus:border-brand-purple focus:ring-1 focus:ring-brand-purple"
                               placeholder="Last name (optional)"
                             />
                             {/* Student Number and Gender Controls */}
@@ -944,7 +944,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                                   setHasUnsavedChanges(true);
                                 }
                               }}
-                              className="w-20 h-8 rounded border border-gray-300 bg-white px-2 text-center text-sm text-gray-800 outline-none focus:border-[#4A3B8D] focus:ring-1 focus:ring-[#4A3B8D]"
+                              className="w-20 h-8 rounded border border-gray-300 bg-white px-2 text-center text-sm text-gray-800 outline-none focus:border-brand-purple focus:ring-1 focus:ring-brand-purple"
                               placeholder="Number"
                             />
                             
@@ -963,7 +963,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                                   name={`gender-${student.id}`}
                                   checked={currentGender === 'Boy'}
                                   readOnly
-                                  className="w-4 h-4 text-[#4A3B8D] focus:ring-[#4A3B8D] focus:ring-2 cursor-pointer pointer-events-none"
+                                  className="w-4 h-4 text-brand-purple focus:ring-brand-purple focus:ring-2 cursor-pointer pointer-events-none"
                                 />
                               </div>
                               <span className="text-sm text-gray-700">Boy</span>
@@ -982,7 +982,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                                   name={`gender-${student.id}`}
                                   checked={currentGender === 'Girl'}
                                   readOnly
-                                  className="w-4 h-4 text-[#4A3B8D] focus:ring-[#4A3B8D] focus:ring-2 cursor-pointer pointer-events-none"
+                                  className="w-4 h-4 text-brand-purple focus:ring-brand-purple focus:ring-2 cursor-pointer pointer-events-none"
                                 />
                               </div>
                               <span className="text-sm text-gray-700">Girl</span>
@@ -1014,7 +1014,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                       <button
                         onClick={handleSaveAllChanges}
                         disabled={isLoading || !hasUnsavedChanges}
-                        className="px-6 py-2 bg-[#D96B7B] text-white rounded-lg font-bold hover:brightness-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-6 py-2 bg-brand-pink text-white rounded-lg font-bold hover:brightness-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isLoading ? 'Saving...' : 'Save Changes'}
                       </button>
@@ -1044,14 +1044,14 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                     value={newTeacherEmail}
                     onChange={(e) => setNewTeacherEmail(e.target.value)}
                     disabled={!isClassOwner}
-                    className="flex-1 h-12 rounded-[12px] border border-black/20 bg-white px-4 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-[#4A3B8D]/30"
+                    className="flex-1 h-12 rounded-[12px] border border-black/20 bg-white px-4 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-brand-purple/30"
                     placeholder="name@kshcm.net"
                   />
                   <button
                     type="button"
                     onClick={handleAddTeacher}
                     disabled={isLoading || !isClassOwner}
-                    className="px-6 py-2 bg-[#D96B7B] text-white rounded-lg font-bold hover:brightness-95 transition disabled:opacity-50"
+                    className="px-6 py-2 bg-brand-pink text-white rounded-lg font-bold hover:brightness-95 transition disabled:opacity-50"
                   >
                     {isLoading ? 'Adding...' : 'Add'}
                   </button>
@@ -1073,7 +1073,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
                         className="bg-white rounded-lg p-4 border border-gray-200 flex items-center justify-between"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-[#4A3B8D] rounded-full flex items-center justify-center text-white font-semibold">
+                          <div className="w-10 h-10 bg-brand-purple rounded-full flex items-center justify-center text-white font-semibold">
                             {teacher.email.charAt(0).toUpperCase()}
                           </div>
                           <div>
@@ -1145,7 +1145,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       >
         <div className="bg-[#F5F5F5] rounded-[28px] p-8 -m-6">
           <div className="text-center mb-6">
-            <h3 className="text-2xl font-extrabold text-[#4A3B8D] mb-2">
+            <h3 className="text-2xl font-extrabold text-brand-purple mb-2">
               Changes Saved Successfully!
             </h3>
             <p className="text-gray-600">
@@ -1161,7 +1161,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
             </button>
             <button
               onClick={handleContinueEditing}
-              className="px-6 py-2 bg-[#D96B7B] text-white rounded-lg font-bold hover:brightness-95 transition"
+              className="px-6 py-2 bg-brand-pink text-white rounded-lg font-bold hover:brightness-95 transition"
             >
               Continue Editing Class Info
             </button>
@@ -1177,7 +1177,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       >
         <div className="bg-[#F5F5F5] rounded-[28px] p-8 -m-6">
           <div className="text-center mb-6">
-            <h3 className="text-2xl font-extrabold text-[#4A3B8D] mb-2">
+            <h3 className="text-2xl font-extrabold text-brand-purple mb-2">
               Validation Warning
             </h3>
             <p className="text-gray-600 mb-4">
@@ -1214,7 +1214,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
           <div className="flex gap-3 justify-end">
             <button
               onClick={() => setShowValidationWarning(false)}
-              className="px-6 py-2 bg-[#D96B7B] text-white rounded-lg font-bold hover:brightness-95 transition"
+              className="px-6 py-2 bg-brand-pink text-white rounded-lg font-bold hover:brightness-95 transition"
             >
               OK
             </button>
@@ -1230,7 +1230,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       >
         <div className="bg-[#F5F5F5] rounded-[28px] p-8 -m-6">
           <div className="text-center mb-6">
-            <h3 className="text-2xl font-extrabold text-[#4A3B8D] mb-2">
+            <h3 className="text-2xl font-extrabold text-brand-purple mb-2">
               Reset Points
             </h3>
             <p className="text-gray-600 mb-4">
@@ -1301,7 +1301,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       >
         <div className="bg-[#F5F5F5] rounded-[28px] p-8 -m-6">
           <div className="text-center mb-6">
-            <h3 className="text-2xl font-extrabold text-[#4A3B8D] mb-2">Teacher not found</h3>
+            <h3 className="text-2xl font-extrabold text-brand-purple mb-2">Teacher not found</h3>
             <p className="text-gray-600">
               No registered teacher account was found for this email address. Only teachers who have signed up
               with a @kshcm.net account can be added as collaborators for{' '}
@@ -1312,7 +1312,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
             <button
               type="button"
               onClick={() => setShowNotFoundCollaborator(false)}
-              className="px-6 py-2 bg-[#D96B7B] text-white rounded-lg font-bold hover:brightness-95 transition"
+              className="px-6 py-2 bg-brand-pink text-white rounded-lg font-bold hover:brightness-95 transition"
             >
               OK
             </button>
@@ -1327,7 +1327,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
       >
         <div className="bg-[#F5F5F5] rounded-[28px] p-8 -m-6">
           <div className="text-center mb-6">
-            <h3 className="text-2xl font-extrabold text-[#4A3B8D] mb-2">Collaborator added</h3>
+            <h3 className="text-2xl font-extrabold text-brand-purple mb-2">Collaborator added</h3>
             <p className="text-gray-600">
               {collaboratorSuccessName} has been successfully added as a collaborator for{' '}
               <span className="font-semibold">{className.trim() || 'this class'}</span>.
@@ -1337,7 +1337,7 @@ export default function EditClassModal({ isOpen, onClose, classId, onRefresh }: 
             <button
               type="button"
               onClick={() => setShowCollaboratorSuccess(false)}
-              className="px-6 py-2 bg-[#D96B7B] text-white rounded-lg font-bold hover:brightness-95 transition"
+              className="px-6 py-2 bg-brand-pink text-white rounded-lg font-bold hover:brightness-95 transition"
             >
               OK
             </button>

@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/client';
-import { useBottomNavPosition } from '@/hooks/useBottomNavPosition';
 import IconRandomArrows from '@/components/iconsCustom/iconRandomArrows';
 import IconSettingsWheel from '@/components/iconsCustom/iconSettingsWheel';
 import IconAutoAssign from '@/components/iconsCustom/iconAutoAssign';
@@ -13,7 +12,6 @@ import BaseBottomNav from '@/components/ui/BaseBottomNav';
 
 interface BottomNavSeatingEditProps {
   currentClassName: string | null;
-  sidebarOpen: boolean;
   /** Current class ID (when on a class page) for opening Edit Class modal */
   classId?: string | null;
   /** Called when user chooses Edit Class from settings menu */
@@ -22,14 +20,12 @@ interface BottomNavSeatingEditProps {
 
 export default function BottomNavSeatingEdit({ 
   currentClassName,
-  sidebarOpen,
   classId = null,
   onEditClass,
 }: BottomNavSeatingEditProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const leftPosition = useBottomNavPosition(sidebarOpen);
   const [isViewSettingsMenuOpen, setIsViewSettingsMenuOpen] = useState(false);
   const viewSettingsButtonRef = useRef<HTMLDivElement>(null);
   const [showGrid, setShowGrid] = useState(true);
@@ -221,7 +217,7 @@ export default function BottomNavSeatingEdit({
   };
 
   return (
-    <BaseBottomNav leftOffsetPx={leftPosition} className="overflow-visible">
+    <BaseBottomNav className="overflow-visible">
       <div className="flex items-center justify-between w-full">
         {/* Left side buttons */}
         <div className="flex flex-row items-center gap-2 sm:gap-4 md:gap-8 lg:gap-15">

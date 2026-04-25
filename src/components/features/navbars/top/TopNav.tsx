@@ -12,14 +12,12 @@ interface TopNavProps {
   isLoadingProfile: boolean;
   currentClassName: string | null;
   teacherProfile: TeacherProfile | null;
-  onToggleSidebar: () => void;
 }
 
 export default function TopNav({ 
   isLoadingProfile, 
   currentClassName, 
-  teacherProfile, 
-  onToggleSidebar 
+  teacherProfile,
 }: TopNavProps) {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const titleContainerRef = useRef<HTMLDivElement>(null);
@@ -105,16 +103,8 @@ export default function TopNav({
     <div className="bg-white h-30 py-6 flex flex-row items-center justify-between w-full pl-7 pt-8" data-top-nav>
       {/* <div className="bg-white flex flex-col items-start justify-start"> */}
       <div className="bg-white flex flex-row items-start justify-start flex-1 min-w-0">
-        {/* Hamburger Menu */}
-        <button
-          onClick={onToggleSidebar}
-          className="text-gray-600 sm:text-xl md:text- xl lg:text-2xl hover:text-gray-800 w-8 pt-5 flex justify-start flex-shrink-0"
-        >
-          ☰
-        </button>
-
           {/* Main Title Container */}
-          <div ref={titleContainerRef} className="flex-1 min-w-0 overflow-hidden pl-10 pt-0">
+          <div ref={titleContainerRef} className="flex-1 min-w-0 overflow-hidden pt-0">
             <h1 
               ref={titleRef}
               className="font-bold text-gray-900 text-left font-spartan whitespace-nowrap"

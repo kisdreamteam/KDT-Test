@@ -83,7 +83,7 @@ export default function ClassPointLogSlidePanel({
               {pagedRows.map((row, rowIndex) => (
                 <div
                   key={row.id}
-                  className={`grid grid-cols-[1.3fr_1.6fr_1fr_0.7fr] gap-3 px-4 py-2 text-sm border-b border-gray-100 ${rowIndex % 2 === 0 ? 'bg-white' : 'bg-[#fcf1f0]'}`}
+                  className={`grid grid-cols-[1.3fr_1.6fr_1fr_0.7fr] gap-3 px-4 py-2 text-sm border-b border-gray-100 ${rowIndex % 2 === 0 ? 'bg-white' : 'bg-brand-cream'}`}
                 >
                   <div className="text-gray-900 truncate">{row.studentName}</div>
                   <div className="text-gray-700 truncate">{row.reason}</div>

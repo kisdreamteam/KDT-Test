@@ -19,7 +19,7 @@ export type CanvasToolbarProps = {
   className?: string;
   /** aria-label for the toolbar region */
   'aria-label'?: string;
-  /** Positioning: pass style from parent (fixed with insets or absolute with offsets) */
+  /** Optional style from parent layout container */
   style?: CSSProperties;
 };
 
@@ -47,7 +47,7 @@ export default function CanvasToolbar({
 }: CanvasToolbarProps) {
   return (
     <div
-      className={`flex min-h-0 flex-col gap-2 overflow-hidden p-2 rounded-xl bg-white/80 z-10 border-2 border-black ${className}`}
+      className={`flex min-h-0 flex-col gap-2 overflow-hidden p-2 rounded-xl bg-white/80 border-2 border-black ${className}`}
       style={style}
       aria-label={ariaLabel}
     >

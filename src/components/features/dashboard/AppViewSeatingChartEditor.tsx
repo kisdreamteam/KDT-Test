@@ -2107,14 +2107,14 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
     >
       {/* Main Content Area - Add left padding to account for left sidebar (w-76 = 304px) + spacing (8px) */}
       {/* Note: Removed overflow-y-auto from this container to avoid nested scroll container warning with drag-and-drop */}
-      <div ref={mainContentRef} className="flex-1 p-1 bg-[#4A3B8D] sm:p-11md:p-2 relative" style={{ paddingLeft: '312px', minHeight: '100%', overflow: 'visible' }}>
+      <div ref={mainContentRef} className="flex-1 p-1 bg-brand-purple sm:p-11md:p-2 relative" style={{ paddingLeft: '312px', minHeight: '100%', overflow: 'visible' }}>
         <div className="space-y-8 relative" style={{ zIndex: 1 }}>
 
         {/* Seating Groups Canvas */}
         <div className="flex-1 flex flex-col relative" style={{ minHeight: 'calc(100vh - 300px)' }}>
           {/* Canvas for groups display */}
           <div 
-            className="bg-[#fcf1f0] fixed border-2 border-black rounded-lg pt-2"
+            className="bg-brand-cream fixed border-2 border-black rounded-lg pt-2"
             style={{
               top: '6px', // Start at the top of the screen
               left: `${canvasLeft}px`, // Dynamically calculated from left sidebar right edge + spacing

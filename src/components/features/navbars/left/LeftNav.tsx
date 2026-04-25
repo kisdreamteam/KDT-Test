@@ -48,7 +48,7 @@ export default function LeftNav({ classes, isLoadingClasses, viewMode, setViewMo
       {/* Top Section - Fixed */}
       <div className="flex-shrink-0">
         {/* Character Illustration */}
-        <div className="bg-[#fcf1f0] rounded-4xl p-0 mb-4">
+        <div className="bg-brand-cream rounded-4xl p-0 mb-4">
           <div className="text-center">
             <Image
               src="/images/shared/default-image.png"
@@ -64,8 +64,8 @@ export default function LeftNav({ classes, isLoadingClasses, viewMode, setViewMo
         {/* All Classes Button */}
         <button
           onClick={handleAllClassesClick}
-          className={`w-full bg-[#4A3B8D] text-white p-3 rounded-lg mb-4 hover:bg-blue-800 transition-colors cursor-pointer ${
-            viewMode === 'active' ? 'ring-2 ring-white ring-offset-2 ring-offset-[#4A3B8D]' : ''
+          className={`w-full bg-brand-purple text-white p-3 rounded-lg mb-4 hover:bg-blue-800 transition-colors cursor-pointer ${
+            viewMode === 'active' ? 'ring-2 ring-white ring-offset-2 ring-offset-brand-purple' : ''
           }`}
         >
           <h2 className="text-center font-semibold">All Classes</h2>
@@ -74,7 +74,7 @@ export default function LeftNav({ classes, isLoadingClasses, viewMode, setViewMo
         
 
       {/* Classes List - Scrollable Area */}
-      <div className="flex-1 overflow-y-auto space-y-2 min-h-0 bg-[#fcf1f0] rounded-xl mb-4">
+      <div className="flex-1 overflow-y-auto space-y-2 min-h-0 bg-brand-cream rounded-xl mb-4">
         {isLoadingClasses ? (
           <div className="flex items-center justify-center py-4">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
@@ -142,7 +142,7 @@ export default function LeftNav({ classes, isLoadingClasses, viewMode, setViewMo
             <div className="w-full p-2 mb-2">
               <h2 className="text-center font-semibold text-gray-800">Layouts</h2>
             </div>
-            <div className="space-y-2 mb-4 max-h-90 bg-[#fcf1f0] rounded-xl overflow-y-auto">               {seatingLayoutData.isLoadingLayouts ? (
+            <div className="space-y-2 mb-4 max-h-90 bg-brand-cream rounded-xl overflow-y-auto">               {seatingLayoutData.isLoadingLayouts ? (
                 <div className="flex items-center justify-center py-4">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
                   <span className="ml-2 text-sm text-gray-600">Loading layouts...</span>

@@ -21,7 +21,6 @@ import StudentCardMulti from './cards/StudentCardMulti';
 import AddStudentCard from './cards/AddStudentCard';
 import AppViewSeatingChart from './AppViewSeatingChart';
 import AppViewSeatingChartEditor from './AppViewSeatingChartEditor';
-import CanvasToolbar from '@/components/ui/CanvasToolbar';
 import ClassPointLogSlidePanel from '@/components/ui/ClassPointLogSlidePanel';
 import IconAddPlus from '@/components/iconsCustom/iconAddPlus';
 import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
@@ -29,6 +28,7 @@ import IconPresentationBoard from '@/components/iconsCustom/iconPresentationBoar
 import IconDocumentClock from '@/components/iconsCustom/iconDocumentClock';
 import { useClassPointLog } from '@/hooks/useClassPointLog';
 import { useDashboardToolbarInset } from '@/hooks/useDashboardToolbarInset';
+import { useStageToolbar } from './StageToolbarContext';
 
 export default function AppViewStudents() {
   const params = useParams();
@@ -38,8 +38,10 @@ export default function AppViewStudents() {
   
   // Get current view mode from URL
   const currentView = searchParams?.get('view') || 'grid';
+  const currentMode = searchParams?.get('mode') || '';
+  const { setToolbar } = useStageToolbar();
   // Check if we're in edit mode from URL (this should match layout's isEditMode)
-  const isEditModeFromURL = searchParams?.get('mode') === 'edit';
+  const isEditModeFromURL = currentMode === 'edit';
   const [students, setStudents] = useState<Student[]>([]);
   const [className, setClassName] = useState<string>('');
   const [classIcon, setClassIcon] = useState<string>('/images/dashboard/class-icons/icon-1.png');
@@ -64,7 +66,6 @@ export default function AppViewStudents() {
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [isMultiStudentAwardModalOpen, setIsMultiStudentAwardModalOpen] = useState(false);
   const [isSeatingEditMode, setIsSeatingEditMode] = useState(false);
-  const [hasVerticalScrollbar, setHasVerticalScrollbar] = useState(false);
   const prevViewRef = useRef<string | null>(null);
 
   // Dispatch initial state to BottomNav
@@ -454,46 +455,46 @@ export default function AppViewStudents() {
   }, [currentView, setIsPointLogOpen]);
 
   useEffect(() => {
-    const checkForVerticalScrollbar = () => {
-      const docHasScrollbar = document.documentElement.scrollHeight > window.innerHeight;
-      const bodyHasScrollbar = document.body.scrollHeight > window.innerHeight;
-      const scrollingEl = document.scrollingElement as HTMLElement | null;
-      const scrollingElHasScrollbar = scrollingEl ? scrollingEl.scrollHeight > scrollingEl.clientHeight : false;
-      const dashboardScrollContainer = document.querySelector('[data-dashboard-scroll-container]') as HTMLElement | null;
-      const dashboardContainerHasScrollbar = dashboardScrollContainer
-        ? dashboardScrollContainer.scrollHeight > dashboardScrollContainer.clientHeight
-        : false;
-      const nestedScrollableCount = Array.from(document.querySelectorAll<HTMLElement>('div')).filter((el) => {
-        const styles = window.getComputedStyle(el);
-        const allowsYScroll = styles.overflowY === 'auto' || styles.overflowY === 'scroll';
-        return allowsYScroll && el.scrollHeight > el.clientHeight;
-      }).length;
-      const resolvedHasScrollbar =
-        dashboardContainerHasScrollbar || docHasScrollbar || bodyHasScrollbar || scrollingElHasScrollbar;
-      setHasVerticalScrollbar(resolvedHasScrollbar);
-    };
+    if (currentView !== 'grid') {
+      setToolbar(null);
+      return;
+    }
 
-    checkForVerticalScrollbar();
-    window.addEventListener('resize', checkForVerticalScrollbar);
-
-    return () => {
-      window.removeEventListener('resize', checkForVerticalScrollbar);
-    };
-  }, []);
-
-  useEffect(() => {
-    const frameId = window.requestAnimationFrame(() => {
-      const dashboardScrollContainer = document.querySelector('[data-dashboard-scroll-container]') as HTMLElement | null;
-      const nextHasScrollbar = dashboardScrollContainer
-        ? dashboardScrollContainer.scrollHeight > dashboardScrollContainer.clientHeight
-        : document.documentElement.scrollHeight > window.innerHeight;
-      setHasVerticalScrollbar(nextHasScrollbar);
+    setToolbar({
+      className: '!border-0 !bg-white',
+      topActions: [
+        {
+          id: 'add',
+          title: 'Create layout (seating view only)',
+          disabled: true,
+          icon: <IconAddPlus className="w-6 h-6 text-gray-500" />,
+        },
+        {
+          id: 'edit',
+          title: 'Seating Editor (seating view only)',
+          disabled: true,
+          icon: <IconEditPencil className="w-6 h-6 text-gray-500" strokeWidth={2} />,
+        },
+      ],
+      bottomActions: [
+        {
+          id: 'teacher-view',
+          title: "Teacher's view (seating view only)",
+          disabled: true,
+          icon: <IconPresentationBoard className="w-6 h-6 text-gray-500" strokeWidth={2} />,
+        },
+        {
+          id: 'point-log',
+          title: isPointLogOpen ? 'Close point log' : 'Open point log',
+          active: isPointLogOpen,
+          onClick: () => setIsPointLogOpen((v) => !v),
+          icon: <IconDocumentClock className="w-6 h-6 text-black" strokeWidth={2} />,
+        },
+      ],
     });
 
-    return () => {
-      window.cancelAnimationFrame(frameId);
-    };
-  }, [students.length, currentView, isPointLogOpen]);
+    return () => setToolbar(null);
+  }, [currentView, isPointLogOpen, setIsPointLogOpen, setToolbar]);
 
   if (isLoading) {
     return <LoadingState message="Loading students..." />;
@@ -532,47 +533,6 @@ export default function AppViewStudents() {
           ) : (
             // Student Grid View (default)
             <>
-              <CanvasToolbar
-                className="!border-0 !bg-white"
-                style={{
-                  position: 'fixed',
-                  right: hasVerticalScrollbar ? 24 : 8,
-                  top: toolbarInset.top+1,
-                  bottom: toolbarInset.bottom,
-                  zIndex: 40,
-                  borderRadius: 0,
-                }}
-                topActions={[
-                  {
-                    id: 'add',
-                    title: 'Create layout (seating view only)',
-                    disabled: true,
-                    icon: <IconAddPlus className="w-6 h-6 text-gray-500" />,
-                  },
-                  {
-                    id: 'edit',
-                    title: 'Seating Editor (seating view only)',
-                    disabled: true,
-                    icon: <IconEditPencil className="w-6 h-6 text-gray-500" strokeWidth={2} />,
-                  },
-                ]}
-                bottomActions={[
-                  {
-                    id: 'teacher-view',
-                    title: "Teacher's view (seating view only)",
-                    disabled: true,
-                    icon: <IconPresentationBoard className="w-6 h-6 text-gray-500" strokeWidth={2} />,
-                  },
-                  {
-                    id: 'point-log',
-                    title: isPointLogOpen ? 'Close point log' : 'Open point log',
-                    active: isPointLogOpen,
-                    onClick: () => setIsPointLogOpen((v) => !v),
-                    icon: <IconDocumentClock className="w-6 h-6 text-black" strokeWidth={2} />,
-                  },
-                ]}
-              />
-
               <ClassPointLogSlidePanel
                 isOpen={isPointLogOpen}
                 position="fixed"

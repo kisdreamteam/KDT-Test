@@ -41,7 +41,7 @@ export default function LoginForm() {
           type="email"
           autoComplete="email"
           required
-          className="h-12 rounded-[12px] border border-black/20 bg-white px-4 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-[#4A3B8D]/30 font-sans"
+          className="h-12 rounded-[12px] border border-black/20 bg-white px-4 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-brand-purple/30 font-sans"
           placeholder=""
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -58,7 +58,7 @@ export default function LoginForm() {
           name="password"
           autoComplete="current-password"
           required
-          className="h-12 w-full rounded-[12px] border border-black/20 bg-white px-4 pr-12 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-[#4A3B8D]/30 font-sans"
+          className="h-12 w-full rounded-[12px] border border-black/20 bg-white px-4 pr-12 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-brand-purple/30 font-sans"
           placeholder=""
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -76,7 +76,7 @@ export default function LoginForm() {
       <div className="flex justify-center gap-3">
         <PrimaryButton
           type="submit"
-          className="h-12 w-[750px] px-8 rounded-[12px] bg-[#D96B7B] text-white font-bold text-2xl tracking-tight hover:brightness-95 transition focus:outline-none focus:ring-4 focus:ring-[#D96B7B]/30 font-spartan"
+          className="h-12 w-[750px] px-8 rounded-[12px] bg-brand-pink text-white font-bold text-2xl tracking-tight hover:brightness-95 transition focus:outline-none focus:ring-4 focus:ring-brand-pink/30 font-spartan"
         >
           Login
         </PrimaryButton>
