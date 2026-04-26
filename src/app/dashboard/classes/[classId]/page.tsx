@@ -1,5 +1,5 @@
-import AppViewStudents from '@/components/features/dashboard/AppViewStudents';
+import DashboardModule from '@/modules/dashboard/DashboardModule';
 
 export default function ClassRosterPage() {
-  return <AppViewStudents />;
+  return <DashboardModule view="students" />;
 }

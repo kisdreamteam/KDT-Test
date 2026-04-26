@@ -1,3 +1,3 @@
-import LoginPage from '@/pages/login/LoginPage';
+import LoginModule from '@/modules/auth/LoginModule';
 
-export default LoginPage;
+export default function LoginPage() { return <LoginModule />; }

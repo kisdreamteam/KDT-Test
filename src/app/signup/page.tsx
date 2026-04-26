@@ -1,3 +1,5 @@
-import SignupPage from '@/pages/signup/SignupPage';
+import SignupModule from '@/modules/auth/SignupModule';
 
-export default SignupPage;
+export default function SignupPage() {
+  return <SignupModule />;
+}

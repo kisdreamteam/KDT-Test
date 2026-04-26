@@ -7,8 +7,8 @@ import { DashboardProvider } from '@/context/DashboardContext';
 import { StudentSortProvider } from '@/context/StudentSortContext';
 import { SeatingChartProvider } from '@/context/SeatingChartContext';
 import { SeatingLayoutNavProvider, SeatingLayoutNavData } from '@/context/SeatingLayoutNavContext';
-import LeftNav from '@/components/features/navbars/left/LeftNav';
-import LeftNavSeatingChartEdit from '@/components/features/navbars/left/LeftNavSeatingChartEdit';
+import LeftNav from '@/components/features/navbars/LeftNav';
+import LeftNavSeatingChartEdit from '@/components/features/navbars/LeftNavSeatingChartEdit';
 import DashboardStage from '@/components/features/dashboard/DashboardStage';
 import EditClassModal from '@/components/modals/EditClassModal';
 

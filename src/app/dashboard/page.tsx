@@ -1,5 +1,5 @@
-import AppViewClasses from '@/components/features/dashboard/AppViewClasses';
+import DashboardModule from '@/modules/dashboard/DashboardModule';
 
 export default function DashboardPage() {
-  return <AppViewClasses />;
+  return <DashboardModule view="classes" />;
 }

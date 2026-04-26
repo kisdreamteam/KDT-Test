@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import TopNav from '@/components/features/navbars/top/TopNav';
-import BottomNavStudents from '@/components/features/navbars/bottom/BottomNavStudents';
-import BottomNavMulti from '@/components/features/navbars/bottom/BottomNavMulti';
-import BottomNavSeatingEdit from '@/components/features/navbars/bottom/BottomNavSeatingEdit';
+import TopNav from '@/components/features/navbars/TopNav';
+import BottomNavStudents from '@/components/features/navbars/BottomNavStudents';
+import BottomNavMulti from '@/components/features/navbars/BottomNavMulti';
+import BottomNavSeatingEdit from '@/components/features/navbars/BottomNavSeatingEdit';
 import Timer from '@/components/features/dashboard/tools/Timer';
 import Random from '@/components/features/dashboard/tools/Random';
 import CanvasToolbar from '@/components/ui/CanvasToolbar';
@@ -66,7 +66,7 @@ export default function DashboardStage({
         </div>
       )}
 
-      {/* Main stage: stage-left (content) + stage-right (toolbar rail) */}
+      {/* Main stage: big leftstage-left (content) + rail stage-right (toolbar rail) */}
       <div className={`flex-1 min-h-0 overflow-hidden flex flex-row relative ${stageContentPadding}`}>
         <div className="flex-1 min-w-0 h-full overflow-y-auto">
           <StageToolbarProvider value={{ setToolbar: setToolbarConfig }}>

@@ -1,11 +1,9 @@
-import LoginHeader from './LoginHeader';
-import LoginForm from './LoginForm';
-import LoginFooter from './LoginFooter';
 import AuthPageLayout from '@/layouts/auth/AuthPageLayout';
 import AuthCard from '@/layouts/auth/AuthCard';
 import AuthBackLink from '@/layouts/auth/AuthBackLink';
+import LoginFeature from '@/components/features/auth/LoginFeature';
 
-export default function LoginApp() {
+export default function LoginModule() {
   return (
     <AuthPageLayout>
       <AuthBackLink
@@ -17,11 +15,8 @@ export default function LoginApp() {
         strokeWidth={3}
       />
       <AuthCard className="w-full max-w-[800px] px-8 py-10">
-        <LoginHeader />
-        <LoginForm />
-        <LoginFooter />
+        <LoginFeature />
       </AuthCard>
     </AuthPageLayout>
   );
 }
-

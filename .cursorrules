@@ -1,18 +1,17 @@
-# KIS-Points Architectural Rules
-
-You are an expert developer helping to refactor KIS-Points to match the "Visual North Star" architecture. Always follow this structure:
-
 ## 1. Directory Structure
-- /src/api: Shared Supabase DB logic (Point adding/deducting).
-- /src/components/ui: Atomic Design blocks (Buttons, Badges, Cards).
-- /src/components/features: Route-domain feature UIs (e.g. dashboard, landing, login, signup) composed from /ui and shared parts.
-- /src/hooks: Custom React hooks (logic only).
-- /src/layouts: Master screen layouts (e.g., Dashboard Sidebar/Frame).
-- /src/lib: Shared utilities (Supabase client, TypeScript types).
-- /src/pages: Route-specific screen views.
-- /src/app: Next.js routing shells only.
+- /src/app: Next.js routing shells only (One-liners that return a Module).
+- /src/modules: Page Assemblers (Combines a Layout with one or more Features).
+- /src/layouts: Screen skeletons & physics (e.g., God Box, Sidebar, Auth Frame).
+- /src/components/features: The "Brain" (Stateful UI logic, Supabase calls, specific domain views).
+- /src/components/ui: Pure UI Atoms (Design system: Buttons, Badges, standard Cards).
+- /src/api: Shared data-fetching logic and direct database interactions.
+- /src/hooks: Logic-only custom React hooks.
+- /src/lib: Shared utilities, Supabase client, and TypeScript types.
 
 ## 2. Refactoring Principles
-- "Bridge & Burn": Duplicate components to the new structure, update imports, then delete the old.
-- "Logic Separation": Keep JSX in /pages, state in /hooks, and DB calls in /api.
-- "Unified UI": Use the shared Atoms in /components/ui to ensure a consistent ecosystem.
+- "Module First": No complex logic in /src/app. Always create a Module to assemble the page.
+- "Stage Ownership": The DashboardStage component owns the 3-row vertical flex stack and the Stage-Right toolbar rail.
+- "Logic Extraction": Keep business logic in Features/Hooks. Keep assembly logic in Modules. Keep physical structure in Layouts.
+- "Color Consistency": Never use hardcoded HEX codes. Use Tailwind brand names (brand-purple, brand-pink, brand-cream) defined in tailwind.config.js. If you find or need to use colors other than the brand colors, please prompt me to add them as brand-colors in tailwind.config.js.
+- "Stable Physics": Use Flexbox for all layout alignment. Avoid JS-based DOM measurements (like getBoundingClientRect) for UI positioning unless absolutely necessary.
+- "Bridge & Burn": When moving files, update all imports first, verify the view works, then delete the old source files immediately to prevent "file ghosting."
