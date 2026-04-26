@@ -18,9 +18,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      {/* THE GLOBAL GOD BOX */}
-      {/* We keep 'antialiased' for font smoothing, and add our rigid workstation walls */}
-      <body className="antialiased flex flex-col h-[100dvh] w-screen overflow-hidden bg-slate-50">
+      <body className="antialiased"
+      >
         {children}
       </body>
     </html>
