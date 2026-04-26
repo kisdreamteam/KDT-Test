@@ -32,6 +32,12 @@ interface Class {
   is_owner?: boolean;
 }
 
+type ViewPreference = 'seating' | 'students';
+
+// Dashboard-session cache: survives route remounts in the same client session.
+let cachedTeacherProfile: TeacherProfile | null = null;
+let cachedViewPreference: ViewPreference | null = null;
+
 /** PostgREST / Postgres when RPC `list_accessible_classes` is not deployed yet */
 function isMissingListAccessibleClassesRpc(error: { code?: string; message?: string } | null): boolean {
   if (!error) return false;
@@ -57,7 +63,7 @@ function DashboardLayoutContent({
   const [isRandomOpen, setIsRandomOpen] = useState(false);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
-  const [viewPreference, setViewPreference] = useState<'seating' | 'students'>('students');
+  const [viewPreference, setViewPreference] = useState<ViewPreference>('students');
   const [activeSeatingLayoutId, setActiveSeatingLayoutId] = useState<string | null>(null);
   const [seatingLayoutData, setSeatingLayoutData] = useState<SeatingLayoutNavData | null>(null);
   const [isEditClassModalOpen, setIsEditClassModalOpen] = useState(false);
@@ -76,6 +82,15 @@ function DashboardLayoutContent({
   const isSeatingView = currentView === 'seating';
 
   const fetchTeacherProfile = async () => {
+    if (cachedTeacherProfile) {
+      setTeacherProfile(cachedTeacherProfile);
+      if (cachedViewPreference) {
+        setViewPreference(cachedViewPreference);
+      }
+      setIsLoadingProfile(false);
+      return;
+    }
+
     try {
       setIsLoadingProfile(true);
       const supabase = createClient();
@@ -108,15 +123,19 @@ function DashboardLayoutContent({
 
       // Ensure role is set (provide default if missing)
       if (data) {
-        const preferredView =
+        const preferredView: ViewPreference =
           data.preferred_view === 'seating' || data.preferred_view === 'students'
             ? data.preferred_view
             : 'students';
         setViewPreference(preferredView);
-        setTeacherProfile({
+        cachedViewPreference = preferredView;
+
+        const nextProfile: TeacherProfile = {
           ...data,
           role: data.role || 'teacher'
-        });
+        };
+        setTeacherProfile(nextProfile);
+        cachedTeacherProfile = nextProfile;
       }
     } catch (err) {
       console.error('Unexpected error fetching teacher profile:', err);
@@ -183,8 +202,10 @@ function DashboardLayoutContent({
   }, [router]);
 
   const updateViewPreference = useCallback(
-    async (newView: 'seating' | 'students') => {
+    async (newView: ViewPreference) => {
+      // Optimistic local truth first; DB sync happens in the background.
       setViewPreference(newView);
+      cachedViewPreference = newView;
       try {
         const supabase = createClient();
         const { data: authData, error: sessionError } = await supabase.auth.getSession();

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/client';
@@ -9,6 +10,42 @@ import TextInput from '@/components/ui/TextInput';
 import PasswordInput from '@/components/ui/PasswordInput';
 import PrimaryButton from '@/components/ui/PrimaryButton';
 import InlineErrorText from '@/components/ui/InlineErrorText';
+import AuthBackLink from '@/layouts/auth/AuthBackLink';
+import AuthCard from '@/layouts/auth/AuthCard';
+
+function LoginHeader() {
+  return (
+    <>
+      <div className="absolute top-0 right-7">
+        <Image
+          src="/images/login/login-logo.png"
+          alt="Kis points logo"
+          width={180}
+          height={180}
+          priority
+          className="h-auto w-auto max-w-[180px]"
+        />
+      </div>
+
+      <div className="mb-8 mt-2">
+        <h1 className="text-6xl font-extrabold text-brand-purple font-spartan">
+          Login
+        </h1>
+      </div>
+    </>
+  );
+}
+
+function LoginFooter() {
+  return (
+    <div className="mt-6 text-center text-sm text-[18px]">
+      <span className="text-gray-600 font-spartan">Don&apos;t have an account? </span>
+      <Link href="/signup" className="text-brand-pink text-[18px] font-semibold font-spartan hover:underline">
+        Sign up
+      </Link>
+    </div>
+  );
+}
 
 export default function LoginForm() {
   const router = useRouter();
@@ -18,73 +55,87 @@ export default function LoginForm() {
   const [error, setError] = useState('');
 
   return (
-    <form className="grid gap-6" onSubmit={async (e) => {
-      e.preventDefault();
-      setError('');
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        console.error('Login error:', error);
-        setError(error.message ?? 'Failed to sign in. Please try again.');
-        return;
-      }
-      setError('');
-      router.push('/dashboard');
-    }}>
-      {/* Email Field */}
-      <div className="grid gap-2">
-        <FormLabel htmlFor="email" className="text-base font-semibold text-[24px] text-black font-spartan">
-          Email address
-        </FormLabel>
-        <TextInput
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          className="h-12 rounded-[12px] border border-black/20 bg-white px-4 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-brand-purple/30 font-sans"
-          placeholder=""
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-      </div>
+    <>
+      <AuthBackLink
+        className="text-gray-300 flex-shrink-0"
+        style={{
+          left: 'max(calc(50% - 400px - 48px), 24px)',
+          top: 'calc(50% - 220px)',
+        }}
+        strokeWidth={3}
+      />
+      <AuthCard className="w-full max-w-[800px] px-8 py-10">
+        <LoginHeader />
+        <form className="grid gap-6" onSubmit={async (e) => {
+          e.preventDefault();
+          setError('');
+          const { error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error) {
+            console.error('Login error:', error);
+            setError(error.message ?? 'Failed to sign in. Please try again.');
+            return;
+          }
+          setError('');
+          router.push('/dashboard');
+        }}>
+          {/* Email Field */}
+          <div className="grid gap-2">
+            <FormLabel htmlFor="email" className="text-base font-semibold text-[24px] text-black font-spartan">
+              Email address
+            </FormLabel>
+            <TextInput
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              className="h-12 rounded-[12px] border border-black/20 bg-white px-4 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-brand-purple/30 font-sans"
+              placeholder=""
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
 
-      {/* Password Field */}
-      <div className="grid gap-2">
-        <FormLabel htmlFor="password" className="text-base font-semibold text-black text-[24px] font-spartan">
-          Password
-        </FormLabel>
-        <PasswordInput
-          id="password"
-          name="password"
-          autoComplete="current-password"
-          required
-          className="h-12 w-full rounded-[12px] border border-black/20 bg-white px-4 pr-12 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-brand-purple/30 font-sans"
-          placeholder=""
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-      </div>
+          {/* Password Field */}
+          <div className="grid gap-2">
+            <FormLabel htmlFor="password" className="text-base font-semibold text-black text-[24px] font-spartan">
+              Password
+            </FormLabel>
+            <PasswordInput
+              id="password"
+              name="password"
+              autoComplete="current-password"
+              required
+              className="h-12 w-full rounded-[12px] border border-black/20 bg-white px-4 pr-12 text-[16px] text-black outline-none focus:border-black/40 focus:ring-2 focus:ring-brand-purple/30 font-sans"
+              placeholder=""
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
 
-      {/* Forgot Password Link - Left Aligned */}
-      <div className="text-left">
-        <Link href="#" className="text-[18px] text-sm text-gray-600 hover:underline font-spartan">
-          Forgot your password?
-        </Link>
-      </div>
+          {/* Forgot Password Link - Left Aligned */}
+          <div className="text-left">
+            <Link href="#" className="text-[18px] text-sm text-gray-600 hover:underline font-spartan">
+              Forgot your password?
+            </Link>
+          </div>
 
-      {/* Login Button */}
-      <div className="flex justify-center gap-3">
-        <PrimaryButton
-          type="submit"
-          className="h-12 w-[750px] px-8 rounded-[12px] bg-brand-pink text-white font-bold text-2xl tracking-tight hover:brightness-95 transition focus:outline-none focus:ring-4 focus:ring-brand-pink/30 font-spartan"
-        >
-          Login
-        </PrimaryButton>
-      </div>
+          {/* Login Button */}
+          <div className="flex justify-center gap-3">
+            <PrimaryButton
+              type="submit"
+              className="h-12 w-[750px] px-8 rounded-[12px] bg-brand-pink text-white font-bold text-2xl tracking-tight hover:brightness-95 transition focus:outline-none focus:ring-4 focus:ring-brand-pink/30 font-spartan"
+            >
+              Login
+            </PrimaryButton>
+          </div>
 
-      {error && (
-        <InlineErrorText className="text-sm text-red-600 text-center">{error}</InlineErrorText>
-      )}
-    </form>
+          {error && (
+            <InlineErrorText className="text-sm text-red-600 text-center">{error}</InlineErrorText>
+          )}
+        </form>
+        <LoginFooter />
+      </AuthCard>
+    </>
   );
 }

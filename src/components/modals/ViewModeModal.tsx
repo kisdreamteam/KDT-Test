@@ -15,8 +15,8 @@ export default function ViewModeModal({ isOpen, onClose }: ViewModeModalProps) {
   const { updateViewPreference } = useDashboard();
   const currentView = (searchParams?.get('view') || 'grid') as 'grid' | 'seating';
 
-  const handleViewChange = async (view: 'grid' | 'seating') => {
-    await updateViewPreference(view === 'seating' ? 'seating' : 'students');
+  const handleViewChange = (view: 'grid' | 'seating') => {
+    void updateViewPreference(view === 'seating' ? 'seating' : 'students');
     const params = new URLSearchParams(searchParams?.toString() ?? '');
     if (view === 'grid') {
       params.delete('view');

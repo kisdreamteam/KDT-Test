@@ -10,7 +10,66 @@ import PrimaryButton from '@/components/ui/PrimaryButton';
 import InlineErrorText from '@/components/ui/InlineErrorText';
 import AuthBackLink from '@/layouts/auth/AuthBackLink';
 import AuthCard from '@/layouts/auth/AuthCard';
-import SignupAvatar from '@/components/features/signup/SignupAvatar';
+import Image from 'next/image';
+
+function SignupHeader() {
+  return (
+    <div className="mb-8">
+      <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-black mb-2">
+        Create your account
+      </h1>
+      <p className="text-base text-black/70">
+        Enter your information to create a new account
+      </p>
+    </div>
+  );
+}
+
+function SignupFooter() {
+  return (
+    <div className="mt-6 text-center text-sm text-black/70 flex items-center justify-center gap-2">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        className="h-5 w-5"
+      >
+        <circle cx="12" cy="12" r="10" strokeWidth="2" />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"
+        />
+      </svg>
+      <span>English (US)</span>
+    </div>
+  );
+}
+
+function SignupAvatar() {
+  return (
+    <div className="hidden lg:flex items-center justify-center flex-1 relative translate-y-40">
+      <div className="relative">
+        <div 
+          className="bg-[#cdd1d1] rounded-full p-8 w-[450px] h-[290px] relative shadow-xl" 
+          style={{ borderRadius: '40% 30% 30% 30% / 40% 40% 40% 40%' }}
+        >
+          <Image
+            src="/images/signup/signup-avatar.png"
+            alt="Signup avatar character"
+            width={600}
+            height={600}
+            priority
+            className="absolute left-1/2 -translate-x-10/25 -translate-y-10/28 max-w-[450px] w-full h-auto object-cover scale-170"
+            style={{ top: 'calc(-20% + 10px)' }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function SignupForm() {
   const router = useRouter();
@@ -92,15 +151,7 @@ export default function SignupForm() {
         
         {/* Form Card on Right */}
         <AuthCard className="w-full lg:w-[600px] p-8 sm:p-10">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-black mb-2">
-              Create your account
-            </h1>
-            <p className="text-base text-black/70">
-              Enter your information to create a new account
-            </p>
-          </div>
+          <SignupHeader />
 
           <form onSubmit={handleSignUp} className="space-y-4">
             {/* Title Dropdown */}
@@ -226,25 +277,7 @@ export default function SignupForm() {
             )}
           </form>
 
-          {/* Language Selector */}
-          <div className="mt-6 text-center text-sm text-black/70 flex items-center justify-center gap-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              className="h-5 w-5"
-            >
-              <circle cx="12" cy="12" r="10" strokeWidth="2" />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"
-              />
-            </svg>
-            <span>English (US)</span>
-          </div>
+          <SignupFooter />
         </AuthCard>
       </div>
     </>
