@@ -17,6 +17,7 @@ interface TeacherProfile {
   title: string;
   name: string;
   role: string;
+  preferred_view?: 'seating' | 'students' | null;
 }
 
 interface Class {
@@ -56,6 +57,7 @@ function DashboardLayoutContent({
   const [isRandomOpen, setIsRandomOpen] = useState(false);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
+  const [viewPreference, setViewPreference] = useState<'seating' | 'students'>('students');
   const [activeSeatingLayoutId, setActiveSeatingLayoutId] = useState<string | null>(null);
   const [seatingLayoutData, setSeatingLayoutData] = useState<SeatingLayoutNavData | null>(null);
   const [isEditClassModalOpen, setIsEditClassModalOpen] = useState(false);
@@ -92,7 +94,7 @@ function DashboardLayoutContent({
       // Fetch teacher profile from profiles table
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, title, name, role')
+        .select('id, title, name, role, preferred_view')
         .eq('id', user.id)
         .single();
 
@@ -106,6 +108,11 @@ function DashboardLayoutContent({
 
       // Ensure role is set (provide default if missing)
       if (data) {
+        const preferredView =
+          data.preferred_view === 'seating' || data.preferred_view === 'students'
+            ? data.preferred_view
+            : 'students';
+        setViewPreference(preferredView);
         setTeacherProfile({
           ...data,
           role: data.role || 'teacher'
@@ -174,6 +181,34 @@ function DashboardLayoutContent({
       setIsLoadingClasses(false);
     }
   }, [router]);
+
+  const updateViewPreference = useCallback(
+    async (newView: 'seating' | 'students') => {
+      setViewPreference(newView);
+      try {
+        const supabase = createClient();
+        const { data: authData, error: sessionError } = await supabase.auth.getSession();
+        const userId = authData.session?.user?.id ?? teacherProfile?.id;
+        if (sessionError || !userId) {
+          if (sessionError) {
+            console.error('Session error while updating preferred view:', sessionError);
+          }
+          return;
+        }
+
+        const { error } = await supabase
+          .from('profiles')
+          .update({ preferred_view: newView })
+          .eq('id', userId);
+        if (error) {
+          console.error('Error updating preferred view:', error);
+        }
+      } catch (err) {
+        console.error('Unexpected error updating preferred view:', err);
+      }
+    },
+    [teacherProfile?.id]
+  );
   
   // Filter classes for main content based on viewMode
   const filteredClasses = useMemo(() => {
@@ -217,6 +252,25 @@ function DashboardLayoutContent({
     };
   }, [fetchClasses]);
 
+  // If the URL has no explicit view, initialize it from persisted teacher preference.
+  useEffect(() => {
+    if (!pathname?.includes('/dashboard/classes/')) return;
+    if (!searchParams) return;
+    if (searchParams.has('view')) return;
+
+    const params = new URLSearchParams(searchParams.toString());
+    if (viewPreference === 'seating') {
+      params.set('view', 'seating');
+    } else {
+      params.delete('view');
+      params.delete('mode');
+    }
+
+    const base = pathname ?? '/';
+    const newUrl = params.toString() ? `${base}?${params.toString()}` : base;
+    router.replace(newUrl);
+  }, [pathname, router, searchParams, viewPreference]);
+
   return (
     <DashboardProvider value={{ 
       classes: filteredClasses, 
@@ -226,6 +280,8 @@ function DashboardLayoutContent({
       refreshClasses: fetchClasses,
       viewMode,
       setViewMode,
+      viewPreference,
+      updateViewPreference,
       activeSeatingLayoutId,
       setActiveSeatingLayoutId,
     }}>
