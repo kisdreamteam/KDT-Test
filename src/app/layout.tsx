@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { LandingLayout } from "@/layouts/landing/LandingLayout";
+import "@/styles/globals.css";
 
 export const metadata: Metadata = {
   title: "KIS-POINTS",
@@ -9,12 +9,20 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-};
+}
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <LandingLayout>{children}</LandingLayout>;
+  return (
+    <html lang="en">
+      {/* THE GLOBAL GOD BOX */}
+      {/* We keep 'antialiased' for font smoothing, and add our rigid workstation walls */}
+      <body className="antialiased flex flex-col h-[100dvh] w-screen overflow-hidden bg-slate-50">
+        {children}
+      </body>
+    </html>
+  );
 }
