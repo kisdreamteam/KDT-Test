@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/client';
+import { useDashboard } from '@/context/DashboardContext';
 import { useSeatingChart } from '@/context/SeatingChartContext';
 import { Student } from '@/lib/types';
 import { useStageToolbar } from './StageToolbarContext';
@@ -12,6 +13,7 @@ import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import SuccessNotificationModal from '@/components/modals/SuccessNotificationModal';
 import IconSettingsWheel from '@/components/iconsCustom/iconSettingsWheel';
 import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
+import SeatingCanvasDecor from './seating/SeatingCanvasDecor';
 
 interface SeatingChart {
   id: string;
@@ -44,6 +46,111 @@ interface StudentSeatAssignment {
 /** Per-group assignment with seat_index for fixed-slot grid. */
 type GroupAssignment = { student: Student; seat_index: number };
 
+const GROUP_BASE_WIDTH_FOR_2_COLUMNS = 400;
+const GROUP_PADDING = 8;
+const GROUP_GAP = 8;
+const GROUP_CARD_MIN_WIDTH = 180;
+const GROUP_MIN_WIDTH = 300;
+const GROUP_MIN_HEIGHT = 100;
+const GROUP_HEADER_HEIGHT = 50;
+const GROUP_STUDENT_ROW_HEIGHT = 50;
+const GROUP_EXPAND_ROW_HEIGHT = 36;
+const DEFAULT_GROUP_STAGGER_X = 20;
+const DEFAULT_GROUP_STAGGER_Y = 100;
+const DEFAULT_GROUP_START = 20;
+const BATCH_GROUPS_PER_ROW = 3;
+const BATCH_GROUP_HEIGHT = 150;
+const BATCH_GROUP_HORIZONTAL_SPACING = 30;
+const BATCH_GROUP_VERTICAL_SPACING = 30;
+const BATCH_GROUP_START_X = 50;
+const BATCH_GROUP_START_Y = 50;
+
+function getMaxSeatIndexFromAssignments(assignments: GroupAssignment[]): number {
+  if (assignments.length === 0) return 0;
+  return Math.max(...assignments.map((a) => a.seat_index ?? 0));
+}
+
+function getMaxSeatIndexInColumn(assignments: GroupAssignment[], column: number, columns: number): number {
+  const inColumn = assignments.filter((a) => ((a.seat_index ?? 0) - 1) % columns === column);
+  return inColumn.length === 0 ? 0 : Math.max(...inColumn.map((a) => a.seat_index ?? 0));
+}
+
+function getNextSeatIndex(assignments: GroupAssignment[]): number {
+  return getMaxSeatIndexFromAssignments(assignments) + 1;
+}
+
+function getNextSeatIndexInColumn(assignments: GroupAssignment[], column: number, columns: number): number {
+  const maxInColumn = getMaxSeatIndexInColumn(assignments, column, columns);
+  return maxInColumn === 0 ? column + 1 : maxInColumn + columns;
+}
+
+function getBatchGroupWidth(): number {
+  const cardWidthFor2Columns = Math.max(
+    GROUP_CARD_MIN_WIDTH,
+    (GROUP_BASE_WIDTH_FOR_2_COLUMNS - GROUP_PADDING * 2 - GROUP_GAP * (2 - 1)) / 2
+  );
+  return Math.max(GROUP_MIN_WIDTH, cardWidthFor2Columns * 2 + GROUP_GAP * (2 - 1) + GROUP_PADDING * 2);
+}
+
+function getBatchGroupPosition(index: number, groupWidth: number): { x: number; y: number } {
+  const row = Math.floor(index / BATCH_GROUPS_PER_ROW);
+  const col = index % BATCH_GROUPS_PER_ROW;
+  return {
+    x: BATCH_GROUP_START_X + col * (groupWidth + BATCH_GROUP_HORIZONTAL_SPACING),
+    y: BATCH_GROUP_START_Y + row * (BATCH_GROUP_HEIGHT + BATCH_GROUP_VERTICAL_SPACING),
+  };
+}
+
+function getGroupRenderLayout(groupColumns: number, assignmentsInGroup: GroupAssignment[]) {
+  const validColumns = Math.max(1, Math.min(3, groupColumns || 2));
+  const maxIndex = getMaxSeatIndexFromAssignments(assignmentsInGroup);
+  const numRows = Math.max(1, Math.ceil(maxIndex / validColumns));
+
+  const cardWidthFor2Columns = Math.max(
+    GROUP_CARD_MIN_WIDTH,
+    (GROUP_BASE_WIDTH_FOR_2_COLUMNS - GROUP_PADDING * 2 - GROUP_GAP * (2 - 1)) / 2
+  );
+  const twoColumnGroupWidth = Math.max(
+    GROUP_MIN_WIDTH,
+    cardWidthFor2Columns * 2 + GROUP_GAP * (2 - 1) + GROUP_PADDING * 2
+  );
+
+  let groupWidth: number;
+  if (validColumns === 1) {
+    groupWidth = twoColumnGroupWidth * 0.5;
+  } else if (validColumns === 2) {
+    groupWidth = twoColumnGroupWidth;
+  } else {
+    const cardWidth = Math.max(
+      GROUP_CARD_MIN_WIDTH,
+      (GROUP_BASE_WIDTH_FOR_2_COLUMNS - GROUP_PADDING * 2 - GROUP_GAP * (validColumns - 1)) / validColumns
+    );
+    groupWidth = Math.max(
+      GROUP_MIN_WIDTH,
+      cardWidth * validColumns + GROUP_GAP * (validColumns - 1) + GROUP_PADDING * 2
+    );
+  }
+
+  const groupHeight =
+    GROUP_HEADER_HEIGHT +
+    numRows * GROUP_STUDENT_ROW_HEIGHT +
+    GROUP_EXPAND_ROW_HEIGHT +
+    GROUP_PADDING * 2;
+
+  return { validColumns, numRows, groupWidth, groupHeight };
+}
+
+function getDefaultStaggerPosition(index: number): { x: number; y: number } {
+  return {
+    x: DEFAULT_GROUP_START + index * DEFAULT_GROUP_STAGGER_X,
+    y: DEFAULT_GROUP_START + index * DEFAULT_GROUP_STAGGER_Y,
+  };
+}
+
+function getSlotIndex(rowIndex: number, colIndex: number, columns: number): number {
+  return rowIndex * columns + colIndex + 1;
+}
+
 interface AppViewSeatingChartEditorProps {
   classId: string;
   /** Shared class roster from parent — same source as AppViewSeatingChart. */
@@ -53,11 +160,11 @@ interface AppViewSeatingChartEditorProps {
 export default function AppViewSeatingChartEditor({ classId, students }: AppViewSeatingChartEditorProps) {
   const { setToolbar } = useStageToolbar();
   const { selectedStudentForGroup, setSelectedStudentForGroup, setUnseatedStudents, unseatedStudents } = useSeatingChart();
+  const { activeSeatingLayoutId, setActiveSeatingLayoutId } = useDashboard();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const [layouts, setLayouts] = useState<SeatingChart[]>([]);
-  const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [groups, setGroups] = useState<SeatingGroup[]>([]);
@@ -104,18 +211,16 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
   }, [groupAssignments]);
   const maxSeatIndex = useCallback((groupId: string): number => {
     const list = groupAssignments.get(groupId) ?? [];
-    if (list.length === 0) return 0;
-    return Math.max(...list.map(a => a.seat_index));
+    return getMaxSeatIndexFromAssignments(list);
   }, [groupAssignments]);
   const maxSeatIndexInColumn = useCallback((groupId: string, col: number, C: number): number => {
     const list = groupAssignments.get(groupId) ?? [];
-    const inCol = list.filter(a => (a.seat_index - 1) % C === col);
-    return inCol.length === 0 ? 0 : Math.max(...inCol.map(a => a.seat_index));
+    return getMaxSeatIndexInColumn(list, col, C);
   }, [groupAssignments]);
   const nextSeatIndexInColumn = useCallback((groupId: string, col: number, C: number): number => {
-    const maxInCol = maxSeatIndexInColumn(groupId, col, C);
-    return maxInCol === 0 ? col + 1 : maxInCol + C;
-  }, [maxSeatIndexInColumn]);
+    const list = groupAssignments.get(groupId) ?? [];
+    return getNextSeatIndexInColumn(list, col, C);
+  }, [groupAssignments]);
   const [openSettingsMenuId, setOpenSettingsMenuId] = useState<string | null>(null);
   const [settingsMenuPosition, setSettingsMenuPosition] = useState<{ top: number; right: number } | null>(null);
   const [selectedStudentForSwap, setSelectedStudentForSwap] = useState<{ studentId: string; groupId: string } | null>(null);
@@ -232,24 +337,29 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
         const layoutIdFromStorage = typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null;
         
         if (data.length > 0) {
-          // Priority: URL parameter > localStorage > first layout
-          // Always check URL parameter first, even if selectedLayoutId is already set
-          if (layoutIdFromURL && data.find(l => l.id === layoutIdFromURL)) {
-            // Update if URL parameter is different from current selection
-            if (selectedLayoutId !== layoutIdFromURL) {
-              setSelectedLayoutId(layoutIdFromURL);
+          // Priority: URL parameter > current context value > localStorage > first layout
+          if (layoutIdFromURL && data.some((layout) => layout.id === layoutIdFromURL)) {
+            if (activeSeatingLayoutId !== layoutIdFromURL) {
+              setActiveSeatingLayoutId(layoutIdFromURL);
             }
-          } else if (!selectedLayoutId) {
-            // Only use localStorage or first layout if no URL parameter and no current selection
-            if (layoutIdFromStorage && data.find(l => l.id === layoutIdFromStorage)) {
-              setSelectedLayoutId(layoutIdFromStorage);
-            } else {
-          setSelectedLayoutId(data[0].id);
-            }
+          } else if (
+            activeSeatingLayoutId !== null &&
+            data.some((layout) => layout.id === activeSeatingLayoutId)
+          ) {
+            // Keep current context selection when it is still valid.
+          } else if (layoutIdFromStorage && data.some((layout) => layout.id === layoutIdFromStorage)) {
+            setActiveSeatingLayoutId(layoutIdFromStorage);
+          } else {
+            setActiveSeatingLayoutId(data[0].id);
           }
+        } else if (activeSeatingLayoutId !== null) {
+          setActiveSeatingLayoutId(null);
         }
       } else {
         setLayouts([]);
+        if (activeSeatingLayoutId !== null) {
+          setActiveSeatingLayoutId(null);
+        }
       }
     } catch (err) {
       console.error('Unexpected error fetching seating charts:', err);
@@ -257,7 +367,7 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
     } finally {
       setIsLoading(false);
     }
-  }, [classId, selectedLayoutId, searchParams]);
+  }, [activeSeatingLayoutId, classId, searchParams, setActiveSeatingLayoutId]);
 
   // Fetch layouts from Supabase
   useEffect(() => {
@@ -271,31 +381,31 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
     const layoutIdFromURL = searchParams?.get('layout');
     if (layoutIdFromURL && layouts.length > 0) {
       const layoutExists = layouts.find(l => l.id === layoutIdFromURL);
-      if (layoutExists && selectedLayoutId !== layoutIdFromURL) {
-        setSelectedLayoutId(layoutIdFromURL);
+      if (layoutExists && activeSeatingLayoutId !== layoutIdFromURL) {
+        setActiveSeatingLayoutId(layoutIdFromURL);
       }
     }
-  }, [searchParams, layouts, selectedLayoutId]);
+  }, [activeSeatingLayoutId, layouts, searchParams, setActiveSeatingLayoutId]);
 
   // Store selected layout ID in localStorage when it changes
   useEffect(() => {
-    if (selectedLayoutId && classId) {
+    if (activeSeatingLayoutId && classId) {
       const storageKey = `seatingChart_selectedLayout_${classId}`;
-      localStorage.setItem(storageKey, selectedLayoutId);
+      localStorage.setItem(storageKey, activeSeatingLayoutId);
     }
-  }, [selectedLayoutId, classId]);
+  }, [activeSeatingLayoutId, classId]);
 
   // Fetch layout settings (show_grid, show_objects, layout_orientation) when layout changes
   useEffect(() => {
     const fetchLayoutSettings = async () => {
-      if (!selectedLayoutId) return;
+      if (!activeSeatingLayoutId) return;
       
       try {
         const supabase = createClient();
         const { data, error } = await supabase
           .from('seating_charts')
           .select('show_grid, show_objects, layout_orientation')
-          .eq('id', selectedLayoutId)
+          .eq('id', activeSeatingLayoutId)
           .single();
 
         if (error) {
@@ -313,12 +423,12 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
     };
 
     fetchLayoutSettings();
-  }, [selectedLayoutId, applyLayoutViewSettings]);
+  }, [activeSeatingLayoutId, applyLayoutViewSettings]);
 
   // Keep view settings in sync without aggressive polling:
   // 1) local custom events, 2) realtime row updates, 3) low-frequency visible-tab fallback.
   useEffect(() => {
-    if (!selectedLayoutId) return;
+    if (!activeSeatingLayoutId) return;
 
     const supabase = createClient();
 
@@ -328,7 +438,7 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
         const { data, error } = await supabase
           .from('seating_charts')
           .select('show_grid, show_objects, layout_orientation')
-          .eq('id', selectedLayoutId)
+          .eq('id', activeSeatingLayoutId)
           .single();
 
         if (error || !data) return;
@@ -346,7 +456,7 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
         layout_orientation?: string | null;
       }>;
       const detail = customEvent.detail;
-      if (!detail || detail.layoutId !== selectedLayoutId) return;
+      if (!detail || detail.layoutId !== activeSeatingLayoutId) return;
       applyLayoutViewSettings(detail);
     };
 
@@ -360,14 +470,14 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const realtimeChannel = supabase
-      .channel(`seating_chart_view_settings_${selectedLayoutId}_editor`)
+      .channel(`seating_chart_view_settings_${activeSeatingLayoutId}_editor`)
       .on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
           table: 'seating_charts',
-          filter: `id=eq.${selectedLayoutId}`,
+          filter: `id=eq.${activeSeatingLayoutId}`,
         },
         (payload) => {
           const nextRow = payload.new as {
@@ -389,10 +499,10 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
       window.removeEventListener('seatingChartViewSettingsChanged', handleLocalSettingsEvent as EventListener);
       void supabase.removeChannel(realtimeChannel);
     };
-  }, [selectedLayoutId, applyLayoutViewSettings]);
+  }, [activeSeatingLayoutId, applyLayoutViewSettings]);
 
   const fetchGroups = useCallback(async () => {
-    if (!selectedLayoutId) return;
+    if (!activeSeatingLayoutId) return;
 
     try {
       setIsLoadingGroups(true);
@@ -402,7 +512,7 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
       const { data: groupsData, error: groupsError } = await supabase
         .from('seating_groups')
         .select('*')
-        .eq('seating_chart_id', selectedLayoutId)
+        .eq('seating_chart_id', activeSeatingLayoutId)
         .order('sort_order', { ascending: true });
 
       if (groupsError) {
@@ -425,7 +535,7 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
               });
             } else if (!newPositions.has(group.id)) {
               // Default position: staggered horizontally, spaced vertically
-              newPositions.set(group.id, { x: 20 + (index * 20), y: 20 + (index * 100) });
+              newPositions.set(group.id, getDefaultStaggerPosition(index));
             }
           });
           return newPositions;
@@ -504,17 +614,17 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
     } finally {
       setIsLoadingGroups(false);
     }
-  }, [selectedLayoutId, students, setUnseatedStudents]);
+  }, [activeSeatingLayoutId, students, setUnseatedStudents]);
 
   // Fetch groups when layout is selected or when shared roster changes
   useEffect(() => {
-    if (selectedLayoutId && students.length > 0) {
+    if (activeSeatingLayoutId && students.length > 0) {
       fetchGroups();
-    } else if (!selectedLayoutId) {
+    } else if (!activeSeatingLayoutId) {
       setGroups([]);
       setGroupAssignments(new Map());
     }
-  }, [selectedLayoutId, fetchGroups, students.length]);
+  }, [activeSeatingLayoutId, fetchGroups, students.length]);
 
   // Listen for student selection from sidebar
   useEffect(() => {
@@ -547,7 +657,7 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
    * Batch persist: group positions/sizes + full replace of seat assignments for the current layout.
    */
   const saveAllChangesToDatabase = useCallback(async (onSaveComplete?: () => void) => {
-    if (!selectedLayoutId) {
+    if (!activeSeatingLayoutId) {
       showSuccessNotification('No layout', 'Select a seating layout before saving.');
       return;
     }
@@ -658,7 +768,7 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
       saveAllChangesInFlightRef.current = false;
       setIsSavingAllChanges(false);
     }
-  }, [selectedLayoutId, groups, groupAssignments, groupPositions, computeGroupRowsFromAssignments]);
+  }, [activeSeatingLayoutId, groups, groupAssignments, groupPositions, computeGroupRowsFromAssignments]);
 
   // Handle randomize seating - animated swap of all seated students
   const handleRandomizeSeating = useCallback(async () => {
@@ -826,14 +936,10 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
         return;
       }
 
-      let seatIndexToUse: number;
-      if (targetSeatIndex != null) {
-        seatIndexToUse = targetSeatIndex;
-      } else {
-        const list = groupAssignmentsRef.current.get(groupId) ?? [];
-        const maxIndex = list.length === 0 ? 0 : Math.max(...list.map((a) => a.seat_index ?? 0));
-        seatIndexToUse = maxIndex + 1;
-      }
+      const seatIndexToUse =
+        targetSeatIndex != null
+          ? targetSeatIndex
+          : getNextSeatIndex(groupAssignmentsRef.current.get(groupId) ?? []);
 
       setGroupAssignments(prev => {
         const newMap = new Map(prev);
@@ -944,7 +1050,7 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
   };
 
   const handleCreateGroup = async (groupName: string, columns: number) => {
-    if (!selectedLayoutId) return;
+    if (!activeSeatingLayoutId) return;
 
     try {
       const supabase = createClient();
@@ -967,7 +1073,7 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
         .from('seating_groups')
         .insert({
           name: groupName,
-          seating_chart_id: selectedLayoutId,
+          seating_chart_id: activeSeatingLayoutId,
           sort_order: maxSortOrder + 1,
           group_columns: columns,
           group_rows: defaultGroupRows,
@@ -981,7 +1087,7 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
         console.error('Error creating seating group:', insertError);
         console.error('Insert data:', {
           name: groupName,
-          seating_chart_id: selectedLayoutId,
+          seating_chart_id: activeSeatingLayoutId,
           sort_order: maxSortOrder + 1,
           group_columns: columns,
           position_x: initialX,
@@ -1010,7 +1116,7 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
   };
 
   const handleAddMultipleGroups = useCallback(async (numGroups: number) => {
-    if (!selectedLayoutId) return;
+    if (!activeSeatingLayoutId) return;
 
     try {
       const supabase = createClient();
@@ -1020,20 +1126,7 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
         ? Math.max(...groups.map(g => g.sort_order))
         : -1;
 
-      // Grid layout configuration: 3 columns per row (as shown in image)
-      const groupsPerRow = 3;
-      // Calculate group width based on 2-column groups (default)
-      const baseWidthFor2Columns = 400;
-      const padding = 8;
-      const gap = 8;
-      const cardMinWidth = 180;
-      const cardWidthFor2Columns = Math.max(cardMinWidth, (baseWidthFor2Columns - (padding * 2) - (gap * (2 - 1))) / 2);
-      const groupWidth = Math.max(300, (cardWidthFor2Columns * 2) + (gap * (2 - 1)) + (padding * 2));
-      const groupHeight = 150; // Approximate group height (will vary based on content)
-      const horizontalSpacing = 30; // Space between groups horizontally
-      const verticalSpacing = 30; // Space between rows
-      const startX = 50; // Starting X position
-      const startY = 50; // Starting Y position
+      const groupWidth = getBatchGroupWidth();
 
       // Default columns for new groups (using 2 as default, same as single group creation)
       const defaultColumns = 2;
@@ -1053,15 +1146,11 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
       const nextGroupNumber = groups.length + 1;
       const groupsToCreate: GroupToCreate[] = [];
       for (let i = 0; i < numGroups; i++) {
-        const row = Math.floor(i / groupsPerRow);
-        const col = i % groupsPerRow;
-        
-        const x = startX + col * (groupWidth + horizontalSpacing);
-        const y = startY + row * (groupHeight + verticalSpacing);
+        const { x, y } = getBatchGroupPosition(i, groupWidth);
         
         groupsToCreate.push({
           name: `Group ${nextGroupNumber + i}`,
-          seating_chart_id: selectedLayoutId,
+          seating_chart_id: activeSeatingLayoutId,
           sort_order: maxSortOrder + 1 + i,
           group_columns: defaultColumns,
           group_rows: defaultGroupRows,
@@ -1102,7 +1191,7 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
       console.error('Unexpected error creating multiple groups:', err);
       alert('An unexpected error occurred. Please try again.');
     }
-  }, [selectedLayoutId, groups, fetchGroups]);
+  }, [activeSeatingLayoutId, groups, fetchGroups]);
 
   const handleCreateLayout = async (layoutName: string) => {
     try {
@@ -1129,7 +1218,7 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
       if (data) {
         // Refresh layouts and select the new one
         await fetchLayouts();
-        setSelectedLayoutId(data.id);
+        setActiveSeatingLayoutId(data.id);
         setIsCreateModalOpen(false);
       }
     } catch (err) {
@@ -1202,8 +1291,8 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
     const relativeY = groupTopLeftY - containerRect.top;
     
     // Clamp to canvas bounds (prevent groups from going outside)
-    const clampedX = Math.max(0, Math.min(relativeX, containerRect.width - 300)); // 300px minimum group width (updated to match new sizing)
-    const clampedY = Math.max(0, Math.min(relativeY, containerRect.height - 100)); // 100px minimum group height
+    const clampedX = Math.max(0, Math.min(relativeX, containerRect.width - GROUP_MIN_WIDTH));
+    const clampedY = Math.max(0, Math.min(relativeY, containerRect.height - GROUP_MIN_HEIGHT));
     
     // Update the position immediately - free positioning, no snapping (persist via batch save later)
     setGroupPositions(prev => {
@@ -1248,12 +1337,7 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
     }
 
     const toList = groupAssignmentsRef.current.get(toGroupId) ?? [];
-    const nextSeat =
-      targetSeatIndex != null
-        ? targetSeatIndex
-        : toList.length === 0
-          ? 1
-          : Math.max(...toList.map((a) => a.seat_index), 0) + 1;
+    const nextSeat = targetSeatIndex != null ? targetSeatIndex : getNextSeatIndex(toList);
 
     setGroupAssignments((prev) => {
       const newMap = new Map(prev);
@@ -1415,7 +1499,7 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
       const remainder = totalStudents % groups.length;
       const groupCurrentCounts = groups.map(group => {
         const list = currentAssignments.get(group.id) ?? [];
-        const maxIdx = list.length === 0 ? 0 : Math.max(...list.map(a => a.seat_index));
+        const maxIdx = getMaxSeatIndexFromAssignments(list);
         return { groupId: group.id, currentCount: list.length, nextSeatIndex: maxIdx + 1 };
       });
       
@@ -1806,7 +1890,7 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
   };
 
   const handleClearAllConfirmed = async () => {
-    if (!selectedLayoutId) {
+    if (!activeSeatingLayoutId) {
       showSuccessNotification(
         'No Layout Selected',
         'Please select a layout before clearing groups.'
@@ -1891,7 +1975,7 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
   };
 
   const handleDeleteAllConfirmed = async () => {
-    if (!selectedLayoutId) {
+    if (!activeSeatingLayoutId) {
       showSuccessNotification(
         'No Layout Selected',
         'Please select a layout before deleting groups.'
@@ -2103,59 +2187,12 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
               zIndex: 1
             }}
           >
-          {/* Grid Lines Overlay - Visual guide only (only show if show_grid is true) */}
-          {showGrid && (
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                backgroundImage: `
-                  linear-gradient(to right, rgb(209 213 219) 1px, transparent 1px),
-                  linear-gradient(to bottom, rgb(209 213 219) 1px, transparent 1px)
-                `,
-                backgroundSize: '38px 38px', // 1cm ≈ 38px at 96 DPI
-                zIndex: 0
-              }}
-            />
-          )}
-          {/* Visual Objects - Whiteboard and TV, Teacher's Desk */}
-          <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
-            {/* Whiteboard and TV - Centered at top (always visible) */}
-            <div
-              className="absolute bg-gray-700 border-2 border-black rounded-lg flex items-center justify-center"
-              style={{
-                top: '0px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: '800px',
-                height: '30px',
-                zIndex: 0
-              }}
-            >
-              <span className="text-white font-semibold text-lg">Whiteboard and TV</span>
-            </div>
-            
-            {/* Furniture (Teacher's Desk) - Only show if showObjects is true */}
-            {showObjects && (
-              <>
-                {/* Teacher's Desk - Position based on layoutOrientation */}
-                <div
-                  className="absolute bg-gray-700 border-2 border-black rounded-lg flex items-center justify-center"
-                  style={{
-                    top: '55px',
-                    ...(layoutOrientation === 'Left' 
-                      ? { left: '75px' }
-                      : { right: '75px' }
-                    ),
-                    width: '200px',
-                    height: '75px',
-                    zIndex: 0
-                  }}
-                >
-                  <span className="text-white font-semibold">Teacher's Desk</span>
-                </div>
-              </>
-            )}
-          </div>
+          <SeatingCanvasDecor
+            showGrid={showGrid}
+            showObjects={showObjects}
+            layoutOrientation={layoutOrientation}
+            borderClassName="border-black"
+          />
           {isLoadingGroups ? (
             <div className="flex items-center justify-center p-8 relative" style={{ zIndex: 1 }}>
               <p className="text-white/80">Loading groups...</p>
@@ -2176,31 +2213,13 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
                     {groups.map((group, index) => {
                       const assignmentsInGroup = getAssignmentsInGroup(group.id);
                       const isTarget = selectedStudentForGroup && targetGroupId === group.id;
-                      const validColumns = Math.max(1, Math.min(3, group.group_columns || 2));
-                      const position = groupPositions.get(group.id) || { x: 20 + (index * 20), y: 20 + (index * 100) };
+                      const { validColumns, numRows, groupWidth, groupHeight } = getGroupRenderLayout(
+                        group.group_columns,
+                        assignmentsInGroup
+                      );
+                      const position = groupPositions.get(group.id) || getDefaultStaggerPosition(index);
                       const groupX = position.x;
                       const groupY = position.y;
-                      const maxIndex = assignmentsInGroup.length === 0 ? 0 : Math.max(...assignmentsInGroup.map(a => a.seat_index));
-                      const numRows = Math.max(1, Math.ceil(maxIndex / validColumns));
-                      const headerHeight = 50;
-                      const studentRowHeight = 50;
-                      const expandRowHeight = 36;
-                      const padding = 8;
-                      const gap = 8;
-                      const baseWidthFor2Columns = 400;
-                      const cardMinWidth = 180;
-                      const cardWidthFor2Columns = Math.max(cardMinWidth, (baseWidthFor2Columns - (padding * 2) - (gap * (2 - 1))) / 2);
-                      const twoColumnGroupWidth = Math.max(300, (cardWidthFor2Columns * 2) + (gap * (2 - 1)) + (padding * 2));
-                      let groupWidth: number;
-                      if (validColumns === 1) {
-                        groupWidth = twoColumnGroupWidth * 0.5;
-                      } else if (validColumns === 2) {
-                        groupWidth = twoColumnGroupWidth;
-                      } else {
-                        const cardWidth = Math.max(cardMinWidth, (baseWidthFor2Columns - (padding * 2) - (gap * (validColumns - 1))) / validColumns);
-                        groupWidth = Math.max(300, (cardWidth * validColumns) + (gap * (validColumns - 1)) + (padding * 2));
-                      }
-                      const groupHeight = headerHeight + (numRows * studentRowHeight) + expandRowHeight + (padding * 2);
                       
                       const studentCardHeight = 32;
                       const studentPointsWidth = 34;
@@ -2474,7 +2493,7 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
                                     }}
                                   >
                                     {Array.from({ length: validColumns }, (_, colIndex) => {
-                                      const slotIndex = rowIndex * validColumns + colIndex + 1;
+                                      const slotIndex = getSlotIndex(rowIndex, colIndex, validColumns);
                                       const student = studentAtSlot(group.id, slotIndex);
                                       if (student) {
                                         return (
@@ -2507,8 +2526,8 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
                                     gap: '0.5rem',
                                     padding: '0 0.5rem',
                                     backgroundColor: '#f3f4f6',
-                                    height: `${expandRowHeight}px`,
-                                    minHeight: `${expandRowHeight}px`,
+                                    height: `${GROUP_EXPAND_ROW_HEIGHT}px`,
+                                    minHeight: `${GROUP_EXPAND_ROW_HEIGHT}px`,
                                     boxSizing: 'border-box',
                                     alignItems: 'center'
                                   }}

@@ -8,6 +8,7 @@ import Image from 'next/image';
 import AwardPointsModal from '@/components/modals/AwardPointsModal';
 import PointsAwardedConfirmationModal from '@/components/modals/PointsAwardedConfirmationModal';
 import { normalizeAvatarPath } from '@/lib/iconUtils';
+import { useAwardPointsFlow } from '@/hooks/useAwardPointsFlow';
 
 interface RandomProps {
   onClose: () => void;
@@ -36,14 +37,12 @@ export default function Random({ onClose }: RandomProps) {
   const [isListAwardPointsModalOpen, setIsListAwardPointsModalOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [pointsListStudents, setPointsListStudents] = useState<Student[]>([]);
-  const [awardInfo, setAwardInfo] = useState<{
-    studentAvatar: string;
-    studentFirstName: string;
-    points: number;
-    categoryName: string;
-    categoryIcon?: string;
-  } | null>(null);
-  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
+  const {
+    awardInfo,
+    isConfirmationModalOpen,
+    openAwardConfirmation,
+    closeAwardConfirmation,
+  } = useAwardPointsFlow();
   const lastCardIndexRef = useRef<number>(-1);
   const audioContextRef = useRef<AudioContext | null>(null);
   const totalStudents = students.length;
@@ -305,9 +304,8 @@ export default function Random({ onClose }: RandomProps) {
     categoryName: string;
     categoryIcon?: string;
   }) => {
-    setAwardInfo(info);
-    setIsConfirmationModalOpen(true);
-  }, []);
+    openAwardConfirmation(info);
+  }, [openAwardConfirmation]);
 
   // Handle keyboard shortcut
   useEffect(() => {
@@ -557,10 +555,7 @@ export default function Random({ onClose }: RandomProps) {
       {awardInfo && (
         <PointsAwardedConfirmationModal
           isOpen={isConfirmationModalOpen}
-          onClose={() => {
-            setIsConfirmationModalOpen(false);
-            setAwardInfo(null);
-          }}
+          onClose={closeAwardConfirmation}
           studentAvatar={awardInfo.studentAvatar}
           studentFirstName={awardInfo.studentFirstName}
           points={awardInfo.points}

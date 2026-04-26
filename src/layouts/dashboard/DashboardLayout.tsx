@@ -56,6 +56,7 @@ function DashboardLayoutContent({
   const [isRandomOpen, setIsRandomOpen] = useState(false);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
+  const [activeSeatingLayoutId, setActiveSeatingLayoutId] = useState<string | null>(null);
   const [seatingLayoutData, setSeatingLayoutData] = useState<SeatingLayoutNavData | null>(null);
   const [isEditClassModalOpen, setIsEditClassModalOpen] = useState(false);
   const pathname = usePathname();
@@ -224,7 +225,9 @@ function DashboardLayoutContent({
       isLoadingProfile,
       refreshClasses: fetchClasses,
       viewMode,
-      setViewMode
+      setViewMode,
+      activeSeatingLayoutId,
+      setActiveSeatingLayoutId,
     }}>
       <SeatingChartProvider>
         <StudentSortProvider>

@@ -5,6 +5,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/client';
 import { Student } from '@/lib/types';
+import { useDashboard } from '@/context/DashboardContext';
 import { useSeatingLayoutNav } from '@/context/SeatingLayoutNavContext';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import CreateLayoutModal from '@/components/modals/CreateLayoutModal';
@@ -17,7 +18,9 @@ import IconPresentationBoard from '@/components/iconsCustom/iconPresentationBoar
 import IconDocumentClock from '@/components/iconsCustom/iconDocumentClock';
 import ClassPointLogSlidePanel from '@/components/ui/ClassPointLogSlidePanel';
 import { useClassPointLog } from '@/hooks/useClassPointLog';
+import { useAwardPointsFlow } from '@/hooks/useAwardPointsFlow';
 import { useStageToolbar } from './StageToolbarContext';
+import SeatingCanvasDecor from './seating/SeatingCanvasDecor';
 
 interface SeatingChart {
   id: string;
@@ -73,8 +76,8 @@ export default function AppViewSeatingChart({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const searchQuery = searchParams?.toString() ?? '';
+  const { activeSeatingLayoutId, setActiveSeatingLayoutId } = useDashboard();
   const [layouts, setLayouts] = useState<SeatingChart[]>([]);
-  const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [groups, setGroups] = useState<SeatingGroup[]>([]);
@@ -91,14 +94,12 @@ export default function AppViewSeatingChart({
   const [selectedGroupStudentIds, setSelectedGroupStudentIds] = useState<string[]>([]);
   /** Set in onAwardComplete before IDs are cleared; read in handlePointsAwarded for optimistic points. */
   const pendingAwardStudentIdsRef = useRef<string[] | null>(null);
-  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
-  const [awardInfo, setAwardInfo] = useState<{
-    studentAvatar: string;
-    studentFirstName: string;
-    points: number;
-    categoryName: string;
-    categoryIcon?: string;
-  } | null>(null);
+  const {
+    awardInfo,
+    isConfirmationModalOpen,
+    openAwardConfirmation,
+    closeAwardConfirmation,
+  } = useAwardPointsFlow();
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
   // View settings from database
   const [showGrid, setShowGrid] = useState<boolean>(true);
@@ -162,12 +163,21 @@ export default function AppViewSeatingChart({
 
       if (data) {
         setLayouts(data);
-        // Auto-select the first layout if available
-        if (data.length > 0 && !selectedLayoutId) {
-          setSelectedLayoutId(data[0].id);
+        // Keep global selection when valid; otherwise fallback to first layout.
+        if (data.length > 0) {
+          const hasActiveSelection =
+            activeSeatingLayoutId !== null && data.some((layout) => layout.id === activeSeatingLayoutId);
+          if (!hasActiveSelection) {
+            setActiveSeatingLayoutId(data[0].id);
+          }
+        } else if (activeSeatingLayoutId !== null) {
+          setActiveSeatingLayoutId(null);
         }
       } else {
         setLayouts([]);
+        if (activeSeatingLayoutId !== null) {
+          setActiveSeatingLayoutId(null);
+        }
       }
     } catch (err) {
       console.error('Unexpected error fetching seating charts:', err);
@@ -175,7 +185,7 @@ export default function AppViewSeatingChart({
     } finally {
       setIsLoading(false);
     }
-  }, [classId, selectedLayoutId]);
+  }, [activeSeatingLayoutId, classId, setActiveSeatingLayoutId]);
 
   // Fetch layouts from Supabase
   useEffect(() => {
@@ -186,24 +196,24 @@ export default function AppViewSeatingChart({
 
   // Store selected layout ID in localStorage and dispatch event when it changes
   useEffect(() => {
-    if (selectedLayoutId && classId) {
+    if (activeSeatingLayoutId && classId) {
       // Store in localStorage with classId as key to avoid conflicts
       const storageKey = `seatingChart_selectedLayout_${classId}`;
-      localStorage.setItem(storageKey, selectedLayoutId);
+      localStorage.setItem(storageKey, activeSeatingLayoutId);
       
       // Dispatch event with layout ID for BottomNav to pick up
       window.dispatchEvent(new CustomEvent('seatingChartLayoutSelected', { 
-        detail: { layoutId: selectedLayoutId, classId } 
+        detail: { layoutId: activeSeatingLayoutId, classId } 
       }));
     }
-  }, [selectedLayoutId, classId]);
+  }, [activeSeatingLayoutId, classId]);
 
   // Provide layout data to left nav (for seating view)
   useEffect(() => {
     setSeatingLayoutData({
       layouts,
-      selectedLayoutId,
-      onSelectLayout: setSelectedLayoutId,
+      selectedLayoutId: activeSeatingLayoutId,
+      onSelectLayout: setActiveSeatingLayoutId,
       onAddLayout: () => setIsCreateModalOpen(true),
       onEditLayout: handleEditLayout,
       onDeleteLayout: handleDeleteLayout,
@@ -211,7 +221,7 @@ export default function AppViewSeatingChart({
     });
     return () => setSeatingLayoutData(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- handlers are stable enough; avoid running on every render
-  }, [layouts, selectedLayoutId, isLoading, setSeatingLayoutData]);
+  }, [activeSeatingLayoutId, isLoading, layouts, setActiveSeatingLayoutId, setSeatingLayoutData]);
 
   const applyOptimisticPointsDelta = useCallback((studentIds: string[], delta: number) => {
     if (studentIds.length === 0 || delta === 0 || !Number.isFinite(delta)) return;
@@ -236,7 +246,7 @@ export default function AppViewSeatingChart({
   }, [setStudents]);
 
   const fetchGroups = useCallback(async () => {
-    if (!selectedLayoutId) return;
+    if (!activeSeatingLayoutId) return;
 
     try {
       setIsLoadingGroups(true);
@@ -246,7 +256,7 @@ export default function AppViewSeatingChart({
       const { data: groupsData, error: groupsError } = await supabase
         .from('seating_groups')
         .select('*')
-        .eq('seating_chart_id', selectedLayoutId)
+        .eq('seating_chart_id', activeSeatingLayoutId)
         .order('sort_order', { ascending: true });
 
       if (groupsError) {
@@ -338,17 +348,17 @@ export default function AppViewSeatingChart({
     } finally {
       setIsLoadingGroups(false);
     }
-  }, [selectedLayoutId]);
+  }, [activeSeatingLayoutId]);
 
   // Fetch groups when layout is selected or when shared roster becomes available
   useEffect(() => {
-    if (selectedLayoutId && students.length > 0) {
+    if (activeSeatingLayoutId && students.length > 0) {
       fetchGroups();
-    } else if (!selectedLayoutId) {
+    } else if (!activeSeatingLayoutId) {
       setGroups([]);
       setGroupAssignments(new Map());
     }
-  }, [selectedLayoutId, fetchGroups, students.length]);
+  }, [activeSeatingLayoutId, fetchGroups, students.length]);
 
   // After leaving the editor, Supabase has the latest assignments — refetch so the view is not stale.
   useEffect(() => {
@@ -373,17 +383,17 @@ export default function AppViewSeatingChart({
 
   // Apply current layout settings directly from layouts already in state.
   useEffect(() => {
-    if (!selectedLayoutId) return;
-    const currentLayout = layouts.find((l) => l.id === selectedLayoutId);
+    if (!activeSeatingLayoutId) return;
+    const currentLayout = layouts.find((l) => l.id === activeSeatingLayoutId);
     if (currentLayout) {
       applyLayoutViewSettings(currentLayout);
     }
-  }, [selectedLayoutId, layouts, applyLayoutViewSettings]);
+  }, [activeSeatingLayoutId, layouts, applyLayoutViewSettings]);
 
   // Keep view settings in sync without aggressive polling:
   // 1) local custom events, 2) realtime row updates, 3) low-frequency visible-tab fallback.
   useEffect(() => {
-    if (!selectedLayoutId) return;
+    if (!activeSeatingLayoutId) return;
 
     const supabase = createClient();
 
@@ -393,7 +403,7 @@ export default function AppViewSeatingChart({
         const { data, error } = await supabase
           .from('seating_charts')
           .select('show_grid, show_objects, layout_orientation')
-          .eq('id', selectedLayoutId)
+          .eq('id', activeSeatingLayoutId)
           .single();
 
         if (error || !data) return;
@@ -411,7 +421,7 @@ export default function AppViewSeatingChart({
         layout_orientation?: string | null;
       }>;
       const detail = customEvent.detail;
-      if (!detail || detail.layoutId !== selectedLayoutId) return;
+      if (!detail || detail.layoutId !== activeSeatingLayoutId) return;
       applyLayoutViewSettings(detail);
     };
 
@@ -425,14 +435,14 @@ export default function AppViewSeatingChart({
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const realtimeChannel = supabase
-      .channel(`seating_chart_view_settings_${selectedLayoutId}`)
+      .channel(`seating_chart_view_settings_${activeSeatingLayoutId}`)
       .on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
           table: 'seating_charts',
-          filter: `id=eq.${selectedLayoutId}`,
+          filter: `id=eq.${activeSeatingLayoutId}`,
         },
         (payload) => {
           const nextRow = payload.new as {
@@ -450,7 +460,7 @@ export default function AppViewSeatingChart({
       window.removeEventListener('seatingChartViewSettingsChanged', handleLocalSettingsEvent as EventListener);
       void supabase.removeChannel(realtimeChannel);
     };
-  }, [selectedLayoutId, applyLayoutViewSettings]);
+  }, [activeSeatingLayoutId, applyLayoutViewSettings]);
 
   // Handle delete layout
   const handleDeleteLayout = (layoutId: string, layoutName: string, e: React.MouseEvent) => {
@@ -484,14 +494,12 @@ export default function AppViewSeatingChart({
 
   const handleOpenSeatingEditor = useCallback(() => {
     const base = pathname ?? '/';
-    const storageKey = `seatingChart_selectedLayout_${classId}`;
-    const layoutId = typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null;
     window.dispatchEvent(new CustomEvent('seatingChartEditMode', { detail: { isEditMode: true } }));
     const params = new URLSearchParams(searchQuery);
     params.set('mode', 'edit');
-    if (layoutId) params.set('layout', layoutId);
+    if (activeSeatingLayoutId) params.set('layout', activeSeatingLayoutId);
     router.push(params.toString() ? `${base}?${params.toString()}` : `${base}?mode=edit`);
-  }, [classId, pathname, router, searchQuery]);
+  }, [activeSeatingLayoutId, pathname, router, searchQuery]);
 
   useEffect(() => {
     setToolbar({
@@ -604,8 +612,8 @@ export default function AppViewSeatingChart({
       }
 
       // If the deleted layout was selected, clear the selection
-      if (selectedLayoutId === layoutToDelete.id) {
-        setSelectedLayoutId(null);
+      if (activeSeatingLayoutId === layoutToDelete.id) {
+        setActiveSeatingLayoutId(null);
         // Clear from localStorage
         const storageKey = `seatingChart_selectedLayout_${classId}`;
         localStorage.removeItem(storageKey);
@@ -657,8 +665,7 @@ export default function AppViewSeatingChart({
     if (targetIds.length > 0 && typeof info.points === 'number') {
       applyOptimisticPointsDelta(targetIds, info.points);
     }
-    setAwardInfo(info);
-    setIsConfirmationModalOpen(true);
+    openAwardConfirmation(info);
   };
 
   // Handle create layout
@@ -691,7 +698,7 @@ export default function AppViewSeatingChart({
         
         // Refresh layouts
         await fetchLayouts();
-        setSelectedLayoutId(data.id);
+        setActiveSeatingLayoutId(data.id);
         setIsCreateModalOpen(false);
         
         // Navigate to edit mode with the new layout ID
@@ -788,63 +795,13 @@ export default function AppViewSeatingChart({
               transformOrigin: 'center center',
             }}
           >
-            {/* Grid Lines Overlay - Visual guide only (only show if show_grid is true) */}
-            {showGrid && (
-              <div
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  backgroundImage: `
-                    linear-gradient(to right, rgb(209 213 219) 1px, transparent 1px),
-                    linear-gradient(to bottom, rgb(209 213 219) 1px, transparent 1px)
-                  `,
-                  backgroundSize: '38px 38px', // 1cm ≈ 38px at 96 DPI
-                  zIndex: 0
-                }}
-              />
-            )}
-            {/* Visual Objects - Whiteboard and TV, Teacher's Desk */}
-            <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
-              {/* Whiteboard and TV - Centered at top (always visible) */}
-              <div
-                className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
-                style={{
-                  top: '0px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: '800px',
-                  height: '30px',
-                  zIndex: 0
-                }}
-              >
-                <span className="text-white font-semibold text-lg" style={isTeacherView ? { display: 'inline-block', transform: 'rotate(-180deg)' } : undefined}>
-                  Whiteboard and TV
-                </span>
-              </div>
-              
-              {/* Furniture (Teacher's Desk) - Only show if showObjects is true */}
-              {showObjects && (
-                <>
-                  {/* Teacher's Desk - Position based on layoutOrientation */}
-                  <div
-                    className="absolute bg-gray-700 border-2 border-gray-800 rounded-lg flex items-center justify-center"
-                    style={{
-                      top: '55px',
-                      ...(layoutOrientation === 'Left' 
-                        ? { left: '75px' }
-                        : { right: '75px' }
-                      ),
-                      width: '200px',
-                      height: '75px',
-                      zIndex: 0
-                    }}
-                  >
-                    <span className="text-white font-semibold" style={isTeacherView ? { display: 'inline-block', transform: 'rotate(-180deg)' } : undefined}>
-                      Teacher's Desk
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
+            <SeatingCanvasDecor
+              showGrid={showGrid}
+              showObjects={showObjects}
+              layoutOrientation={layoutOrientation}
+              isTeacherView={isTeacherView}
+              borderClassName="border-gray-800"
+            />
             {isLoadingGroups ? (
               <div className="flex items-center justify-center p-8 relative" style={{ zIndex: 1 }}>
                 <p className="text-white/80" style={isTeacherView ? { display: 'inline-block', transform: 'rotate(-180deg)' } : undefined}>
@@ -1124,10 +1081,7 @@ export default function AppViewSeatingChart({
       {awardInfo && (
         <PointsAwardedConfirmationModal
           isOpen={isConfirmationModalOpen}
-          onClose={() => {
-            setIsConfirmationModalOpen(false);
-            setAwardInfo(null);
-          }}
+          onClose={closeAwardConfirmation}
           studentAvatar={awardInfo.studentAvatar}
           studentFirstName={awardInfo.studentFirstName}
           points={awardInfo.points}

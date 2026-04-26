@@ -3,31 +3,20 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/client';
-import AddStudentsModal from '@/components/modals/AddStudentsModal';
-import AwardPointsModal from '@/components/modals/AwardPointsModal';
-import EditStudentModal from '@/components/modals/EditStudentModal';
-import PointsAwardedConfirmationModal from '@/components/modals/PointsAwardedConfirmationModal';
 import { Student } from '@/lib/types';
 import { useStudentSort } from '@/context/StudentSortContext';
 import { normalizeClassIconPath } from '@/lib/iconUtils';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorState from '@/components/ui/ErrorState';
-import EmptyState from '@/components/ui/EmptyState';
-import CardsGrid from '@/components/ui/CardsGrid';
-import ScaledGridFrame from '@/components/ui/ScaledGridFrame';
-import WholeClassCard from './cards/WholeClassCard';
-import StudentCard from './cards/StudentCard';
-import StudentCardMulti from './cards/StudentCardMulti';
-import AddStudentCard from './cards/AddStudentCard';
-import AppViewSeatingChart from './AppViewSeatingChart';
-import AppViewSeatingChartEditor from './AppViewSeatingChartEditor';
-import ClassPointLogSlidePanel from '@/components/ui/ClassPointLogSlidePanel';
+import StudentsMainContent from './maincontent/StudentsMainContent';
+import StudentsModals from './maincontent/StudentsModals';
 import IconAddPlus from '@/components/iconsCustom/iconAddPlus';
 import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
 import IconPresentationBoard from '@/components/iconsCustom/iconPresentationBoard';
 import IconDocumentClock from '@/components/iconsCustom/iconDocumentClock';
 import { useClassPointLog } from '@/hooks/useClassPointLog';
 import { useDashboardToolbarInset } from '@/hooks/useDashboardToolbarInset';
+import { useAwardPointsFlow } from '@/hooks/useAwardPointsFlow';
 import { useStageToolbar } from './StageToolbarContext';
 
 export default function AppViewStudents() {
@@ -54,14 +43,12 @@ export default function AppViewStudents() {
   const [isWholeClassModalOpen, setIsWholeClassModalOpen] = useState(false);
   const [isEditStudentModalOpen, setIsEditStudentModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
-  const [awardInfo, setAwardInfo] = useState<{
-    studentAvatar: string;
-    studentFirstName: string;
-    points: number;
-    categoryName: string;
-    categoryIcon?: string;
-  } | null>(null);
+  const {
+    awardInfo,
+    isConfirmationModalOpen,
+    openAwardConfirmation,
+    closeAwardConfirmation,
+  } = useAwardPointsFlow();
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [isMultiStudentAwardModalOpen, setIsMultiStudentAwardModalOpen] = useState(false);
@@ -383,8 +370,7 @@ export default function AppViewStudents() {
     categoryName: string;
     categoryIcon?: string;
   }) => {
-    setAwardInfo(info);
-    setIsConfirmationModalOpen(true);
+    openAwardConfirmation(info);
   };
 
   // Sort students based on sortBy option
@@ -506,176 +492,73 @@ export default function AppViewStudents() {
 
   return (
     <>
-      {/* Main Content Container for student cards */}
-      <div className={currentView === 'seating' ? 'h-full min-h-0 w-full' : ''}>
-        <div
-          className={
-            currentView === 'grid'
-              ? 'max-w-10xl mx-auto text-white-500 pr-[5.75rem] sm:pr-24 !pl-0'
-              : 'h-full min-h-0 w-full text-white-500'
-          }
-        >
-          {currentView === 'seating' ? (
-            // Seating Chart View or Edit Mode
-            // Use URL parameter as source of truth to match layout's provider
-            (isSeatingEditMode || isEditModeFromURL) ? (
-              <AppViewSeatingChartEditor classId={classId} students={students} />
-            ) : (
-              <AppViewSeatingChart
-                classId={classId}
-                students={students}
-                setStudents={setStudents}
-                isMultiSelectMode={isMultiSelectMode}
-                selectedStudentIds={selectedStudentIds}
-                onSelectStudent={handleSelectStudent}
-              />
-            )
-          ) : (
-            // Student Grid View (default)
-            <>
-              <ClassPointLogSlidePanel
-                isOpen={isPointLogOpen}
-                position="fixed"
-                rightPx={72}
-                topPx={toolbarInset.top}
-                bottomPx={toolbarInset.bottom}
-                zIndex={35}
-                logTotalCount={logTotalCount}
-                pointLogError={pointLogError}
-                isPointLogLoading={isPointLogLoading}
-                pagedRows={pagedPointLogRows}
-                safeLogPage={safeLogPage}
-                totalPages={totalPages}
-                rowsPerPage={rowsPerPage}
-                setLogPage={setLogPage}
-                setRowsPerPage={setRowsPerPage}
-              />
-
-              {students.length === 0 ? (
-                <EmptyState
-                  title="No students yet"
-                  message="Students will appear here once they are added to this class."
-                  buttonText="Add Your First Student"
-                  onAddClick={() => setAddStudentModalOpen(true)}
-                />
-              ) : (
-                <ScaledGridFrame
-                  remeasureKey={`${sortedStudents.length}-${isMultiSelectMode ? 1 : 0}`}
-                >
-                  <CardsGrid>
-                    <WholeClassCard
-                      classIcon={classIcon}
-                      totalPoints={totalClassPoints}
-                      onClick={handleWholeClassClick}
-                    />
-                    {sortedStudents.map((student) =>
-                      isMultiSelectMode ? (
-                        <StudentCardMulti
-                          key={student.id}
-                          student={student}
-                          isSelected={selectedStudentIds.includes(student.id)}
-                          onSelect={handleSelectStudent}
-                        />
-                      ) : (
-                        <StudentCard
-                          key={student.id}
-                          student={student}
-                          openDropdownId={openDropdownId}
-                          onToggleDropdown={toggleDropdown}
-                          onEdit={handleEditStudent}
-                          onDelete={handleDeleteStudent}
-                          onClick={handleStudentClick}
-                        />
-                      )
-                    )}
-                    {!isMultiSelectMode && (
-                      <AddStudentCard onClick={() => setAddStudentModalOpen(true)} />
-                    )}
-                  </CardsGrid>
-                </ScaledGridFrame>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Add Students Modal */}
-      <AddStudentsModal 
-        isOpen={isAddStudentModalOpen} 
-        onClose={() => setAddStudentModalOpen(false)}
+      <StudentsMainContent
         classId={classId}
-        onStudentAdded={fetchStudents}
+        currentView={currentView}
+        isSeatingEditMode={isSeatingEditMode}
+        isEditModeFromURL={isEditModeFromURL}
+        students={students}
+        setStudents={setStudents}
+        sortedStudents={sortedStudents}
+        isMultiSelectMode={isMultiSelectMode}
+        selectedStudentIds={selectedStudentIds}
+        classIcon={classIcon}
+        totalClassPoints={totalClassPoints}
+        openDropdownId={openDropdownId}
+        isPointLogOpen={isPointLogOpen}
+        isPointLogLoading={isPointLogLoading}
+        pointLogError={pointLogError}
+        logTotalCount={logTotalCount}
+        pagedPointLogRows={pagedPointLogRows}
+        safeLogPage={safeLogPage}
+        totalPages={totalPages}
+        rowsPerPage={rowsPerPage}
+        toolbarTopPx={toolbarInset.top}
+        toolbarBottomPx={toolbarInset.bottom}
+        setLogPage={setLogPage}
+        setRowsPerPage={setRowsPerPage}
+        onSelectStudent={handleSelectStudent}
+        onToggleDropdown={toggleDropdown}
+        onEditStudent={handleEditStudent}
+        onDeleteStudent={handleDeleteStudent}
+        onStudentClick={handleStudentClick}
+        onWholeClassClick={handleWholeClassClick}
+        onAddStudent={() => setAddStudentModalOpen(true)}
       />
 
-      {/* Award Points Modal */}
-      {selectedStudent && (
-        <AwardPointsModal
-          isOpen={isPointsModalOpen}
-          onClose={() => {
-            setPointsModalOpen(false);
-            setSelectedStudent(null);
-          }}
-          student={selectedStudent}
-          classId={classId}
-          onRefresh={fetchStudents}
-          onPointsAwarded={handlePointsAwarded}
-        />
-      )}
-
-      {/* Award Points Modal for Whole Class */}
-      <AwardPointsModal
-        isOpen={isWholeClassModalOpen}
-        onClose={() => {
-          setIsWholeClassModalOpen(false);
-        }}
-        student={null}
+      <StudentsModals
         classId={classId}
         className={className}
         classIcon={classIcon}
-        onRefresh={fetchStudents}
-        onPointsAwarded={handlePointsAwarded}
-      />
-
-      {/* Award Points Modal for Multi-Select Students */}
-      {selectedStudentIds.length > 0 && (
-        <AwardPointsModal
-          isOpen={isMultiStudentAwardModalOpen}
-          onClose={() => setIsMultiStudentAwardModalOpen(false)}
-          student={null}
-          classId={classId}
-          selectedStudentIds={selectedStudentIds}
-          onAwardComplete={handleAwardComplete}
-          onRefresh={fetchStudents}
-          onPointsAwarded={handlePointsAwarded}
-        />
-      )}
-
-      {/* Edit Student Modal */}
-      <EditStudentModal
-        isOpen={isEditStudentModalOpen}
-        onClose={() => {
+        students={students}
+        selectedStudent={selectedStudent}
+        editingStudent={editingStudent}
+        selectedStudentIds={selectedStudentIds}
+        awardInfo={awardInfo}
+        isAddStudentModalOpen={isAddStudentModalOpen}
+        isPointsModalOpen={isPointsModalOpen}
+        isWholeClassModalOpen={isWholeClassModalOpen}
+        isEditStudentModalOpen={isEditStudentModalOpen}
+        isMultiStudentAwardModalOpen={isMultiStudentAwardModalOpen}
+        isConfirmationModalOpen={isConfirmationModalOpen}
+        onStudentAdded={fetchStudents}
+        onCloseAddStudentsModal={() => setAddStudentModalOpen(false)}
+        onClosePointsModal={() => {
+          setPointsModalOpen(false);
+          setSelectedStudent(null);
+        }}
+        onCloseWholeClassModal={() => setIsWholeClassModalOpen(false)}
+        onCloseEditStudentModal={() => {
           setIsEditStudentModalOpen(false);
           setEditingStudent(null);
         }}
-        student={editingStudent}
-        onRefresh={fetchStudents}
+        onCloseMultiStudentAwardModal={() => setIsMultiStudentAwardModalOpen(false)}
+        onCloseConfirmationModal={() => {
+          closeAwardConfirmation();
+        }}
+        onAwardComplete={handleAwardComplete}
+        onPointsAwarded={handlePointsAwarded}
       />
-
-      {/* Points Awarded Confirmation Modal */}
-      {awardInfo && (
-        <PointsAwardedConfirmationModal
-          isOpen={isConfirmationModalOpen}
-          onClose={() => {
-            setIsConfirmationModalOpen(false);
-            setAwardInfo(null);
-          }}
-          studentAvatar={awardInfo.studentAvatar}
-          studentFirstName={awardInfo.studentFirstName}
-          points={awardInfo.points}
-          categoryName={awardInfo.categoryName}
-          categoryIcon={awardInfo.categoryIcon}
-        />
-      )}
     </>
   );
 }
