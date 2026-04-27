@@ -27,7 +27,6 @@ export default function AppViewStudents() {
   const currentMode = searchParams?.get('mode') || '';
   // Check if we're in edit mode from URL (this should match layout's isEditMode)
   const isEditModeFromURL = currentMode === 'edit';
-  const [classIcon, setClassIcon] = useState<string>('/images/dashboard/class-icons/icon-1.png');
   const [error, setError] = useState<string | null>(null);
   const [isAddStudentModalOpen, setAddStudentModalOpen] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
@@ -47,6 +46,8 @@ export default function AppViewStudents() {
   const [isMultiStudentAwardModalOpen, setIsMultiStudentAwardModalOpen] = useState(false);
   const [isSeatingEditMode, setIsSeatingEditMode] = useState(false);
   const prevViewRef = useRef<string | null>(null);
+  const currentClass = useMemo(() => classes.find((c) => c.id === classId) ?? null, [classes, classId]);
+  const classIcon = currentClass?.icon || null;
 
   // Dispatch initial state to BottomNav
   useEffect(() => {
@@ -72,12 +73,6 @@ export default function AppViewStudents() {
     prevViewRef.current = currentView;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentView, classId, refreshStudents]);
-
-  useEffect(() => {
-    const currentClass = classes.find((c) => c.id === classId);
-    if (!currentClass) return;
-    setClassIcon(normalizeClassIconPath(currentClass.icon));
-  }, [classId, classes]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -427,8 +422,8 @@ export default function AppViewStudents() {
 
       <StudentsModals
         classId={classId}
-        className={classes.find((c) => c.id === classId)?.name || ''}
-        classIcon={classIcon}
+        className={currentClass?.name || ''}
+        classIcon={classIcon ? normalizeClassIconPath(classIcon) : ''}
         students={students}
         selectedStudent={selectedStudent}
         editingStudent={editingStudent}

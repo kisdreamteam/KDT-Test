@@ -24,6 +24,7 @@ interface DashboardStageProps {
     title: string;
     name: string;
   } | null;
+  suppressTeacherFallback?: boolean;
   isTimerOpen: boolean;
   isRandomOpen: boolean;
   onCloseTimer: () => void;
@@ -42,6 +43,7 @@ export default function DashboardStage({
   isLoadingProfile,
   currentClassName,
   teacherProfile,
+  suppressTeacherFallback = false,
   isTimerOpen,
   isRandomOpen,
   onCloseTimer,
@@ -151,6 +153,7 @@ export default function DashboardStage({
             isLoadingProfile={isLoadingProfile}
             currentClassName={currentClassName}
             teacherProfile={teacherProfile}
+            suppressTeacherFallback={suppressTeacherFallback}
           />
         </div>
       )}

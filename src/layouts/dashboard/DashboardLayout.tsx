@@ -18,6 +18,7 @@ function DashboardLayoutShell({
 }) {
   const {
     classes,
+    currentClass,
     isLoadingClasses,
     teacherProfile,
     isLoadingProfile,
@@ -45,10 +46,9 @@ function DashboardLayoutShell({
     viewPreferenceRef.current = viewPreference;
   }, [viewPreference]);
 
-  const currentClassName = useMemo(
-    () => classes.find((c) => c.id === currentClassId)?.name || null,
-    [classes, currentClassId]
-  );
+  const currentClassName = currentClass?.name ?? null;
+  const isClassRoute = !!currentClassId;
+  const topNavClassTitle = isClassRoute ? (currentClassName ?? 'Loading...') : currentClassName;
 
   // Listen for multi-select state changes
   useEffect(() => {
@@ -122,8 +122,9 @@ function DashboardLayoutShell({
                 isSeatingView={isSeatingView}
                 isEditMode={isEditMode}
                 isLoadingProfile={isLoadingProfile}
-                currentClassName={currentClassName}
+                currentClassName={topNavClassTitle}
                 teacherProfile={teacherProfile}
+                suppressTeacherFallback={isClassRoute}
                 isTimerOpen={isTimerOpen}
                 isRandomOpen={isRandomOpen}
                 onCloseTimer={() => setIsTimerOpen(false)}

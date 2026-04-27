@@ -2,7 +2,7 @@ import { normalizeClassIconPath } from "@/lib/iconUtils";
 import BaseCard from "@/components/ui/BaseCard";
 
 interface WholeClassCardProps {
-  classIcon: string;
+  classIcon: string | null;
   totalPoints: number;
   onClick: () => void;
 }
@@ -22,14 +22,18 @@ export default function WholeClassCard({
       iconWrapperClassName="!mb-0"
       titleClassName="!mb-0"
       icon={
-        <img
-          src={normalizeClassIconPath(classIcon)}
-          alt="Whole Class icon"
-          width={80}
-          height={80}
-          className="rounded-xl bg-[#FDF2F0]"
-          decoding="async"
-        />
+        classIcon ? (
+          <img
+            src={normalizeClassIconPath(classIcon)}
+            alt="Whole Class icon"
+            width={80}
+            height={80}
+            className="rounded-xl bg-[#FDF2F0]"
+            decoding="async"
+          />
+        ) : (
+          <div className="w-[80px] h-[80px] rounded-full bg-gray-200 animate-pulse" aria-label="Loading class icon" />
+        )
       }
     >
       <div className="pointer-events-none w-full text-center">

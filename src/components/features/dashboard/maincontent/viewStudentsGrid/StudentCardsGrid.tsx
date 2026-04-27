@@ -10,7 +10,7 @@ interface StudentCardsGridProps {
   sortedStudents: Student[];
   isMultiSelectMode: boolean;
   selectedStudentIds: string[];
-  classIcon: string;
+  classIcon: string | null;
   totalClassPoints: number;
   openDropdownId: string | null;
   onWholeClassClick: () => void;

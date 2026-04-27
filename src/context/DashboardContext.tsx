@@ -32,6 +32,7 @@ type ViewPreference = 'seating' | 'students';
 // Define the shape of the data we're sharing
 interface DashboardContextType {
   classes: Class[];
+  currentClass: Class | null;
   isLoadingClasses: boolean;
   teacherProfile: TeacherProfile | null;
   isLoadingProfile: boolean;
@@ -280,9 +281,14 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     () => allClasses.filter((cls) => (viewMode === 'archived' ? cls.is_archived : !cls.is_archived)),
     [allClasses, viewMode]
   );
+  const currentClass = useMemo(
+    () => allClasses.find((cls) => cls.id === currentClassId) ?? null,
+    [allClasses, currentClassId]
+  );
 
   const value: DashboardContextType = {
     classes,
+    currentClass,
     isLoadingClasses,
     teacherProfile,
     isLoadingProfile,

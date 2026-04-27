@@ -12,12 +12,14 @@ interface TopNavProps {
   isLoadingProfile: boolean;
   currentClassName: string | null;
   teacherProfile: TeacherProfile | null;
+  suppressTeacherFallback?: boolean;
 }
 
 export default function TopNav({ 
   isLoadingProfile, 
   currentClassName, 
   teacherProfile,
+  suppressTeacherFallback = false,
 }: TopNavProps) {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const titleContainerRef = useRef<HTMLDivElement>(null);
@@ -27,9 +29,10 @@ export default function TopNav({
   const getTitleText = useCallback(() => {
     if (isLoadingProfile) return 'Loading...';
     if (currentClassName) return currentClassName;
+    if (suppressTeacherFallback) return '';
     if (teacherProfile) return `${teacherProfile.title} ${teacherProfile.name.split(' ')[0]}'s Classes`;
     return 'Classes';
-  }, [isLoadingProfile, currentClassName, teacherProfile]);
+  }, [isLoadingProfile, currentClassName, teacherProfile, suppressTeacherFallback]);
 
   // Calculate and adjust font size based on container width
   useEffect(() => {
@@ -96,7 +99,7 @@ export default function TopNav({
         resizeObserver.disconnect();
       }
     };
-  }, [isLoadingProfile, currentClassName, teacherProfile, getTitleText]);
+  }, [isLoadingProfile, currentClassName, teacherProfile, suppressTeacherFallback, getTitleText]);
 
   return (
     // Top Nav Container
@@ -120,6 +123,8 @@ export default function TopNav({
                 </span>
               ) : currentClassName ? (
                 currentClassName
+              ) : suppressTeacherFallback ? (
+                ""
               ) : teacherProfile ? (
                 `${teacherProfile.title} ${teacherProfile.name.split(' ')[0]}'s Classes`
               ) : (

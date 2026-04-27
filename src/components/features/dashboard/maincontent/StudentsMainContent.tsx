@@ -17,7 +17,7 @@ interface StudentsMainContentProps {
   sortedStudents: Student[];
   isMultiSelectMode: boolean;
   selectedStudentIds: string[];
-  classIcon: string;
+  classIcon: string | null;
   totalClassPoints: number;
   openDropdownId: string | null;
   isPointLogOpen: boolean;
