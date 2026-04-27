@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/client';
 import { Student } from '@/lib/types';
 import { useStudentSort } from '@/context/StudentSortContext';
+import { useDashboard } from '@/context/DashboardContext';
 import { normalizeClassIconPath } from '@/lib/iconUtils';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorState from '@/components/ui/ErrorState';
@@ -24,6 +25,7 @@ export default function AppViewStudents() {
   const classId = (params?.classId as string | undefined) ?? '';
   const searchParams = useSearchParams();
   const { sortBy } = useStudentSort();
+  const { classes, students, setStudents, isLoadingStudents, refreshStudents } = useDashboard();
   
   // Get current view mode from URL
   const currentView = searchParams?.get('view') || 'grid';
@@ -31,10 +33,7 @@ export default function AppViewStudents() {
   const { setToolbar } = useStageToolbar();
   // Check if we're in edit mode from URL (this should match layout's isEditMode)
   const isEditModeFromURL = currentMode === 'edit';
-  const [students, setStudents] = useState<Student[]>([]);
-  const [className, setClassName] = useState<string>('');
   const [classIcon, setClassIcon] = useState<string>('/images/dashboard/class-icons/icon-1.png');
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddStudentModalOpen, setAddStudentModalOpen] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
@@ -67,9 +66,6 @@ export default function AppViewStudents() {
       localStorage.removeItem('lastSelectedStudents');
       // Dispatch event to notify BottomNav
       window.dispatchEvent(new CustomEvent('recentlySelectedCleared'));
-      
-      fetchClass();
-      fetchStudents();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classId]);
@@ -77,11 +73,17 @@ export default function AppViewStudents() {
   // When switching from Seating Chart to Student Grid, refetch students so the grid shows updated points
   useEffect(() => {
     if (prevViewRef.current === 'seating' && currentView === 'grid' && classId) {
-      fetchStudents();
+      void refreshStudents();
     }
     prevViewRef.current = currentView;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentView, classId]);
+  }, [currentView, classId, refreshStudents]);
+
+  useEffect(() => {
+    const currentClass = classes.find((c) => c.id === classId);
+    if (!currentClass) return;
+    setClassIcon(normalizeClassIconPath(currentClass.icon));
+  }, [classId, classes]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -210,70 +212,6 @@ export default function AppViewStudents() {
     };
   }, [isMultiSelectMode, students, selectedStudentIds]);
 
-  const fetchClass = async () => {
-    try {
-      const supabase = createClient();
-      
-      const { data: classData, error: fetchError } = await supabase
-        .from('classes')
-        .select('name, icon')
-        .eq('id', classId)
-        .single();
-
-      if (fetchError) {
-        console.error('Error fetching class:', fetchError?.message || fetchError);
-        return;
-      }
-
-      if (classData) {
-        setClassName(classData.name);
-        setClassIcon(normalizeClassIconPath(classData.icon));
-      }
-    } catch (err) {
-      console.error('Unexpected error fetching class:', err instanceof Error ? err.message : err);
-    }
-  };
-
-  const fetchStudents = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const supabase = createClient();
-      
-      const { data: students, error: fetchError } = await supabase
-        .from('students')
-        .select(`
-          id,
-          first_name,
-          last_name,
-          points,
-          avatar,
-          student_number,
-          gender,
-          class_id
-        `)
-        .eq('class_id', classId)
-        .order('last_name', { ascending: true });
-
-      if (fetchError) {
-        console.error('Error fetching students:', fetchError?.message || fetchError);
-        setError('Failed to load students. Please try again.');
-        return;
-      }
-
-      if (students) {
-        setStudents(students);
-      } else {
-        setStudents([]);
-      }
-    } catch (err) {
-      console.error('Unexpected error fetching students:', err instanceof Error ? err.message : err);
-      setError('An unexpected error occurred.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   // Handle dropdown toggle
   const toggleDropdown = (studentId: string, event: React.MouseEvent) => {
     event.preventDefault();
@@ -309,7 +247,7 @@ export default function AppViewStudents() {
 
         console.log('Student deleted successfully');
         setOpenDropdownId(null);
-        fetchStudents();
+        void refreshStudents();
       } catch (err) {
         console.error('Unexpected error deleting student:', err);
         alert('An unexpected error occurred. Please try again.');
@@ -484,12 +422,12 @@ export default function AppViewStudents() {
     };
   }, [currentView, isPointLogOpen, setIsPointLogOpen, setToolbar]);
 
-  if (isLoading) {
+  if (isLoadingStudents) {
     return <LoadingState message="Loading students..." />;
   }
 
   if (error) {
-    return <ErrorState error={error} onRetry={fetchStudents} />;
+    return <ErrorState error={error} onRetry={() => void refreshStudents()} />;
   }
 
   return (
@@ -530,7 +468,7 @@ export default function AppViewStudents() {
 
       <StudentsModals
         classId={classId}
-        className={className}
+        className={classes.find((c) => c.id === classId)?.name || ''}
         classIcon={classIcon}
         students={students}
         selectedStudent={selectedStudent}
@@ -543,7 +481,7 @@ export default function AppViewStudents() {
         isEditStudentModalOpen={isEditStudentModalOpen}
         isMultiStudentAwardModalOpen={isMultiStudentAwardModalOpen}
         isConfirmationModalOpen={isConfirmationModalOpen}
-        onStudentAdded={fetchStudents}
+        onStudentAdded={() => void refreshStudents()}
         onCloseAddStudentsModal={() => setAddStudentModalOpen(false)}
         onClosePointsModal={() => {
           setPointsModalOpen(false);
