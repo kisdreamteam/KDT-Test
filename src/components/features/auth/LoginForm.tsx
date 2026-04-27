@@ -115,7 +115,7 @@ export default function LoginForm() {
 
           {/* Forgot Password Link - Left Aligned */}
           <div className="text-left">
-            <Link href="#" className="text-[18px] text-sm text-gray-600 hover:underline font-spartan">
+            <Link href="/forgot-password" className="text-[18px] text-sm text-gray-600 hover:underline font-spartan">
               Forgot your password?
             </Link>
           </div>
