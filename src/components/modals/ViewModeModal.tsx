@@ -33,29 +33,7 @@ export default function ViewModeModal({ isOpen, onClose }: ViewModeModalProps) {
       onClose();
       return;
     }
-    router.replace(newUrl);
-    void Promise.resolve().then(() => {
-      requestAnimationFrame(() => {
-        const target = new URL(newUrl, window.location.origin);
-        const current = `${window.location.pathname}${window.location.search}`;
-        const expected = `${target.pathname}${target.search}`;
-        if (current === expected) return;
-        requestAnimationFrame(() => {
-          const currentAfterSecondFrame = `${window.location.pathname}${window.location.search}`;
-          const matchedAfterSecondFrame = currentAfterSecondFrame === expected;
-          if (!matchedAfterSecondFrame) {
-            router.push(newUrl);
-            requestAnimationFrame(() => {
-              const currentAfterPush = `${window.location.pathname}${window.location.search}`;
-              const matchedAfterPush = currentAfterPush === expected;
-              if (!matchedAfterPush) {
-                window.location.assign(newUrl);
-              }
-            });
-          }
-        });
-      });
-    });
+    router.replace(newUrl, { scroll: false });
     void updateViewPreference(view === 'seating' ? 'seating' : 'students');
     onClose();
   };

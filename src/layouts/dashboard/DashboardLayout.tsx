@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/client';
 import { DashboardProvider } from '@/context/DashboardContext';
@@ -72,6 +72,7 @@ function DashboardLayoutContent({
   const searchParams = useSearchParams();
   const router = useRouter();
   const searchParamsString = searchParams?.toString() ?? '';
+  const viewPreferenceRef = useRef<ViewPreference>(viewPreference);
 
   // Current class ID from URL (when on a class detail page)
   const currentClassId = pathname ? (pathname.match(/\/dashboard\/classes\/([^/]+)/)?.[1] ?? null) : null;
@@ -82,6 +83,10 @@ function DashboardLayoutContent({
   // Get current view mode from URL
   const currentView = (searchParams?.get('view') || 'grid') as 'grid' | 'seating';
   const isSeatingView = currentView === 'seating';
+
+  useEffect(() => {
+    viewPreferenceRef.current = viewPreference;
+  }, [viewPreference]);
 
   const fetchTeacherProfile = async () => {
     if (cachedTeacherProfile) {
@@ -297,16 +302,15 @@ function DashboardLayoutContent({
     };
   }, [fetchClasses]);
 
-  // If the URL has no explicit view, initialize it from persisted teacher preference.
+  // Fallback only on mount/path change: if class route URL has no explicit view, seed it from persisted preference.
   useEffect(() => {
     const inClassRoute = !!pathname?.includes('/dashboard/classes/');
-    const params = new URLSearchParams(searchParamsString);
+    const params = new URLSearchParams(window.location.search);
     const hasView = params.has('view');
     if (!inClassRoute) return;
-    if (isLoadingProfile) return;
     if (hasView) return;
 
-    if (viewPreference === 'seating') {
+    if (viewPreferenceRef.current === 'seating') {
       params.set('view', 'seating');
     } else {
       params.delete('view');
@@ -314,13 +318,14 @@ function DashboardLayoutContent({
     }
 
     const base = pathname ?? '/';
-    const currentUrl = searchParamsString ? `${base}?${searchParamsString}` : base;
+    const currentSearch = window.location.search;
+    const currentUrl = currentSearch ? `${base}${currentSearch}` : base;
     const newUrl = params.toString() ? `${base}?${params.toString()}` : base;
     if (newUrl === currentUrl) {
       return;
     }
-    router.replace(newUrl);
-  }, [pathname, router, searchParamsString, viewPreference, currentClassId, isLoadingProfile]);
+    router.replace(newUrl, { scroll: false });
+  }, [pathname, router]);
 
   return (
     <DashboardProvider value={{ 
