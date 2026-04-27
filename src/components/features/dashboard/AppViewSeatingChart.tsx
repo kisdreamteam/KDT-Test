@@ -12,14 +12,9 @@ import CreateLayoutModal from '@/components/modals/CreateLayoutModal';
 import EditLayoutModal from '@/components/modals/EditLayoutModal';
 import AwardPointsModal from '@/components/modals/AwardPointsModal';
 import PointsAwardedConfirmationModal from '@/components/modals/PointsAwardedConfirmationModal';
-import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
-import IconAddPlus from '@/components/iconsCustom/iconAddPlus';
-import IconPresentationBoard from '@/components/iconsCustom/iconPresentationBoard';
-import IconDocumentClock from '@/components/iconsCustom/iconDocumentClock';
 import ClassPointLogSlidePanel from '@/components/ui/ClassPointLogSlidePanel';
 import { useClassPointLog } from '@/hooks/useClassPointLog';
 import { useAwardPointsFlow } from '@/hooks/useAwardPointsFlow';
-import { useStageToolbar } from './StageToolbarContext';
 import SeatingCanvasDecor from './seating/SeatingCanvasDecor';
 
 interface SeatingChart {
@@ -71,11 +66,11 @@ export default function AppViewSeatingChart({
   selectedStudentIds = [],
   onSelectStudent,
 }: AppViewSeatingChartProps) {
-  const { setToolbar } = useStageToolbar();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const searchQuery = searchParams?.toString() ?? '';
+  const currentView = searchParams?.get('view') || 'grid';
   const { activeSeatingLayoutId, setActiveSeatingLayoutId } = useDashboard();
   const [layouts, setLayouts] = useState<SeatingChart[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -502,63 +497,38 @@ export default function AppViewSeatingChart({
   }, [activeSeatingLayoutId, pathname, router, searchQuery]);
 
   useEffect(() => {
-    setToolbar({
-      className: 'z-10',
-      topActions: [
-        {
-          id: 'add',
-          title: 'Create new layout',
-          onClick: () => setIsCreateModalOpen(true),
-          icon: <IconAddPlus className="w-6 h-6 text-black" />,
-        },
-        {
-          id: 'edit',
-          title: layouts.length > 0 ? 'Seating Editor View' : 'Seating Editor (create a layout first)',
-          disabled: layouts.length === 0,
-          onClick: layouts.length > 0 ? handleOpenSeatingEditor : undefined,
-          icon: <IconEditPencil className={`w-6 h-6 ${layouts.length > 0 ? 'text-black' : 'text-gray-500'}`} strokeWidth={2} />,
-        },
-      ],
-      bottomActions: [
-        {
-          id: 'teacher-view',
-          title: isTeacherView ? "Teacher's view (click to exit)" : "Teacher's view",
-          active: isTeacherView,
-          onClick: () =>
-            setIsTeacherView((v) => {
-              const next = !v;
-              if (classId) localStorage.setItem(`seatingChart_teacherView_${classId}`, String(next));
-              return next;
-            }),
-          icon: (
-            <IconPresentationBoard
-              className={`w-6 h-6 ${isTeacherView ? 'text-black' : 'text-gray-500'}`}
-              strokeWidth={2}
-            />
-          ),
-        },
-        {
-          id: 'point-log',
-          title: isPointLogOpen ? 'Close point log' : 'Open point log',
-          active: isPointLogOpen,
-          onClick: () => setIsPointLogOpen((v) => !v),
-          icon: <IconDocumentClock className="w-6 h-6 text-black" strokeWidth={2} />,
-        },
-      ],
-    });
-
-    return () => {
-      setToolbar(null);
+    const handleCreateLayout = () => {
+      if (currentView !== 'seating') return;
+      setIsCreateModalOpen(true);
     };
-  }, [
-    classId,
-    handleOpenSeatingEditor,
-    isPointLogOpen,
-    isTeacherView,
-    layouts.length,
-    setIsPointLogOpen,
-    setToolbar,
-  ]);
+    const handleOpenEditor = () => {
+      if (currentView !== 'seating') return;
+      if (layouts.length > 0) handleOpenSeatingEditor();
+    };
+    const handleToggleTeacherView = () => {
+      if (currentView !== 'seating') return;
+      setIsTeacherView((v) => {
+        const next = !v;
+        if (classId) localStorage.setItem(`seatingChart_teacherView_${classId}`, String(next));
+        return next;
+      });
+    };
+    const handleTogglePointLog = () => {
+      if (currentView !== 'seating') return;
+      setIsPointLogOpen((v) => !v);
+    };
+
+    window.addEventListener('stageToolbarCreateLayout', handleCreateLayout);
+    window.addEventListener('stageToolbarOpenSeatingEditor', handleOpenEditor);
+    window.addEventListener('stageToolbarToggleTeacherView', handleToggleTeacherView);
+    window.addEventListener('stageToolbarTogglePointLog', handleTogglePointLog);
+    return () => {
+      window.removeEventListener('stageToolbarCreateLayout', handleCreateLayout);
+      window.removeEventListener('stageToolbarOpenSeatingEditor', handleOpenEditor);
+      window.removeEventListener('stageToolbarToggleTeacherView', handleToggleTeacherView);
+      window.removeEventListener('stageToolbarTogglePointLog', handleTogglePointLog);
+    };
+  }, [classId, currentView, handleOpenSeatingEditor, layouts.length, setIsPointLogOpen]);
 
   const handleDeleteConfirmed = async () => {
     if (!layoutToDelete) return;

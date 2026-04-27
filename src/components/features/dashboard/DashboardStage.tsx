@@ -1,6 +1,10 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
+import IconAddPlus from '@/components/iconsCustom/iconAddPlus';
+import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
+import IconPresentationBoard from '@/components/iconsCustom/iconPresentationBoard';
+import IconDocumentClock from '@/components/iconsCustom/iconDocumentClock';
 import TopNav from '@/components/features/navbars/TopNav';
 import BottomNavStudents from '@/components/features/navbars/BottomNavStudents';
 import BottomNavMulti from '@/components/features/navbars/BottomNavMulti';
@@ -8,7 +12,7 @@ import BottomNavSeatingEdit from '@/components/features/navbars/BottomNavSeating
 import Timer from '@/components/features/dashboard/tools/Timer';
 import Random from '@/components/features/dashboard/tools/Random';
 import CanvasToolbar from '@/components/ui/CanvasToolbar';
-import { StageToolbarProvider, type StageToolbarConfig } from '@/components/features/dashboard/StageToolbarContext';
+import { StageToolbarProvider } from '@/components/features/dashboard/StageToolbarContext';
 
 interface DashboardStageProps {
   children: React.ReactNode;
@@ -48,13 +52,88 @@ export default function DashboardStage({
   onTimerClick,
   onRandomClick,
 }: DashboardStageProps) {
-  const [toolbarConfig, setToolbarConfig] = useState<StageToolbarConfig | null>(null);
-  const handleSetToolbarConfig = useCallback((config: StageToolbarConfig | null) => {
-    setToolbarConfig(config);
-  }, [isSeatingView]);
+  const noopSetToolbar = useCallback(() => {}, []);
   const showTopNav = !isSeatingView;
   const stageContentPadding = isSeatingView ? '' : 'pl-2 pt-2';
   const showBottomNav = currentClassName && !isTimerOpen && !isRandomOpen;
+  const toolbarConfig = isSeatingView
+    ? {
+        className: 'z-10',
+        topActions: isEditMode
+          ? [
+              {
+                id: 'close-editor',
+                title: 'Close editor',
+                onClick: () => window.dispatchEvent(new CustomEvent('stageToolbarCloseEditor')),
+                icon: (
+                  <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                ),
+              },
+            ]
+          : [
+              {
+                id: 'add',
+                title: 'Create new layout',
+                onClick: () => window.dispatchEvent(new CustomEvent('stageToolbarCreateLayout')),
+                icon: <IconAddPlus className="w-6 h-6 text-black" />,
+              },
+              {
+                id: 'edit',
+                title: 'Seating Editor View',
+                onClick: () => window.dispatchEvent(new CustomEvent('stageToolbarOpenSeatingEditor')),
+                icon: <IconEditPencil className="w-6 h-6 text-black" strokeWidth={2} />,
+              },
+            ],
+        bottomActions: isEditMode
+          ? []
+          : [
+              {
+                id: 'teacher-view',
+                title: "Teacher's view",
+                onClick: () => window.dispatchEvent(new CustomEvent('stageToolbarToggleTeacherView')),
+                icon: <IconPresentationBoard className="w-6 h-6 text-black" strokeWidth={2} />,
+              },
+              {
+                id: 'point-log',
+                title: 'Toggle point log',
+                onClick: () => window.dispatchEvent(new CustomEvent('stageToolbarTogglePointLog')),
+                icon: <IconDocumentClock className="w-6 h-6 text-black" strokeWidth={2} />,
+              },
+            ],
+      }
+    : {
+        className: '!bg-white',
+        topActions: [
+          {
+            id: 'add',
+            title: 'Create layout (seating view only)',
+            disabled: true,
+            icon: <IconAddPlus className="w-6 h-6 text-gray-500" />,
+          },
+          {
+            id: 'edit',
+            title: 'Seating Editor (seating view only)',
+            disabled: true,
+            icon: <IconEditPencil className="w-6 h-6 text-gray-500" strokeWidth={2} />,
+          },
+        ],
+        bottomActions: [
+          {
+            id: 'teacher-view',
+            title: "Teacher's view (seating view only)",
+            disabled: true,
+            icon: <IconPresentationBoard className="w-6 h-6 text-gray-500" strokeWidth={2} />,
+          },
+          {
+            id: 'point-log',
+            title: 'Toggle point log',
+            onClick: () => window.dispatchEvent(new CustomEvent('stageToolbarTogglePointLog')),
+            icon: <IconDocumentClock className="w-6 h-6 text-black" strokeWidth={2} />,
+          },
+        ],
+      };
 
   return (
     <div
@@ -85,7 +164,7 @@ export default function DashboardStage({
         ].join(' ')}
       >
         <div className="h-full w-full overflow-hidden">
-          <StageToolbarProvider value={{ setToolbar: handleSetToolbarConfig }}>
+          <StageToolbarProvider value={{ setToolbar: noopSetToolbar }}>
             {isTimerOpen ? (
               <Timer onClose={onCloseTimer} />
             ) : isRandomOpen ? (
@@ -100,21 +179,19 @@ export default function DashboardStage({
       </div>
 
       {/* Toolbar rail */}
-      {toolbarConfig && (
-        <div
-          data-stage-toolbar-slot
-          className={[
-            'col-start-2 h-full overflow-hidden',
-            isSeatingView ? 'row-start-1 row-span-2' : 'row-start-2',
-          ].join(' ')}
-        >
-          <CanvasToolbar
-            className={`h-full ${toolbarConfig.className ?? ''}`}
-            topActions={toolbarConfig.topActions}
-            bottomActions={toolbarConfig.bottomActions}
-          />
-        </div>
-      )}
+      <div
+        data-stage-toolbar-slot
+        className={[
+          'col-start-2 h-full overflow-hidden',
+          isSeatingView ? 'row-start-1 row-span-2' : 'row-start-2',
+        ].join(' ')}
+      >
+        <CanvasToolbar
+          className={`h-full ${toolbarConfig.className ?? ''}`}
+          topActions={toolbarConfig.topActions}
+          bottomActions={toolbarConfig.bottomActions}
+        />
+      </div>
 
       {/* Bottom nav */}
       {showBottomNav && (

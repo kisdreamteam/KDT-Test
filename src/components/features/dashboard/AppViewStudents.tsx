@@ -11,14 +11,9 @@ import LoadingState from '@/components/ui/LoadingState';
 import ErrorState from '@/components/ui/ErrorState';
 import StudentsMainContent from './maincontent/StudentsMainContent';
 import StudentsModals from './maincontent/StudentsModals';
-import IconAddPlus from '@/components/iconsCustom/iconAddPlus';
-import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
-import IconPresentationBoard from '@/components/iconsCustom/iconPresentationBoard';
-import IconDocumentClock from '@/components/iconsCustom/iconDocumentClock';
 import { useClassPointLog } from '@/hooks/useClassPointLog';
 import { useDashboardToolbarInset } from '@/hooks/useDashboardToolbarInset';
 import { useAwardPointsFlow } from '@/hooks/useAwardPointsFlow';
-import { useStageToolbar } from './StageToolbarContext';
 
 export default function AppViewStudents() {
   const params = useParams();
@@ -30,7 +25,6 @@ export default function AppViewStudents() {
   // Get current view mode from URL
   const currentView = searchParams?.get('view') || 'grid';
   const currentMode = searchParams?.get('mode') || '';
-  const { setToolbar } = useStageToolbar();
   // Check if we're in edit mode from URL (this should match layout's isEditMode)
   const isEditModeFromURL = currentMode === 'edit';
   const [classIcon, setClassIcon] = useState<string>('/images/dashboard/class-icons/icon-1.png');
@@ -379,48 +373,13 @@ export default function AppViewStudents() {
   }, [currentView, setIsPointLogOpen]);
 
   useEffect(() => {
-    if (currentView !== 'grid') {
-      setToolbar(null);
-      return;
-    }
-
-    setToolbar({
-      className: '!bg-white',
-      topActions: [
-        {
-          id: 'add',
-          title: 'Create layout (seating view only)',
-          disabled: true,
-          icon: <IconAddPlus className="w-6 h-6 text-gray-500" />,
-        },
-        {
-          id: 'edit',
-          title: 'Seating Editor (seating view only)',
-          disabled: true,
-          icon: <IconEditPencil className="w-6 h-6 text-gray-500" strokeWidth={2} />,
-        },
-      ],
-      bottomActions: [
-        {
-          id: 'teacher-view',
-          title: "Teacher's view (seating view only)",
-          disabled: true,
-          icon: <IconPresentationBoard className="w-6 h-6 text-gray-500" strokeWidth={2} />,
-        },
-        {
-          id: 'point-log',
-          title: isPointLogOpen ? 'Close point log' : 'Open point log',
-          active: isPointLogOpen,
-          onClick: () => setIsPointLogOpen((v) => !v),
-          icon: <IconDocumentClock className="w-6 h-6 text-black" strokeWidth={2} />,
-        },
-      ],
-    });
-
-    return () => {
-      setToolbar(null);
+    const handleTogglePointLog = () => {
+      if (currentView !== 'grid') return;
+      setIsPointLogOpen((v) => !v);
     };
-  }, [currentView, isPointLogOpen, setIsPointLogOpen, setToolbar]);
+    window.addEventListener('stageToolbarTogglePointLog', handleTogglePointLog);
+    return () => window.removeEventListener('stageToolbarTogglePointLog', handleTogglePointLog);
+  }, [currentView, setIsPointLogOpen]);
 
   if (isLoadingStudents) {
     return <LoadingState message="Loading students..." />;

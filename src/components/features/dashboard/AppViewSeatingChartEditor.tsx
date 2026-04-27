@@ -6,7 +6,6 @@ import { createClient } from '@/lib/client';
 import { useDashboard } from '@/context/DashboardContext';
 import { useSeatingChart } from '@/context/SeatingChartContext';
 import { Student } from '@/lib/types';
-import { useStageToolbar } from './StageToolbarContext';
 import CreateLayoutModal from '@/components/modals/CreateLayoutModal';
 import EditGroupModal from '@/components/modals/EditGroupModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
@@ -158,7 +157,6 @@ interface AppViewSeatingChartEditorProps {
 }
 
 export default function AppViewSeatingChartEditor({ classId, students }: AppViewSeatingChartEditorProps) {
-  const { setToolbar } = useStageToolbar();
   const { selectedStudentForGroup, setSelectedStudentForGroup, setUnseatedStudents, unseatedStudents } = useSeatingChart();
   const { activeSeatingLayoutId, setActiveSeatingLayoutId } = useDashboard();
   const searchParams = useSearchParams();
@@ -284,25 +282,12 @@ export default function AppViewSeatingChartEditor({ classId, students }: AppView
   }, [handleClose]);
 
   useEffect(() => {
-    setToolbar({
-      className: 'z-10',
-      topActions: [
-        {
-          id: 'close-editor',
-          title: 'Close editor',
-          onClick: () => handleCloseRef.current(),
-          icon: (
-            <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          ),
-        },
-      ],
-      bottomActions: [],
-    });
-
-    return () => setToolbar(null);
-  }, [setToolbar]);
+    const handleStageCloseEditor = () => {
+      handleCloseRef.current();
+    };
+    window.addEventListener('stageToolbarCloseEditor', handleStageCloseEditor);
+    return () => window.removeEventListener('stageToolbarCloseEditor', handleStageCloseEditor);
+  }, []);
 
   // Track the offset from where the user clicked to the group's top-left corner
   const dragOffsetRef = useRef<{ x: number; y: number } | null>(null);
