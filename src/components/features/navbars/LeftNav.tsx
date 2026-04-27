@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { normalizeClassIconPath } from '@/lib/iconUtils';
 import IconTimerClock from '@/components/iconsCustom/iconTimerClock';
 import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
@@ -26,8 +26,10 @@ interface LeftNavProps {
 export default function LeftNav({ classes, isLoadingClasses, viewMode, setViewMode, seatingLayoutData }: LeftNavProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const currentView = searchParams?.get('view') || 'grid';
   const classLinkSuffix = currentView === 'seating' ? '?view=seating' : '';
+  const activeClassId = pathname?.match(/\/dashboard\/classes\/([^/]+)/)?.[1] ?? null;
 
   const handleAllClassesClick = () => {
     if (setViewMode) {
@@ -90,31 +92,42 @@ export default function LeftNav({ classes, isLoadingClasses, viewMode, setViewMo
         ) : (
           <>
             {/* Active Classes */}
-            {activeClasses.map((cls) => (
-              <Link
-                key={cls.id}
-                href={`/dashboard/classes/${cls.id}${classLinkSuffix}`}
-                className="block"
-              >
-                <div className="flex items-center space-x-3 p-2 hover:bg-blue-200 rounded cursor-pointer transition-colors">
-                  {/* Class Image */}
-                  <div className="w-8 h-8 flex-shrink-0">
-                    <Image
-                      src={normalizeClassIconPath(cls.icon)}
-                      alt={`${cls.name} icon`}
-                      width={32}
-                      height={32}
-                      className="rounded"
-                    />
+            {activeClasses.map((cls) => {
+              const isActiveClass = activeClassId === cls.id;
+              return (
+                <Link
+                  key={cls.id}
+                  href={`/dashboard/classes/${cls.id}${classLinkSuffix}`}
+                  className="block"
+                >
+                  <div
+                    className={`flex items-center space-x-3 p-2 rounded cursor-pointer transition-colors ${
+                      isActiveClass ? 'bg-purple-400 hover:bg-purple-500' : 'hover:bg-blue-200'
+                    }`}
+                  >
+                    {/* Class Image */}
+                    <div className="w-8 h-8 flex-shrink-0">
+                      <Image
+                        src={normalizeClassIconPath(cls.icon)}
+                        alt={`${cls.name} icon`}
+                        width={32}
+                        height={32}
+                        className="rounded"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span
+                        className={`text-xl font-medium block truncate ${
+                          isActiveClass ? 'text-white' : 'text-gray-800'
+                        }`}
+                      >
+                        {cls.name}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-xl font-medium text-gray-800 block truncate">
-                      {cls.name}
-                    </span>
-                  </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
             
             {/* Archived Classes - Single Item */}
             {hasArchivedClasses && (
