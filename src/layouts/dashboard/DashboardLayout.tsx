@@ -101,7 +101,7 @@ function DashboardLayoutShell({
     <SeatingChartProvider>
       <StudentSortProvider>
         <SeatingLayoutNavProvider setSeatingLayoutData={setSeatingLayoutData}>
-          <div className="h-screen w-screen overflow-hidden flex flex-row bg-brand-purple">
+          <div className="h-screen w-screen overflow-hidden flex flex-row bg-brand-purple lg:scale-100 md:scale-50 sm:scale-25" >
             <div className="w-76 h-full pl-2 flex-shrink-0">
               <div className="h-full overflow-hidden bg-white">
                 {isSeatingView && isEditMode ? (
