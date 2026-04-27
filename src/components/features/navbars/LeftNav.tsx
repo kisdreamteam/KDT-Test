@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { normalizeClassIconPath } from '@/lib/iconUtils';
 import IconTimerClock from '@/components/iconsCustom/iconTimerClock';
 import IconEditPencil from '@/components/iconsCustom/iconEditPencil';
@@ -25,6 +25,9 @@ interface LeftNavProps {
 
 export default function LeftNav({ classes, isLoadingClasses, viewMode, setViewMode, seatingLayoutData }: LeftNavProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const currentView = searchParams?.get('view') || 'grid';
+  const classLinkSuffix = currentView === 'seating' ? '?view=seating' : '';
 
   const handleAllClassesClick = () => {
     if (setViewMode) {
@@ -90,7 +93,7 @@ export default function LeftNav({ classes, isLoadingClasses, viewMode, setViewMo
             {activeClasses.map((cls) => (
               <Link
                 key={cls.id}
-                href={`/dashboard/classes/${cls.id}`}
+                href={`/dashboard/classes/${cls.id}${classLinkSuffix}`}
                 className="block"
               >
                 <div className="flex items-center space-x-3 p-2 hover:bg-blue-200 rounded cursor-pointer transition-colors">

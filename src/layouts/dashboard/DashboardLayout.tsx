@@ -37,6 +37,7 @@ type ViewPreference = 'seating' | 'students';
 // Dashboard-session cache: survives route remounts in the same client session.
 let cachedTeacherProfile: TeacherProfile | null = null;
 let cachedViewPreference: ViewPreference | null = null;
+let teacherProfileFetchPromise: Promise<void> | null = null;
 
 /** PostgREST / Postgres when RPC `list_accessible_classes` is not deployed yet */
 function isMissingListAccessibleClassesRpc(error: { code?: string; message?: string } | null): boolean {
@@ -56,20 +57,21 @@ function DashboardLayoutContent({
   children: React.ReactNode;
 }) {
   const [teacherProfile, setTeacherProfile] = useState<TeacherProfile | null>(null);
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(() => !cachedTeacherProfile);
   const [classes, setClasses] = useState<Class[]>([]);
   const [isLoadingClasses, setIsLoadingClasses] = useState(true);
   const [isTimerOpen, setIsTimerOpen] = useState(false);
   const [isRandomOpen, setIsRandomOpen] = useState(false);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
-  const [viewPreference, setViewPreference] = useState<ViewPreference>('students');
+  const [viewPreference, setViewPreference] = useState<ViewPreference>(() => cachedViewPreference ?? 'students');
   const [activeSeatingLayoutId, setActiveSeatingLayoutId] = useState<string | null>(null);
   const [seatingLayoutData, setSeatingLayoutData] = useState<SeatingLayoutNavData | null>(null);
   const [isEditClassModalOpen, setIsEditClassModalOpen] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const searchParamsString = searchParams?.toString() ?? '';
 
   // Current class ID from URL (when on a class detail page)
   const currentClassId = pathname ? (pathname.match(/\/dashboard\/classes\/([^/]+)/)?.[1] ?? null) : null;
@@ -84,7 +86,20 @@ function DashboardLayoutContent({
   const fetchTeacherProfile = async () => {
     if (cachedTeacherProfile) {
       setTeacherProfile(cachedTeacherProfile);
-      if (cachedViewPreference) {
+      if (cachedViewPreference && cachedViewPreference !== viewPreference) {
+        setViewPreference(cachedViewPreference);
+      }
+      setIsLoadingProfile(false);
+      return;
+    }
+
+    if (teacherProfileFetchPromise) {
+      setIsLoadingProfile(true);
+      await teacherProfileFetchPromise;
+      if (cachedTeacherProfile) {
+        setTeacherProfile(cachedTeacherProfile);
+      }
+      if (cachedViewPreference && cachedViewPreference !== viewPreference) {
         setViewPreference(cachedViewPreference);
       }
       setIsLoadingProfile(false);
@@ -93,53 +108,62 @@ function DashboardLayoutContent({
 
     try {
       setIsLoadingProfile(true);
-      const supabase = createClient();
-      // Use getSession() to avoid "Refresh Token Not Found" when no session exists
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      const user = session?.user;
+      teacherProfileFetchPromise = (async () => {
+        const supabase = createClient();
+        // Use getSession() to avoid "Refresh Token Not Found" when no session exists
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        const user = session?.user;
 
-      if (sessionError || !user) {
-        if (sessionError) console.error('Session error:', sessionError);
-        router.replace('/login');
-        return;
+        if (sessionError || !user) {
+          if (sessionError) console.error('Session error:', sessionError);
+          router.replace('/login');
+          return;
+        }
+
+        console.log('Fetching teacher profile for user:', user.id);
+
+        // Fetch teacher profile from profiles table
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, title, name, role, preferred_view')
+          .eq('id', user.id)
+          .single();
+
+        console.log('Teacher profile data:', data);
+        console.log('Teacher profile error:', error);
+
+        if (error) {
+          console.error('Error fetching teacher profile:', error?.message || error);
+          return;
+        }
+
+        // Ensure role is set (provide default if missing)
+        if (data) {
+          const preferredView: ViewPreference =
+            data.preferred_view === 'seating' || data.preferred_view === 'students'
+              ? data.preferred_view
+              : 'students';
+          cachedViewPreference = preferredView;
+
+          const nextProfile: TeacherProfile = {
+            ...data,
+            role: data.role || 'teacher'
+          };
+          cachedTeacherProfile = nextProfile;
+        }
+      })();
+
+      await teacherProfileFetchPromise;
+      if (cachedTeacherProfile) {
+        setTeacherProfile(cachedTeacherProfile);
       }
-
-      console.log('Fetching teacher profile for user:', user.id);
-
-      // Fetch teacher profile from profiles table
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, title, name, role, preferred_view')
-        .eq('id', user.id)
-        .single();
-
-      console.log('Teacher profile data:', data);
-      console.log('Teacher profile error:', error);
-
-      if (error) {
-        console.error('Error fetching teacher profile:', error?.message || error);
-        return;
-      }
-
-      // Ensure role is set (provide default if missing)
-      if (data) {
-        const preferredView: ViewPreference =
-          data.preferred_view === 'seating' || data.preferred_view === 'students'
-            ? data.preferred_view
-            : 'students';
-        setViewPreference(preferredView);
-        cachedViewPreference = preferredView;
-
-        const nextProfile: TeacherProfile = {
-          ...data,
-          role: data.role || 'teacher'
-        };
-        setTeacherProfile(nextProfile);
-        cachedTeacherProfile = nextProfile;
+      if (cachedViewPreference) {
+        setViewPreference(cachedViewPreference);
       }
     } catch (err) {
       console.error('Unexpected error fetching teacher profile:', err);
     } finally {
+      teacherProfileFetchPromise = null;
       setIsLoadingProfile(false);
     }
   };
@@ -275,11 +299,13 @@ function DashboardLayoutContent({
 
   // If the URL has no explicit view, initialize it from persisted teacher preference.
   useEffect(() => {
-    if (!pathname?.includes('/dashboard/classes/')) return;
-    if (!searchParams) return;
-    if (searchParams.has('view')) return;
+    const inClassRoute = !!pathname?.includes('/dashboard/classes/');
+    const params = new URLSearchParams(searchParamsString);
+    const hasView = params.has('view');
+    if (!inClassRoute) return;
+    if (isLoadingProfile) return;
+    if (hasView) return;
 
-    const params = new URLSearchParams(searchParams.toString());
     if (viewPreference === 'seating') {
       params.set('view', 'seating');
     } else {
@@ -288,9 +314,13 @@ function DashboardLayoutContent({
     }
 
     const base = pathname ?? '/';
+    const currentUrl = searchParamsString ? `${base}?${searchParamsString}` : base;
     const newUrl = params.toString() ? `${base}?${params.toString()}` : base;
+    if (newUrl === currentUrl) {
+      return;
+    }
     router.replace(newUrl);
-  }, [pathname, router, searchParams, viewPreference]);
+  }, [pathname, router, searchParamsString, viewPreference, currentClassId, isLoadingProfile]);
 
   return (
     <DashboardProvider value={{ 

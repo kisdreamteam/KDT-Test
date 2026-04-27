@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import TopNav from '@/components/features/navbars/TopNav';
 import BottomNavStudents from '@/components/features/navbars/BottomNavStudents';
 import BottomNavMulti from '@/components/features/navbars/BottomNavMulti';
@@ -49,15 +49,25 @@ export default function DashboardStage({
   onRandomClick,
 }: DashboardStageProps) {
   const [toolbarConfig, setToolbarConfig] = useState<StageToolbarConfig | null>(null);
+  const handleSetToolbarConfig = useCallback((config: StageToolbarConfig | null) => {
+    setToolbarConfig(config);
+  }, [isSeatingView]);
   const showTopNav = !isSeatingView;
   const stageContentPadding = isSeatingView ? '' : 'pl-2 pt-2';
   const showBottomNav = currentClassName && !isTimerOpen && !isRandomOpen;
 
   return (
-    <div className={`h-full w-full flex flex-col overflow-hidden ${currentClassName ? 'bg-brand-purple' : 'bg-brand-cream'}`}>
+    <div
+      className={[
+        'h-full w-full overflow-hidden grid',
+        'grid-cols-[1fr_3.5rem]',
+        'grid-rows-[7.5rem_1fr_5rem]',
+        currentClassName ? 'bg-brand-purple' : 'bg-brand-cream',
+      ].join(' ')}
+    >
       {/* Top nav */}
       {showTopNav && (
-        <div className="h-30 w-full flex-shrink-0 overflow-hidden">
+        <div className="col-start-1 col-span-2 row-start-1 overflow-hidden">
           <TopNav
             isLoadingProfile={isLoadingProfile}
             currentClassName={currentClassName}
@@ -66,10 +76,16 @@ export default function DashboardStage({
         </div>
       )}
 
-      {/* Main stage: big leftstage-left (content) + rail stage-right (toolbar rail) */}
-      <div className={`flex-1 min-h-0 overflow-hidden flex flex-row relative ${stageContentPadding}`}>
-        <div className="flex-1 min-w-0 h-full overflow-y-auto">
-          <StageToolbarProvider value={{ setToolbar: setToolbarConfig }}>
+      {/* Main content cell */}
+      <div
+        className={[
+          'col-start-1 h-full w-full overflow-hidden',
+          isSeatingView ? 'row-start-1 row-span-2' : 'row-start-2',
+          stageContentPadding,
+        ].join(' ')}
+      >
+        <div className="h-full w-full overflow-hidden">
+          <StageToolbarProvider value={{ setToolbar: handleSetToolbarConfig }}>
             {isTimerOpen ? (
               <Timer onClose={onCloseTimer} />
             ) : isRandomOpen ? (
@@ -81,46 +97,48 @@ export default function DashboardStage({
             )}
           </StageToolbarProvider>
         </div>
+      </div>
 
+      {/* Toolbar rail */}
+      {toolbarConfig && (
         <div
           data-stage-toolbar-slot
-          className={`w-14 h-full flex-shrink-0 ${isSeatingView ? '-ml-0 z-10' : ''}`}
+          className={[
+            'col-start-2 h-full overflow-hidden',
+            isSeatingView ? 'row-start-1 row-span-2' : 'row-start-2',
+          ].join(' ')}
         >
-          {toolbarConfig && (
-            <CanvasToolbar
-              className={`h-full ${toolbarConfig.className ?? ''}`}
-              topActions={toolbarConfig.topActions}
-              bottomActions={toolbarConfig.bottomActions}
+          <CanvasToolbar
+            className={`h-full ${toolbarConfig.className ?? ''}`}
+            topActions={toolbarConfig.topActions}
+            bottomActions={toolbarConfig.bottomActions}
+          />
+        </div>
+      )}
+
+      {/* Bottom nav */}
+      {showBottomNav && (
+        <div className="col-start-1 col-span-2 row-start-3 overflow-visible relative z-20 w-full">
+          {isSeatingView && isEditMode ? (
+            <BottomNavSeatingEdit
+              currentClassName={currentClassName}
+              classId={classId}
+              onEditClass={onEditClass}
+            />
+          ) : isMultiSelectMode ? (
+            <BottomNavMulti />
+          ) : (
+            <BottomNavStudents
+              currentClassName={currentClassName}
+              onTimerClick={onTimerClick}
+              onRandomClick={onRandomClick}
+              sortingDisabled={isSeatingView}
+              classId={classId}
+              onEditClass={onEditClass}
             />
           )}
         </div>
-      </div>
-
-      {/* Bottom nav */}
-      <div className="h-20 flex-shrink-0 overflow-visible relative z-20 w-full">
-        {showBottomNav && (
-          <>
-            {isSeatingView && isEditMode ? (
-              <BottomNavSeatingEdit
-                currentClassName={currentClassName}
-                classId={classId}
-                onEditClass={onEditClass}
-              />
-            ) : isMultiSelectMode ? (
-              <BottomNavMulti />
-            ) : (
-              <BottomNavStudents
-                currentClassName={currentClassName}
-                onTimerClick={onTimerClick}
-                onRandomClick={onRandomClick}
-                sortingDisabled={isSeatingView}
-                classId={classId}
-                onEditClass={onEditClass}
-              />
-            )}
-          </>
-        )}
-      </div>
+      )}
     </div>
   );
 }

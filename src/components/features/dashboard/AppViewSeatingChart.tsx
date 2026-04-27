@@ -547,7 +547,9 @@ export default function AppViewSeatingChart({
       ],
     });
 
-    return () => setToolbar(null);
+    return () => {
+      setToolbar(null);
+    };
   }, [
     classId,
     handleOpenSeatingEditor,

@@ -62,7 +62,6 @@ export default function AwardPointsModal({
   const isMultiClassMode = selectedClassIds && selectedClassIds.length > 0;
   const isMultiStudentMode = selectedStudentIds && selectedStudentIds.length > 0;
   const isWholeClassMode = student === null && !isMultiClassMode && !isMultiStudentMode;
-  console.log('AWARD POINTS MODAL: classId received:', classId);
   
   const [categories, setCategories] = useState<PointCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -90,8 +89,6 @@ export default function AwardPointsModal({
         : [classId];
 
       const data = await fetchPointCategoriesByClassIds(classIdsToFetch);
-
-      console.log('AWARD POINTS MODAL: Fetched categories data:', data);
 
       // Normalize icon paths for categories (convert old paths to new paths)
       const normalizedData = (data || []).map((category: any) => ({
@@ -123,13 +120,6 @@ export default function AwardPointsModal({
     }
   }, [isOpen, classId, selectedClassIds, fetchCategories]);
 
-  // Debug logging for categories and loading state
-  useEffect(() => {
-    console.log('AWARD POINTS MODAL: categories array length:', categories.length);
-    console.log('AWARD POINTS MODAL: isLoading state:', isLoading);
-    console.log('AWARD POINTS MODAL: categories data:', categories);
-  }, [categories, isLoading]);
-
   // Filter categories into positive and negative skills
   const positiveSkills = useMemo(() => {
     const filtered = categories.filter((category) => {
@@ -144,7 +134,6 @@ export default function AwardPointsModal({
         icon: category.icon, // Use icon from database
       };
     });
-    console.log('Filtered positive skills:', filtered.length, filtered);
     return filtered;
   }, [categories]);
 
@@ -161,7 +150,6 @@ export default function AwardPointsModal({
         icon: category.icon, // Use icon from database
       };
     });
-    console.log('Filtered negative skills:', filtered.length, filtered);
     return filtered;
   }, [categories]);
 

@@ -16,10 +16,10 @@ export default function ViewModeModal({ isOpen, onClose }: ViewModeModalProps) {
   const currentView = (searchParams?.get('view') || 'grid') as 'grid' | 'seating';
 
   const handleViewChange = (view: 'grid' | 'seating') => {
-    void updateViewPreference(view === 'seating' ? 'seating' : 'students');
     const params = new URLSearchParams(searchParams?.toString() ?? '');
     if (view === 'grid') {
-      params.delete('view');
+      // Keep an explicit view token to prevent layout preference effect from re-applying stale seating defaults.
+      params.set('view', 'grid');
       params.delete('mode');
       window.dispatchEvent(new CustomEvent('seatingChartEditMode', { detail: { isEditMode: false } }));
     } else {
@@ -29,7 +29,34 @@ export default function ViewModeModal({ isOpen, onClose }: ViewModeModalProps) {
     }
     const base = pathname ?? '/';
     const newUrl = params.toString() ? `${base}?${params.toString()}` : base;
-    router.push(newUrl);
+    if (`${window.location.pathname}${window.location.search}` === newUrl) {
+      onClose();
+      return;
+    }
+    router.replace(newUrl);
+    void Promise.resolve().then(() => {
+      requestAnimationFrame(() => {
+        const target = new URL(newUrl, window.location.origin);
+        const current = `${window.location.pathname}${window.location.search}`;
+        const expected = `${target.pathname}${target.search}`;
+        if (current === expected) return;
+        requestAnimationFrame(() => {
+          const currentAfterSecondFrame = `${window.location.pathname}${window.location.search}`;
+          const matchedAfterSecondFrame = currentAfterSecondFrame === expected;
+          if (!matchedAfterSecondFrame) {
+            router.push(newUrl);
+            requestAnimationFrame(() => {
+              const currentAfterPush = `${window.location.pathname}${window.location.search}`;
+              const matchedAfterPush = currentAfterPush === expected;
+              if (!matchedAfterPush) {
+                window.location.assign(newUrl);
+              }
+            });
+          }
+        });
+      });
+    });
+    void updateViewPreference(view === 'seating' ? 'seating' : 'students');
     onClose();
   };
 

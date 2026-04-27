@@ -2,6 +2,7 @@ import Link from "next/link";
 import { normalizeClassIconPath } from "@/lib/iconUtils";
 import IconSettingsWheel from "@/components/iconsCustom/iconSettingsWheel";
 import BaseCard from "@/components/ui/BaseCard";
+import { useDashboard } from "@/context/DashboardContext";
 
 interface Class {
   id: string;
@@ -34,8 +35,13 @@ export default function ClassCard({
   showDelete = false,
 }: ClassCardProps) {
   const isOwner = classItem.is_owner !== false;
+  const { viewPreference } = useDashboard();
+  const classHref =
+    viewPreference === "seating"
+      ? `/dashboard/classes/${classItem.id}?view=seating`
+      : `/dashboard/classes/${classItem.id}`;
   return (
-    <Link href={`/dashboard/classes/${classItem.id}`} className="block aspect-square w-full min-h-0">
+    <Link href={classHref} className="block aspect-square w-full min-h-0">
       <BaseCard
         className="!aspect-auto h-full min-h-0 hover:shadow-md hover:!bg-blue-100"
         variant="default"

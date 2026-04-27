@@ -479,7 +479,9 @@ export default function AppViewStudents() {
       ],
     });
 
-    return () => setToolbar(null);
+    return () => {
+      setToolbar(null);
+    };
   }, [currentView, isPointLogOpen, setIsPointLogOpen, setToolbar]);
 
   if (isLoading) {
