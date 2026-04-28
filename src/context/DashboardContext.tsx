@@ -41,7 +41,7 @@ interface DashboardContextType {
   isLoadingStudents: boolean;
   isLoading: boolean;
   refreshClasses: () => Promise<void>;
-  refreshStudents: () => Promise<void>;
+  refreshStudents: (force?: boolean) => Promise<void>;
   viewMode: 'active' | 'archived';
   setViewMode: (mode: 'active' | 'archived') => void;
   viewPreference: ViewPreference;
@@ -199,7 +199,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     }
   }, [router]);
 
-  const fetchStudents = useCallback(async () => {
+  const fetchStudents = useCallback(async (force = false) => {
     if (!currentClassId) {
       setStudents([]);
       setIsLoadingStudents(false);
@@ -207,7 +207,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     }
 
     const cached = studentsByClassCache.get(currentClassId);
-    if (cached) {
+    if (!force && cached) {
       setStudents(cached);
       setIsLoadingStudents(false);
       return;

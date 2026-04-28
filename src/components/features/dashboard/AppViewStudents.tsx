@@ -300,6 +300,10 @@ export default function AppViewStudents() {
     openAwardConfirmation(info);
   };
 
+  const handleStudentAdded = async () => {
+    await refreshStudents(true);
+  };
+
   // Sort students based on sortBy option
   // Note: This same sortedStudents array is used for both single view and multi-select view,
   // ensuring the sort order is preserved when switching between views
@@ -435,7 +439,7 @@ export default function AppViewStudents() {
         isEditStudentModalOpen={isEditStudentModalOpen}
         isMultiStudentAwardModalOpen={isMultiStudentAwardModalOpen}
         isConfirmationModalOpen={isConfirmationModalOpen}
-        onStudentAdded={() => void refreshStudents()}
+        onStudentAdded={() => void handleStudentAdded()}
         onCloseAddStudentsModal={() => setAddStudentModalOpen(false)}
         onClosePointsModal={() => {
           setPointsModalOpen(false);
