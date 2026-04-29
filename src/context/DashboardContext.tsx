@@ -229,6 +229,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           class_id
         `)
         .eq('class_id', currentClassId)
+        .eq('is_archived', false)
         .order('last_name', { ascending: true });
 
       if (error) {
