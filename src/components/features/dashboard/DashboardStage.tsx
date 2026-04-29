@@ -17,6 +17,7 @@ import { StageToolbarProvider } from '@/components/features/dashboard/StageToolb
 interface DashboardStageProps {
   children: React.ReactNode;
   isSeatingView: boolean;
+  showCanvasToolbar?: boolean;
   isEditMode: boolean;
   isLoadingProfile: boolean;
   currentClassName: string | null;
@@ -39,6 +40,7 @@ interface DashboardStageProps {
 export default function DashboardStage({
   children,
   isSeatingView,
+  showCanvasToolbar = true,
   isEditMode,
   isLoadingProfile,
   currentClassName,
@@ -182,19 +184,21 @@ export default function DashboardStage({
       </div>
 
       {/* Toolbar rail */}
-      <div
-        data-stage-toolbar-slot
-        className={[
-          'col-start-2 h-full overflow-hidden',
-          isSeatingView ? 'row-start-1 row-span-2' : 'row-start-2',
-        ].join(' ')}
-      >
-        <CanvasToolbar
-          className={`h-full ${toolbarConfig.className ?? ''}`}
-          topActions={toolbarConfig.topActions}
-          bottomActions={toolbarConfig.bottomActions}
-        />
-      </div>
+      {showCanvasToolbar && (
+        <div
+          data-stage-toolbar-slot
+          className={[
+            'col-start-2 h-full overflow-hidden',
+            isSeatingView ? 'row-start-1 row-span-2' : 'row-start-2',
+          ].join(' ')}
+        >
+          <CanvasToolbar
+            className={`h-full ${toolbarConfig.className ?? ''}`}
+            topActions={toolbarConfig.topActions}
+            bottomActions={toolbarConfig.bottomActions}
+          />
+        </div>
+      )}
 
       {/* Bottom nav */}
       {showBottomNav && (

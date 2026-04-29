@@ -48,6 +48,7 @@ function DashboardLayoutShell({
 
   const currentClassName = currentClass?.name ?? null;
   const isClassRoute = !!currentClassId;
+  const isClassesRootView = !isClassRoute;
   const topNavClassTitle = isClassRoute ? (currentClassName ?? 'Loading...') : currentClassName;
 
   // Listen for multi-select state changes
@@ -120,6 +121,7 @@ function DashboardLayoutShell({
             <div className="flex-1 h-full overflow-hidden pl-2 pr-2 pt-2">
               <DashboardStage
                 isSeatingView={isSeatingView}
+                showCanvasToolbar={!isClassesRootView}
                 isEditMode={isEditMode}
                 isLoadingProfile={isLoadingProfile}
                 currentClassName={topNavClassTitle}
